@@ -1,0 +1,1091 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Unlocking the Brain: 20-Day EEG Analysis Odyssey</title>
+    <meta name="description"
+        content="A 20-day hands-on journey from raw EEG data to publication-ready results. Master Python-based EEG analysis, signal cleaning, feature extraction, and statistics." />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --bg-deep: #05091a;
+            --text-main: #F0F4FF;
+            --text-muted: #B8C4E0;
+            --accent-glow: rgba(99, 102, 241, 0.75);
+            --accent-teal: rgba(20, 184, 166, 0.65);
+            --accent-solid: #A5B4FC;
+            --accent-teal-solid: #2DD4BF;
+            --glass-bg: rgba(99, 102, 241, 0.10);
+            --glass-border: rgba(165, 180, 252, 0.35);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-deep);
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            line-height: 1.7;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        h1,
+        h2,
+        h3 {
+            font-family: 'Playfair Display', serif;
+            font-weight: 400;
+        }
+
+        p {
+            text-align: justify;
+        }
+
+        section {
+            padding: 2rem 10%;
+            max-width: 1300px;
+            margin: auto;
+            position: relative;
+            z-index: 2;
+        }
+
+        .ambient-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background:
+                radial-gradient(ellipse at 10% 60%, rgba(99, 102, 241, 0.55), transparent 45%),
+                radial-gradient(ellipse at 90% 20%, rgba(20, 184, 166, 0.50), transparent 45%),
+                radial-gradient(ellipse at 50% 90%, rgba(167, 139, 250, 0.30), transparent 50%);
+            filter: blur(60px);
+            z-index: -2;
+            animation: breathe 12s infinite alternate ease-in-out;
+        }
+
+        @keyframes breathe {
+            0% {
+                transform: scale(1);
+                opacity: 0.85;
+            }
+
+            100% {
+                transform: scale(1.08);
+                opacity: 1;
+            }
+        }
+
+        canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        .hero {
+            min-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 40px 20px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .hero h1 {
+            font-size: clamp(2.4rem, 5.5vw, 4.5rem);
+            letter-spacing: -0.02em;
+            margin-bottom: 12px;
+            text-shadow: 0 0 40px rgba(165, 180, 252, 0.9), 0 0 80px rgba(99, 102, 241, 0.5);
+            line-height: 1.1;
+            color: #FFFFFF;
+        }
+
+        .hero-subtitle {
+            font-family: 'Inter', sans-serif;
+            font-size: clamp(1rem, 2.5vw, 1.25rem);
+            color: #5EEAD4;
+            font-style: italic;
+            letter-spacing: 1px;
+            margin-bottom: 24px;
+            text-shadow: 0 0 20px rgba(45, 212, 191, 0.8);
+            font-weight: 600;
+        }
+
+        .hero-image-wrap {
+            width: 100%;
+            max-width: 900px;
+            margin: 24px auto;
+            border-radius: 20px;
+            overflow: hidden;
+            border: 2px solid rgba(165, 180, 252, 0.5);
+            box-shadow: 0 0 50px rgba(99, 102, 241, 0.5), 0 0 100px rgba(20, 184, 166, 0.25), 0 20px 60px rgba(0, 0, 0, 0.4);
+        }
+
+        .hero-image-wrap img {
+            width: 100%;
+            height: auto;
+            display: block;
+            object-fit: cover;
+        }
+
+        .highlight {
+            color: #C4B5FD;
+            text-shadow: 0 0 30px rgba(165, 180, 252, 1), 0 0 60px rgba(99, 102, 241, 0.6);
+        }
+
+        .highlight-teal {
+            color: #5EEAD4;
+            text-shadow: 0 0 25px rgba(45, 212, 191, 0.9), 0 0 50px rgba(20, 184, 166, 0.5);
+        }
+
+        .badges {
+            margin-top: 28px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 12px;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 8px 20px;
+            border-radius: 999px;
+            background: rgba(99, 102, 241, 0.2);
+            border: 1px solid rgba(165, 180, 252, 0.6);
+            font-size: 13px;
+            font-weight: 500;
+            color: #E0E7FF;
+            backdrop-filter: blur(12px);
+            box-shadow: 0 0 12px rgba(99, 102, 241, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .badge:hover {
+            background: rgba(99, 102, 241, 0.35);
+            border-color: #A5B4FC;
+            box-shadow: 0 0 25px rgba(165, 180, 252, 0.5);
+            transform: translateY(-2px);
+            color: #ffffff;
+        }
+
+        .cta-container {
+            margin-top: 36px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 14px;
+            z-index: 10;
+        }
+
+        .matrix-quote {
+            font-size: 1rem;
+            color: #5EEAD4;
+            font-style: italic;
+            letter-spacing: 0.5px;
+            text-shadow: 0 0 20px rgba(45, 212, 191, 0.7);
+            margin: 0;
+            text-align: center;
+            max-width: 600px;
+        }
+
+        .register-btn {
+            display: inline-block;
+            padding: 16px 48px;
+            background: linear-gradient(135deg, #6366F1, #8B5CF6);
+            color: #fff;
+            text-decoration: none;
+            font-weight: 700;
+            border: 2px solid rgba(165, 180, 252, 0.6);
+            border-radius: 999px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 0 30px rgba(99, 102, 241, 0.6), 0 8px 30px rgba(0, 0, 0, 0.3);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-size: 0.9rem;
+            cursor: pointer;
+        }
+
+        .register-btn:hover {
+            background: linear-gradient(135deg, #7C3AED, #4F46E5);
+            box-shadow: 0 0 50px rgba(99, 102, 241, 0.9), 0 12px 40px rgba(0, 0, 0, 0.4);
+            transform: translateY(-4px) scale(1.02);
+            color: #ffffff;
+            border-color: rgba(196, 181, 253, 0.9);
+        }
+
+        h2 {
+            font-size: clamp(2rem, 4vw, 2.5rem);
+            margin-bottom: 1.5rem;
+            border-bottom: 2px solid rgba(165, 180, 252, 0.4);
+            padding-bottom: 0.5rem;
+            display: inline-block;
+            color: #FFFFFF;
+            text-shadow: 0 0 20px rgba(165, 180, 252, 0.4);
+        }
+
+        .philosophy {
+            text-align: center;
+        }
+
+        .philosophy h2 {
+            display: inline-block;
+        }
+
+        .lead {
+            font-size: clamp(1rem, 2vw, 1.15rem);
+            color: #C8D5F0;
+            max-width: 850px;
+            margin: 0 auto 1.5rem auto;
+            text-align: center;
+        }
+
+        .special-day-banner {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.28), rgba(20, 184, 166, 0.22));
+            border: 2px solid rgba(165, 180, 252, 0.5);
+            border-radius: 16px;
+            padding: 22px 32px;
+            text-align: center;
+            margin: 36px 0 12px 0;
+            backdrop-filter: blur(12px);
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 0 30px rgba(99, 102, 241, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        }
+
+        .special-day-banner::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(90deg, transparent, rgba(165, 180, 252, 0.12), transparent);
+            animation: shimmer 2.5s infinite;
+        }
+
+        @keyframes shimmer {
+            0% {
+                transform: translateX(-100%);
+            }
+
+            100% {
+                transform: translateX(100%);
+            }
+        }
+
+        .special-day-banner .special-label {
+            font-family: 'Inter', sans-serif;
+            font-size: 0.72rem;
+            font-weight: 800;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            color: #5EEAD4;
+            margin-bottom: 6px;
+            text-shadow: 0 0 15px rgba(45, 212, 191, 0.8);
+        }
+
+        .special-day-banner h3 {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.4rem;
+            color: #FFFFFF;
+            text-shadow: 0 0 15px rgba(165, 180, 252, 0.5);
+        }
+
+        .route-container {
+            margin-top: 20px;
+            position: relative;
+            padding: 1rem 0;
+        }
+
+        .route-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 20px;
+            position: relative;
+        }
+
+        .pin {
+            text-align: center;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .pin-dot {
+            width: 14px;
+            height: 14px;
+            background: #A5B4FC;
+            border-radius: 50%;
+            margin-bottom: 10px;
+            box-shadow: 0 0 16px rgba(165, 180, 252, 0.9), 0 0 30px rgba(99, 102, 241, 0.5);
+            flex-shrink: 0;
+        }
+
+        .flip-card {
+            perspective: 1000px;
+            height: 200px;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        .flip-card-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transform-style: preserve-3d;
+            -webkit-transform-style: preserve-3d;
+            transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            will-change: transform;
+        }
+
+        .flip-card:hover .flip-card-inner,
+        .flip-card.flipped .flip-card-inner {
+            transform: rotateY(180deg);
+        }
+
+        .flip-card-front,
+        .flip-card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+            border-radius: 14px;
+            padding: 18px 14px;
+            background: #1a1a4e;
+            border: 1px solid rgba(165, 180, 252, 0.4);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            transition: border-color 0.3s, box-shadow 0.3s;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+        }
+
+        .flip-card-front:hover {
+            border-color: rgba(165, 180, 252, 0.75);
+            box-shadow: 0 8px 30px rgba(99, 102, 241, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        }
+
+        .flip-card-back {
+            transform: rotateY(180deg);
+            background: #0f0f3a;
+            border-color: rgba(165, 180, 252, 0.5);
+            box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4);
+        }
+
+        .day-num {
+            font-size: 0.72rem;
+            font-weight: 800;
+            letter-spacing: 2.5px;
+            text-transform: uppercase;
+            color: #C4B5FD;
+            margin-bottom: 8px;
+            text-shadow: 0 0 10px rgba(196, 181, 253, 0.7);
+        }
+
+        .flip-card-front h3 {
+            font-size: 0.88rem;
+            line-height: 1.4;
+            color: #F0F4FF;
+        }
+
+        .flip-card-back p {
+            font-size: 0.82rem;
+            color: #D4E0FF;
+            line-height: 1.6;
+            text-align: center;
+        }
+
+        .card-link-icon {
+            margin-top: 15px;
+            font-size: 1.2rem;
+            color: var(--accent-teal-solid);
+            text-decoration: none;
+            transition: transform 0.2s, text-shadow 0.2s;
+            display: inline-block;
+        }
+
+        .card-link-icon:hover {
+            transform: scale(1.2);
+            text-shadow: 0 0 10px var(--accent-teal-solid);
+        }
+
+        .card-icon {
+            font-size: 1.8rem;
+            margin-bottom: 8px;
+        }
+
+        .explore-link {
+            display: block;
+            text-align: center;
+            margin-top: 10px;
+            font-size: 0.78rem;
+            color: #5EEAD4;
+            text-decoration: none;
+            letter-spacing: 1px;
+            font-weight: 600;
+            opacity: 0.9;
+            transition: opacity 0.2s, letter-spacing 0.2s, text-shadow 0.2s;
+            text-shadow: 0 0 8px rgba(45, 212, 191, 0.5);
+        }
+
+        .explore-link:hover {
+            opacity: 1;
+            letter-spacing: 2px;
+            text-shadow: 0 0 16px rgba(45, 212, 191, 0.9);
+        }
+
+        .outcomes-list {
+            list-style: none;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 16px;
+            margin-top: 1rem;
+        }
+
+        .outcomes-list li {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 14px 18px;
+            backdrop-filter: blur(8px);
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+
+        .outcomes-list li:hover {
+            border-color: rgba(129, 140, 248, 0.3);
+            box-shadow: 0 0 16px rgba(99, 102, 241, 0.12);
+        }
+
+        .outcomes-list li .bullet {
+            color: var(--accent-solid);
+            font-size: 1.1rem;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .about-grid {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 32px;
+            align-items: start;
+            margin-top: 1rem;
+        }
+
+        .about-avatar {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            border: 2px solid var(--accent-solid);
+            box-shadow: 0 0 20px var(--accent-glow);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            background: rgba(99, 102, 241, 0.08);
+        }
+
+        footer {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            border-top: 1px solid var(--glass-border);
+            position: relative;
+            z-index: 2;
+        }
+
+        footer a {
+            color: var(--accent-solid);
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 900px) {
+            .route-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+
+            .about-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .about-avatar {
+                margin: 0 auto;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .route-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            section {
+                padding: 2rem 5%;
+            }
+        }
+
+        @media (max-width: 400px) {
+            .route-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .progress-section {
+            margin-top: 1.5rem;
+        }
+
+        .progress-track {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 1.5rem;
+        }
+
+        .progress-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            width: 130px;
+            flex-shrink: 0;
+        }
+
+        .progress-bar-wrap {
+            flex: 1;
+            height: 6px;
+            background: var(--glass-border);
+            border-radius: 99px;
+            overflow: hidden;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            border-radius: 99px;
+            background: linear-gradient(90deg, var(--accent-solid), var(--accent-teal-solid));
+        }
+
+        .progress-pct {
+            font-size: 0.75rem;
+            color: var(--accent-solid);
+            width: 36px;
+            text-align: right;
+            flex-shrink: 0;
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #050814;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(129, 140, 248, 0.4);
+            border-radius: 3px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="ambient-background"></div>
+    <canvas id="neural-canvas"></canvas>
+
+    <div class="hero" id="hero">
+        <p class="hero-subtitle">&#x1F9E0; An EEG Analysis x Python Journey</p>
+        <h1>Unlocking the Brain<br><span class="highlight">20-Day</span> EEG Analysis <span
+                class="highlight-teal">Odyssey</span></h1>
+        <div class="hero-image-wrap">
+            <img src="hero_banner.png"
+                alt="EEG brain waves visualization with neural network patterns and colorful signals" />
+        </div>
+        <div class="badges">
+            <span class="badge">&#x1F5D3; 20 Days</span>
+            <span class="badge">&#x1F40D; Python-first</span>
+            <span class="badge">&#x1F9E0; EEG &middot; MNE-Python</span>
+            <span class="badge">&#x1F4CA; Stats for EEG</span>
+            <span class="badge">&#x1F393; Beginner-friendly</span>
+            <span class="badge">&#x1F52C; EEG</span>
+        </div>
+        <div class="cta-container">
+            <p class="matrix-quote">"The brain isn't a computer. It's a chaotic pile of electric meat trying its best to
+                translate reality into a language we can understand"</p>
+        </div>
+    </div>
+
+    <section class="philosophy">
+        <h2>The Philosophy</h2>
+        <p class="lead">This is not a passive course. Every day, you get your hands dirty &mdash; loading real EEG data,
+            debugging real code, and building real intuition. We start with Python fundamentals and end with
+            publication-grade statistics. No shortcuts, no magic boxes. Just you, the signal, and a terminal.</p>
+
+    </section>
+
+    <section id="roadmap">
+        <h2>The 20-Day Roadmap</h2>
+        <p class="lead">Hover over any card to reveal what you'll actually be doing that day</p>
+
+        <div class="route-container">
+            <div class="route-grid">
+                <div class="pin">
+                    <div class="pin-dot"></div>
+                    <div class="flip-card" id="card-1">
+                        <div class="flip-card-inner">
+                            <div class="flip-card-front"><span class="day-num">Day 01</span>
+                                <div class="card-icon">&#x2694;&#xFE0F;</div>
+                                <h3>Python Basics: Indexing, Slicing &amp; Dicing</h3>
+                            </div>
+                            <div class="flip-card-back">
+                                <p>Becoming a brain-data ninja. Tame your arrays before they tame you.</p>
+                                <a href="day_1/index.html" class="card-link-icon"
+                                    title="Open Day 1">&#x2197;&#xFE0F;</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="pin">
+                    <div class="pin-dot"></div>
+                    <div class="flip-card" id="card-2">
+                        <div class="flip-card-inner">
+                            <div class="flip-card-front"><span class="day-num">Day 02</span>
+                                <div class="card-icon">&#x1F4C8;</div>
+                                <h3>Python Basics: Plotting for Insights</h3>
+                            </div>
+                            <div class="flip-card-back">
+                                <p>Turning arrays of raw numbers into a visual story, because your eyes are better at
+                                    spotting patterns (mistakes).</p>
+                                <a href="day_2/index.html" class="card-link-icon"
+                                    title="Open Day 2">&#x2197;&#xFE0F;</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="pin">
+                    <div class="pin-dot"></div>
+                    <div class="flip-card" id="card-3">
+                        <div class="flip-card-inner">
+                            <div class="flip-card-front"><span class="day-num">Day 03</span>
+                                <div class="card-icon">&#x1F9EE;</div>
+                                <h3>Python Basics: Dataframes to Arrays</h3>
+                            </div>
+                            <div class="flip-card-back">
+                                <p>Flattening the curve of your dimension confusion. DataFrames are great &mdash; until
+                                    they aren't.</p>
+                                <a href="day_3/index.html" class="card-link-icon"
+                                    title="Open Day 3">&#x2197;&#xFE0F;</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="pin">
+                    <div class="pin-dot"></div>
+                    <div class="flip-card" id="card-4">
+                        <div class="flip-card-inner">
+                            <div class="flip-card-front"><span class="day-num">Day 04</span>
+                                <div class="card-icon">&#x1F5D1;&#xFE0F;</div>
+                                <h3>Data Cleaning: Downsampling, Bad Channels &amp; Segments</h3>
+                            </div>
+                            <div class="flip-card-back">
+                                <p>Throwing out the bad apples before making neural cider. Garbage in, garbage out.</p>
+                                <a href="day_4/index.html" class="card-link-icon"
+                                    title="Open Day 4">&#x2197;&#xFE0F;</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="pin">
+                    <div class="pin-dot"></div>
+                    <div class="flip-card" id="card-5">
+                        <div class="flip-card-inner">
+                            <div class="flip-card-front"><span class="day-num">Day 05</span>
+                                <div class="card-icon">&#x1F3AD;</div>
+                                <h3>Data Cleaning: ASR</h3>
+                            </div>
+                            <div class="flip-card-back">
+                                <p>Artifact Subspace Reconstruction &mdash; politely asking the noise to leave the room.
+                                    Goodbye, muscle artifacts.</p>
+                                <a href="day_5/index.html" class="card-link-icon"
+                                    title="Open Day 5">&#x2197;&#xFE0F;</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="pin">
+                    <div class="pin-dot"></div>
+                    <div class="flip-card" id="card-6">
+                        <div class="flip-card-inner">
+                            <div class="flip-card-front"><span class="day-num">Day 06</span>
+                                <div class="card-icon">&#x1F9FF;</div>
+                                <h3>Data Cleaning: ICA</h3>
+                            </div>
+                            <div class="flip-card-back">
+                                <p>Independent Component Analysis &mdash; separating your actual brainwaves from your
+                                    excessive blinking, heartbeats, and muscle smirks.</p>
+                                <a href="day_6/index.html" class="card-link-icon"
+                                    title="Open Day 6">&#x2197;&#xFE0F;</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="pin">
+                    <div class="pin-dot"></div>
+                    <div class="flip-card" id="card-7">
+                        <div class="flip-card-inner">
+                            <div class="flip-card-front"><span class="day-num">Day 07</span>
+                                <div class="card-icon">&#x1F3F7;&#xFE0F;</div>
+                                <h3>Data Cleaning: ICLabel</h3>
+                            </div>
+                            <div class="flip-card-back">
+                                <p>Letting an algorithm judge your brain's noisy habits. Auto-classify ICA components
+                                    with confidence.</p>
+                                <a href="day_7/index.html" class="card-link-icon"
+                                    title="Open Day 7">&#x2197;&#xFE0F;</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="special-day-banner">
+            <p class="special-label">&#x2726; Special Day &#x2726;</p>
+            <h3>&#x1F69A; Tour of CCS Pipeline for Data Cleaning</h3>
+        </div>
+
+        <div class="route-container" style="margin-top: 30px;">
+            <div class="route-grid">
+                <div class="pin">
+                    <div class="pin-dot"></div>
+                    <div class="flip-card" id="card-8">
+                        <div class="flip-card-inner">
+                            <div class="flip-card-front"><span class="day-num">Day 08</span>
+                                <div class="card-icon">&#x1F4C9;</div>
+                                <h3>Dimensionality Reduction: PCA</h3>
+                            </div>
+                            <div class="flip-card-back">
+                                <p>Stripping away the drama to find the main characters of your data. Welcome to the
+                                    eigenvalue era.</p>
+                                <a href="day_8/index.html" class="card-link-icon"
+                                    title="Open Day 8">&#x2197;&#xFE0F;</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="pin">
+                    <div class="pin-dot"></div>
+                    <div class="flip-card" id="card-9">
+                        <div class="flip-card-inner">
+                            <div class="flip-card-front"><span class="day-num">Day 09</span>
+                                <div class="card-icon">&#x26A1;</div>
+                                <h3>Features: Power Spectral Density (PSD)</h3>
+                            </div>
+                            <div class="flip-card-back">
+                                <p>Figuring out exactly where your brain's energy bill is going. Alpha, beta, gamma
+                                    &mdash; who's freeloading?</p>
+                                <a href="day_9/index.html" class="card-link-icon"
+                                    title="Open Day 9">&#x2197;&#xFE0F;</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="pin">
+                    <div class="pin-dot"></div>
+                    <div class="flip-card" id="card-10">
+                        <div class="flip-card-inner">
+                            <div class="flip-card-front"><span class="day-num">Day 10</span>
+                                <div class="card-icon">&#x1F30A;</div>
+                                <h3>Features: Frequency Sliding</h3>
+                            </div>
+                            <div class="flip-card-back">
+                                <p>Catching those brain waves while they're on the move. Instantaneous frequency &mdash;
+                                    not as instant as coffee, but close.</p>
+                                <a href="day_10/index.html" class="card-link-icon"
+                                    title="Open Day 10">&#x2197;&#xFE0F;</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="pin">
+                    <div class="pin-dot"></div>
+                    <div class="flip-card" id="card-11">
+                        <div class="flip-card-inner">
+                            <div class="flip-card-front"><span class="day-num">Day 11</span>
+                                <div class="card-icon">&#x1F4D0;</div>
+                                <h3>Features: FOOOF</h3>
+                            </div>
+                            <div class="flip-card-back">
+                                <p>Fitting Oscillations &amp; One Over F &mdash; because sometimes the "background
+                                    noise" is the real story.</p>
+                                <a href="day_11/index.html" class="card-link-icon"
+                                    title="Open Day 11">&#x2197;&#xFE0F;</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="pin">
+                    <div class="pin-dot"></div>
+                    <div class="flip-card" id="card-12">
+                        <div class="flip-card-inner">
+                            <div class="flip-card-front"><span class="day-num">Day 12</span>
+                                <div class="card-icon">&#x1F500;</div>
+                                <h3>Features: IRASA</h3>
+                            </div>
+                            <div class="flip-card-back">
+                                <p>Un-fractaling your thoughts to see what's actually oscillating. Separate the rhythmic
+                                    from the chaotic.</p>
+                                <a href="day_12/index.html" class="card-link-icon"
+                                    title="Open Day 12">&#x2197;&#xFE0F;</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="pin">
+                    <div class="pin-dot"></div>
+                    <div class="flip-card" id="card-13">
+                        <div class="flip-card-inner">
+                            <div class="flip-card-front"><span class="day-num">Day 13</span>
+                                <div class="card-icon">&#x23F1;&#xFE0F;</div>
+                                <h3>Features: Autocorrelation Window (ACW)</h3>
+                            </div>
+                            <div class="flip-card-back">
+                                <p>Measuring exactly how long your brain holds onto a grudge&hellip; or a signal.
+                                    Temporal persistence quantified.</p>
+                                <a href="day_13/index.html" class="card-link-icon"
+                                    title="Open Day 13">&#x2197;&#xFE0F;</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="pin">
+                    <div class="pin-dot"></div>
+                    <div class="flip-card" id="card-14">
+                        <div class="flip-card-inner">
+                            <div class="flip-card-front"><span class="day-num">Day 14</span>
+                                <div class="card-icon">&#x1F308;</div>
+                                <h3>Time-Frequency: Wavelets</h3>
+                            </div>
+                            <div class="flip-card-back">
+                                <p>For when you absolutely need to know exactly <em>when</em> and <em>what</em>
+                                    happened. Time-frequency precision.</p>
+                                <a href="day_14/index.html" class="card-link-icon"
+                                    title="Open Day 14">&#x2197;&#xFE0F;</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="special-day-banner">
+            <p class="special-label">&#x2726; Special Day &#x2726;</p>
+            <h3>&#x1F5C2;&#xFE0F; Clean and Get All Features from a Small Dataset</h3>
+        </div>
+
+        <div class="route-container" style="margin-top: 30px;">
+            <div class="route-grid">
+                <div class="pin">
+                    <div class="pin-dot"></div>
+                    <div class="flip-card" id="card-15">
+                        <div class="flip-card-inner">
+                            <div class="flip-card-front"><span class="day-num">Day 15</span>
+                                <div class="card-icon">&#x1FA9F;</div>
+                                <h3>Time-Frequency: Multitaper</h3>
+                            </div>
+                            <div class="flip-card-back">
+                                <p>Smoothing things over when your spectrum is looking a little too jagged. Multiple
+                                    tapers, multiple peace of mind.</p>
+                                <a href="day_15/index.html" class="card-link-icon"
+                                    title="Open Day 15">&#x2197;&#xFE0F;</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="pin">
+                    <div class="pin-dot"></div>
+                    <div class="flip-card" id="card-16">
+                        <div class="flip-card-inner">
+                            <div class="flip-card-front"><span class="day-num">Day 16</span>
+                                <div class="card-icon">&#x1F47B;</div>
+                                <h3>The Hilbert Transform (Analytic Signal)</h3>
+                            </div>
+                            <div class="flip-card-back">
+                                <p>Adding an imaginary friend to your very real data. The holy trinity of signal:
+                                    envelope, phase, frequency.</p>
+                                <a href="day_16/index.html" class="card-link-icon"
+                                    title="Open Day 16">&#x2197;&#xFE0F;</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="pin">
+                    <div class="pin-dot"></div>
+                    <div class="flip-card" id="card-17">
+                        <div class="flip-card-inner">
+                            <div class="flip-card-front"><span class="day-num">Day 17</span>
+                                <div class="card-icon">&#x1F9E0;</div>
+                                <h3>Connectivity: Coherence, PLI &amp; PLV</h3>
+                            </div>
+                            <div class="flip-card-back">
+                                <p>Finding out if brain regions are actually talking, or just gossiping. True synchrony
+                                    vs. volume conduction.</p>
+                                <a href="day_17/index.html" class="card-link-icon"
+                                    title="Open Day 17">&#x2197;&#xFE0F;</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="pin">
+                    <div class="pin-dot"></div>
+                    <div class="flip-card" id="card-18">
+                        <div class="flip-card-inner">
+                            <div class="flip-card-front"><span class="day-num">Day 18</span>
+                                <div class="card-icon">&#x1F0CF;</div>
+                                <h3>Stats: Permutation-Based Testing</h3>
+                            </div>
+                            <div class="flip-card-back">
+                                <p>Shuffling the deck until your p-value finally cries uncle. Non-parametric,
+                                    assumption-free inference.</p>
+                                <a href="day_18/index.html" class="card-link-icon"
+                                    title="Open Day 18">&#x2197;&#xFE0F;</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="pin">
+                    <div class="pin-dot"></div>
+                    <div class="flip-card" id="card-19">
+                        <div class="flip-card-inner">
+                            <div class="flip-card-front"><span class="day-num">Day 19</span>
+                                <div class="card-icon">&#x1F5FA;&#xFE0F;</div>
+                                <h3>Stats: Cluster Statistics</h3>
+                            </div>
+                            <div class="flip-card-back">
+                                <p>Because one significant pixel is a fluke, but a blob is a discovery. Spatial-temporal
+                                    cluster correction.</p>
+                                <a href="day_19/index.html" class="card-link-icon"
+                                    title="Open Day 19">&#x2197;&#xFE0F;</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="pin">
+                    <div class="pin-dot"></div>
+                    <div class="flip-card" id="card-20">
+                        <div class="flip-card-inner">
+                            <div class="flip-card-front"><span class="day-num">Day 20</span>
+                                <div class="card-icon">&#x1F3AF;</div>
+                                <h3>Stats: TFCE</h3>
+                            </div>
+                            <div class="flip-card-back">
+                                <p>Threshold-Free Cluster Enhancement &mdash; because setting arbitrary cutoffs is so
+                                    last century. The final boss.</p>
+                                <a href="day_20/index.html" class="card-link-icon"
+                                    title="Open Day 20">&#x2197;&#xFE0F;</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section>
+        <h2>What You'll Walk Away With</h2>
+        <ul class="outcomes-list">
+            <li><span class="bullet">&#x2726;</span><span>Fluency in Python for neuroscience data manipulation (NumPy,
+                    Pandas, MNE)</span></li>
+            <li><span class="bullet">&#x2726;</span><span>End-to-end EEG preprocessing: downsampling, bad channel
+                    rejection, ICA, ICLabel</span></li>
+            <li><span class="bullet">&#x2726;</span><span>Spectral analysis &mdash; PSD, FOOOF, IRASA, frequency
+                    sliding</span></li>
+            <li><span class="bullet">&#x2726;</span><span>Time-frequency decompositions with wavelets and multitaper
+                    methods</span></li>
+            <li><span class="bullet">&#x2726;</span><span>Phase and connectivity analysis: PLI, PLV, coherence</span>
+            </li>
+            <li><span class="bullet">&#x2726;</span><span>Non-parametric statistics robust enough for publication</span>
+            </li>
+            <li><span class="bullet">&#x2726;</span><span>Cluster statistics and TFCE for spatiotemporal mass-univariate
+                    testing</span></li>
+            <li><span class="bullet">&#x2726;</span><span>Intuition for interpreting results that textbooks can't give
+                    you</span></li>
+        </ul>
+    </section>
+
+    <section>
+        <h2>About the Instructor</h2>
+        <div class="about-grid">
+            <div class="about-avatar" style="overflow: hidden; padding: 0;">
+                <img src="instructor.png" alt="Instructor"
+                    style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;" />
+            </div>
+            <div>
+                <h3 style="font-size:1.4rem; margin-bottom: 8px;">Dr. Rahul Venugopal</h3>
+                <p style="color: var(--text-muted); margin-bottom: 12px;"> Cognitive Scientist &middot; EEG Analyst
+                    &middot;
+                    Open-Science Advocate</p>
+                <p>We as a team have spent years decoding the brain's electrical whispers and translating them into
+                    actionable
+                    science. This course is a distillation of everything we wished had been taught in a single,
+                    coherent, hands-on sequence so you can skip the decade of stumbling and go straight to the
+                    good stuff.</p>
+                <div class="badges" style="margin-top: 16px; justify-content: flex-start;">
+                    <a href="https://x.com/rhlvenugopal" target="_blank" class="badge"
+                        style="text-decoration:none;">&#x1F426; @rhlvenugopal</a>
+                    <a href="https://www.linkedin.com/in/rahul-venugopal-100b761b9/" target="_blank" class="badge"
+                        style="text-decoration:none;">&#x1F517; LinkedIn</a>
+                    <a href="https://scholar.google.com/citations?user=prTMUhkAAAAJ&hl=en" target="_blank" class="badge"
+                        style="text-decoration:none;">&#x1F393; Google Scholar</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <p>Built with &#x2665; for the neuroscience community &middot; <a
+                href="https://github.com/rahulvenugopal/EEGOdyssey" target="_blank">GitHub</a></p>
+        <p style="margin-top: 8px; opacity: 0.5;">&#xA9; 2026 Rahul Venugopal &middot; CC BY 4.0</p>
+    </footer>
+
+    <script>
+        const canvas = document.getElementById('neural-canvas');
+        const ctx = canvas.getContext('2d');
+        let W, H, particles;
+        function resize() { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
+        function initParticles() { particles = Array.from({ length: 140 }, () => ({ x: Math.random() * W, y: Math.random() * H, vx: (Math.random() - 0.5) * 0.5, vy: (Math.random() - 0.5) * 0.5, r: Math.random() * 2.5 + 1 })); }
+        function draw() {
+            ctx.clearRect(0, 0, W, H);
+            for (let i = 0; i < particles.length; i++) {
+                for (let j = i + 1; j < particles.length; j++) {
+                    const dx = particles[i].x - particles[j].x, dy = particles[i].y - particles[j].y, dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < 150) { ctx.beginPath(); ctx.strokeStyle = `rgba(165,180,252,${0.30 * (1 - dist / 150)})`; ctx.lineWidth = 0.9; ctx.moveTo(particles[i].x, particles[i].y); ctx.lineTo(particles[j].x, particles[j].y); ctx.stroke(); }
+                }
+            }
+            particles.forEach(p => { ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fillStyle = 'rgba(165,180,252,0.75)'; ctx.fill(); p.x += p.vx; p.y += p.vy; if (p.x < 0 || p.x > W) p.vx *= -1; if (p.y < 0 || p.y > H) p.vy *= -1; });
+            requestAnimationFrame(draw);
+        }
+        window.addEventListener('resize', () => { resize(); initParticles(); });
+        resize(); initParticles(); draw();
+
+        document.querySelectorAll('.flip-card').forEach(card => { card.addEventListener('click', () => { card.classList.toggle('flipped'); }); });
+    </script>
+</body>
+
+</html>
