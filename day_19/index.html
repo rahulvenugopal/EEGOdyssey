@@ -1,1 +1,2328 @@
-<html><body><h1>Welcome to Day 19</h1></body></html>
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Day 19: TFCE Statistics — EEG Analysis Odyssey</title>
+    <meta name="description"
+        content="Day 19 of the 20-Day EEG Analysis Odyssey: A hands-on walkthrough of Threshold-Free Cluster Enhancement (TFCE) statistics for EEG. Step-by-step calculation of the exact eTFCE score for electrode Fz." />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+    <script>
+        MathJax = {
+            tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']] },
+            svg: { fontCache: 'global' }
+        };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
+    <style>
+        /* ── Design Tokens (matching homepage) ─────────────────────────── */
+        :root {
+            --bg-deep: #05091a;
+            --text-main: #F0F4FF;
+            --text-muted: #B8C4E0;
+            --accent-glow: rgba(99, 102, 241, 0.75);
+            --accent-teal: rgba(20, 184, 166, 0.65);
+            --accent-solid: #A5B4FC;
+            --accent-teal-solid: #2DD4BF;
+            --glass-bg: rgba(99, 102, 241, 0.10);
+            --glass-border: rgba(165, 180, 252, 0.35);
+            --code-bg: rgba(15, 15, 58, 0.85);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            background-color: var(--bg-deep);
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            line-height: 1.75;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        h1,
+        h2,
+        h3,
+        h4 {
+            font-family: 'Playfair Display', serif;
+            font-weight: 400;
+        }
+
+        p {
+            text-align: justify;
+        }
+
+        /* ── Animated background ───────────────────────────────────────── */
+        .ambient-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background:
+                radial-gradient(ellipse at 10% 60%, rgba(99, 102, 241, 0.55), transparent 45%),
+                radial-gradient(ellipse at 90% 20%, rgba(20, 184, 166, 0.50), transparent 45%),
+                radial-gradient(ellipse at 50% 90%, rgba(167, 139, 250, 0.30), transparent 50%);
+            filter: blur(60px);
+            z-index: -2;
+            animation: breathe 12s infinite alternate ease-in-out;
+        }
+
+        @keyframes breathe {
+            0% {
+                transform: scale(1);
+                opacity: 0.85;
+            }
+
+            100% {
+                transform: scale(1.08);
+                opacity: 1;
+            }
+        }
+
+        canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        /* ── Nav / Back ────────────────────────────────────────────────── */
+        .top-nav {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 5%;
+            background: rgba(5, 9, 26, 0.80);
+            backdrop-filter: blur(18px);
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .back-link {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--accent-solid);
+            text-decoration: none;
+            font-size: 0.85rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            transition: color 0.2s, gap 0.2s;
+        }
+
+        .back-link:hover {
+            color: #fff;
+            gap: 12px;
+        }
+
+        .nav-day-label {
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: var(--accent-teal-solid);
+            text-shadow: 0 0 12px rgba(45, 212, 191, 0.7);
+        }
+
+        /* ── Hero ──────────────────────────────────────────────────────── */
+        .hero {
+            padding: 80px 5% 60px;
+            max-width: 1000px;
+            margin: 0 auto;
+            text-align: center;
+            position: relative;
+            z-index: 2;
+        }
+
+        .day-pill {
+            display: inline-block;
+            padding: 6px 20px;
+            border-radius: 999px;
+            background: rgba(99, 102, 241, 0.20);
+            border: 1px solid rgba(165, 180, 252, 0.6);
+            font-size: 0.75rem;
+            font-weight: 800;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            color: #5EEAD4;
+            margin-bottom: 20px;
+            text-shadow: 0 0 14px rgba(45, 212, 191, 0.8);
+            backdrop-filter: blur(12px);
+        }
+
+        .hero h1 {
+            font-size: clamp(2.2rem, 5vw, 3.8rem);
+            line-height: 1.1;
+            letter-spacing: -0.02em;
+            color: #fff;
+            text-shadow: 0 0 40px rgba(165, 180, 252, 0.9), 0 0 80px rgba(99, 102, 241, 0.5);
+            margin-bottom: 16px;
+        }
+
+        .hero-subtitle {
+            font-size: clamp(1rem, 2vw, 1.2rem);
+            color: #C8D5F0;
+            max-width: 680px;
+            margin: 0 auto 28px;
+            font-family: 'Inter', sans-serif;
+            text-align: center;
+        }
+
+        .highlight {
+            color: #C4B5FD;
+            text-shadow: 0 0 30px rgba(165, 180, 252, 1), 0 0 60px rgba(99, 102, 241, 0.6);
+        }
+
+        .highlight-teal {
+            color: #5EEAD4;
+            text-shadow: 0 0 25px rgba(45, 212, 191, 0.9);
+        }
+
+        .badges {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 0;
+        }
+
+        .badge {
+            padding: 6px 16px;
+            border-radius: 999px;
+            background: rgba(99, 102, 241, 0.15);
+            border: 1px solid rgba(165, 180, 252, 0.5);
+            font-size: 0.78rem;
+            font-weight: 500;
+            color: #E0E7FF;
+            backdrop-filter: blur(8px);
+        }
+
+        /* ── Article layout ────────────────────────────────────────────── */
+        article {
+            max-width: 860px;
+            margin: 0 auto;
+            padding: 0 5% 80px;
+            position: relative;
+            z-index: 2;
+        }
+
+        /* ── Section headings ──────────────────────────────────────────── */
+        .section-block {
+            margin-bottom: 56px;
+        }
+
+        .phase-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .phase-number {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            background: linear-gradient(135deg, #6366F1, #8B5CF6);
+            border: 2px solid rgba(165, 180, 252, 0.5);
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Playfair Display', serif;
+            font-size: 1.3rem;
+            color: #fff;
+        }
+
+        .phase-header h2 {
+            font-size: clamp(1.4rem, 3vw, 1.9rem);
+            color: #fff;
+            text-shadow: 0 0 20px rgba(165, 180, 252, 0.4);
+            border: none;
+            padding: 0;
+            margin: 0;
+            display: block;
+        }
+
+        .phase-header h2 small {
+            display: block;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: #5EEAD4;
+            margin-bottom: 4px;
+        }
+
+        /* ── Glass card ────────────────────────────────────────────────── */
+        .glass-card {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 28px 32px;
+            backdrop-filter: blur(12px);
+            margin: 20px 0;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+
+        .glass-card:hover {
+            border-color: rgba(165, 180, 252, 0.55);
+            box-shadow: 0 8px 40px rgba(99, 102, 241, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        }
+
+        .glass-card p+p {
+            margin-top: 10px;
+        }
+
+        /* ── Data table ────────────────────────────────────────────────── */
+        .table-wrapper {
+            overflow-x: auto;
+            border-radius: 14px;
+            border: 1px solid var(--glass-border);
+            margin: 24px 0;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.4), 0 0 40px rgba(99, 102, 241, 0.08);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.92rem;
+        }
+
+        thead {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.30), rgba(20, 184, 166, 0.18));
+        }
+
+        thead th {
+            padding: 14px 20px;
+            text-align: left;
+            font-family: 'Inter', sans-serif;
+            font-weight: 700;
+            font-size: 0.75rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--accent-solid);
+            border-bottom: 1px solid var(--glass-border);
+            white-space: nowrap;
+        }
+
+        tbody tr {
+            border-bottom: 1px solid rgba(165, 180, 252, 0.12);
+            transition: background 0.2s;
+        }
+
+        tbody tr:last-child {
+            border-bottom: none;
+        }
+
+        tbody tr:hover {
+            background: rgba(99, 102, 241, 0.08);
+        }
+
+        tbody td {
+            padding: 14px 20px;
+            color: var(--text-main);
+            vertical-align: middle;
+        }
+
+        .td-channel {
+            font-weight: 600;
+            color: #fff;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+        }
+
+        .td-target {
+            color: #5EEAD4;
+            text-shadow: 0 0 10px rgba(45, 212, 191, 0.5);
+        }
+
+        .td-pos {
+            color: #86efac;
+        }
+
+        .td-neg {
+            color: #fca5a5;
+        }
+
+        .td-zero {
+            color: var(--text-muted);
+        }
+
+        .td-neighbors {
+            color: var(--text-muted);
+            font-size: 0.88rem;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* ── Step cards (slice calculations) ───────────────────────────── */
+        .step-grid {
+            display: grid;
+            gap: 20px;
+            margin: 24px 0;
+        }
+
+        .step-card {
+            border-radius: 14px;
+            padding: 24px 28px;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid transparent;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .step-card:hover {
+            transform: translateY(-3px);
+        }
+
+        .step-card.slice-1 {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.18), rgba(139, 92, 246, 0.10));
+            border-color: rgba(165, 180, 252, 0.4);
+            box-shadow: 0 4px 24px rgba(99, 102, 241, 0.18);
+        }
+
+        .step-card.slice-2 {
+            background: linear-gradient(135deg, rgba(20, 184, 166, 0.15), rgba(45, 212, 191, 0.08));
+            border-color: rgba(45, 212, 191, 0.35);
+            box-shadow: 0 4px 24px rgba(20, 184, 166, 0.15);
+        }
+
+        .step-card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.04), transparent);
+            animation: shimmer 3s infinite;
+        }
+
+        @keyframes shimmer {
+            0% {
+                transform: translateX(-100%);
+            }
+
+            100% {
+                transform: translateX(100%);
+            }
+        }
+
+        .step-label {
+            font-family: 'Inter', sans-serif;
+            font-size: 0.68rem;
+            font-weight: 800;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: var(--accent-solid);
+            margin-bottom: 10px;
+        }
+
+        .step-card.slice-2 .step-label {
+            color: var(--accent-teal-solid);
+        }
+
+        .step-card h3 {
+            font-size: 1.1rem;
+            color: #fff;
+            margin-bottom: 14px;
+        }
+
+        /* ── Mini checklist (binary mask) ──────────────────────────────── */
+        .mask-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 8px;
+            margin: 16px 0;
+        }
+
+        .mask-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.82rem;
+            background: rgba(5, 9, 26, 0.50);
+            border: 1px solid rgba(165, 180, 252, 0.15);
+        }
+
+        .mask-item.on {
+            border-color: rgba(165, 180, 252, 0.45);
+            background: rgba(99, 102, 241, 0.15);
+        }
+
+        .mask-item.off {
+            border-color: rgba(165, 180, 252, 0.10);
+            opacity: 0.55;
+        }
+
+        .mask-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .mask-item.on .mask-dot {
+            background: #A5B4FC;
+            box-shadow: 0 0 8px rgba(165, 180, 252, 0.9);
+        }
+
+        .mask-item.off .mask-dot {
+            background: #374151;
+        }
+
+        /* ── Equation display ──────────────────────────────────────────── */
+        .equation-block {
+            background: var(--code-bg);
+            border: 1px solid rgba(165, 180, 252, 0.25);
+            border-radius: 12px;
+            padding: 20px 28px;
+            margin: 18px 0;
+            text-align: center;
+            font-size: 1.05rem;
+            overflow-x: auto;
+        }
+
+        /* ── Result callout ────────────────────────────────────────────── */
+        .result-callout {
+            display: flex;
+            align-items: center;
+            gap: 18px;
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.22), rgba(20, 184, 166, 0.15));
+            border: 2px solid rgba(165, 180, 252, 0.55);
+            border-radius: 16px;
+            padding: 24px 28px;
+            margin: 28px 0;
+            box-shadow: 0 0 40px rgba(99, 102, 241, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .result-callout::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(90deg, transparent, rgba(165, 180, 252, 0.08), transparent);
+            animation: shimmer 2.5s infinite;
+        }
+
+        .result-icon {
+            font-size: 2.2rem;
+            flex-shrink: 0;
+        }
+
+        .result-body h4 {
+            font-family: 'Inter', sans-serif;
+            font-size: 0.7rem;
+            font-weight: 800;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: #5EEAD4;
+            margin-bottom: 6px;
+        }
+
+        .result-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.6rem;
+            color: #fff;
+            font-weight: 500;
+            text-shadow: 0 0 20px rgba(165, 180, 252, 0.7);
+        }
+
+        /* ── Divider ───────────────────────────────────────────────────── */
+        .section-divider {
+            border: none;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--glass-border), transparent);
+            margin: 48px 0;
+        }
+
+        /* ── Key-insight box ───────────────────────────────────────────── */
+        .insight-box {
+            border-left: 3px solid var(--accent-teal-solid);
+            padding: 18px 24px;
+            margin: 24px 0;
+            background: rgba(20, 184, 166, 0.07);
+            border-radius: 0 12px 12px 0;
+        }
+
+        .insight-box p {
+            color: #C8D5F0;
+            text-align: left;
+        }
+
+        .insight-box strong {
+            color: var(--accent-teal-solid);
+        }
+
+        /* ── Summary table (recombination) ─────────────────────────────── */
+        .sum-row {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.18), rgba(20, 184, 166, 0.12)) !important;
+            font-weight: 700;
+        }
+
+        .sum-row td {
+            color: #fff !important;
+            font-size: 1rem;
+        }
+
+        /* ── Footer ────────────────────────────────────────────────────── */
+        footer {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            border-top: 1px solid var(--glass-border);
+            position: relative;
+            z-index: 2;
+        }
+
+        footer a {
+            color: var(--accent-solid);
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+
+        /* ── Scrollbar ─────────────────────────────────────────────────── */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #050814;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(129, 140, 248, 0.4);
+            border-radius: 3px;
+        }
+
+        /* ── Responsive ────────────────────────────────────────────────── */
+        @media (max-width: 600px) {
+            .phase-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+
+            .glass-card {
+                padding: 20px;
+            }
+
+            .result-callout {
+                flex-direction: column;
+            }
+
+            .mask-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="ambient-background"></div>
+    <canvas id="neural-canvas"></canvas>
+
+    <!-- ── Navigation ── -->
+    <nav class="top-nav">
+        <a href="../index.html" class="back-link">&#x2190; Back to Odyssey</a>
+        <span class="nav-day-label">Day 19 of 20</span>
+    </nav>
+
+    <!-- ── Hero ── -->
+    <header class="hero">
+        <div class="day-pill">&#x2726; Day 19 &middot; Statistics</div>
+        <h1>
+            <span class="highlight">TFCE</span> Statistics<br>
+            <span class="highlight-teal">Threshold-Free Cluster Enhancement</span>
+        </h1>
+        <p class="hero-subtitle">
+            A step-by-step walkthrough of how eTFCE calculates the exact topological score
+            for a single target electrode &mdash; no arbitrary thresholds, just beautiful topology.
+        </p>
+        <div class="badges">
+            <span class="badge">&#x1F9EA; Simulated t value setup</span>
+            <span class="badge">&#x1F4E1; 10 Channels &middot; Alpha Power</span>
+            <span class="badge">&#x1F3AF; Target: Fz</span>
+            <span class="badge">&#x1F4CA; Exact eTFCE</span>
+        </div>
+    </header>
+
+    <!-- ── Article ── -->
+    <article>
+
+        <!-- ═══ Setup ═══ -->
+        <div class="section-block">
+            <div class="glass-card">
+                <p>
+                    We simulate a resting-state EEG experiment comparing the <strong>Alpha Power</strong>
+                    of two groups across <strong>10 channels</strong>. After running an independent-samples
+                    <em>t</em>-test at each electrode, we obtain one <em>t</em>-value per channel.
+                    The map below shows the raw statistical landscape we need TFCE to interpret.
+                </p>
+                <p style="margin-top:10px;">
+                    Our <strong>target electrode is Fz</strong>, which sits at a respectable peak of
+                    <span class="highlight-teal"><em>t</em> = +2.5</span>.
+                    Rather than ask "is this number significant in isolation?", eTFCE asks:
+                    <em>"How much topological support does this peak receive from its entire neighbourhood?"</em>
+                </p>
+            </div>
+
+            <!-- Table 1 — the data -->
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Channel</th>
+                            <th>Physical Neighbors<br><span
+                                    style="font-weight:400;text-transform:none;letter-spacing:0;">(The Adjacency
+                                    Web)</span></th>
+                            <th>Alpha Power<br><span
+                                    style="font-weight:400;text-transform:none;letter-spacing:0;">(<em>t</em>-value)</span>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="td-channel">Fpz</td>
+                            <td class="td-neighbors">F3, Fz, F4</td>
+                            <td class="td-pos">+1.5</td>
+                        </tr>
+                        <tr>
+                            <td class="td-channel">F3</td>
+                            <td class="td-neighbors">Fpz, Fz, C3</td>
+                            <td class="td-pos">+1.5</td>
+                        </tr>
+                        <tr>
+                            <td class="td-channel td-target">Fz &nbsp;<em
+                                    style="font-size:0.75rem;opacity:0.8;">(Target)</em></td>
+                            <td class="td-neighbors">Fpz, F3, F4, Cz</td>
+                            <td class="td-pos"
+                                style="color:#5EEAD4;font-weight:700;text-shadow:0 0 10px rgba(45,212,191,0.5);">+2.5
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="td-channel">F4</td>
+                            <td class="td-neighbors">Fpz, Fz, C4</td>
+                            <td class="td-pos">+1.5</td>
+                        </tr>
+                        <tr>
+                            <td class="td-channel">C3</td>
+                            <td class="td-neighbors">F3, Cz, P3</td>
+                            <td class="td-neg">&minus;1.2</td>
+                        </tr>
+                        <tr>
+                            <td class="td-channel">Cz</td>
+                            <td class="td-neighbors">Fz, C3, C4, Pz</td>
+                            <td class="td-zero">0.0</td>
+                        </tr>
+                        <tr>
+                            <td class="td-channel">C4</td>
+                            <td class="td-neighbors">F4, Cz, P4</td>
+                            <td class="td-neg">&minus;1.2</td>
+                        </tr>
+                        <tr>
+                            <td class="td-channel">P3</td>
+                            <td class="td-neighbors">C3, Pz</td>
+                            <td class="td-neg">&minus;1.2</td>
+                        </tr>
+                        <tr>
+                            <td class="td-channel">Pz</td>
+                            <td class="td-neighbors">Cz, P3, P4</td>
+                            <td class="td-neg">&minus;2.0</td>
+                        </tr>
+                        <tr>
+                            <td class="td-channel">P4</td>
+                            <td class="td-neighbors">C4, Pz</td>
+                            <td class="td-zero">0.0</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- ── Interactive Topomap ── -->
+            <div style="margin-top:28px;">
+                <p style="font-family:'Inter',sans-serif;font-size:0.7rem;font-weight:800;
+                    letter-spacing:3px;text-transform:uppercase;color:#5EEAD4;margin-bottom:6px;text-align:center;">
+                    &#x1F5FA; Interactive Adjacency Explorer
+                </p>
+                <p style="text-align:center;color:var(--text-muted);font-size:0.88rem;margin-bottom:20px;">
+                    Hover over any electrode to reveal its physical neighbours on the scalp
+                </p>
+
+                <div style="display:grid;grid-template-columns:1fr auto;gap:24px;align-items:center;">
+
+                    <!-- SVG Topomap -->
+                    <div style="position:relative;">
+                        <svg id="topomap" viewBox="0 0 440 460" width="100%"
+                            style="max-width:440px;display:block;margin:0 auto;overflow:visible;">
+                            <defs>
+                                <!-- Radial glow filter -->
+                                <filter id="glow-strong" x="-80%" y="-80%" width="260%" height="260%">
+                                    <feGaussianBlur stdDeviation="7" result="blur" />
+                                    <feMerge>
+                                        <feMergeNode in="blur" />
+                                        <feMergeNode in="SourceGraphic" />
+                                    </feMerge>
+                                </filter>
+                                <filter id="glow-soft" x="-60%" y="-60%" width="220%" height="220%">
+                                    <feGaussianBlur stdDeviation="3.5" result="blur" />
+                                    <feMerge>
+                                        <feMergeNode in="blur" />
+                                        <feMergeNode in="SourceGraphic" />
+                                    </feMerge>
+                                </filter>
+                                <filter id="glow-dim" x="-40%" y="-40%" width="180%" height="180%">
+                                    <feGaussianBlur stdDeviation="1.5" result="blur" />
+                                    <feMerge>
+                                        <feMergeNode in="blur" />
+                                        <feMergeNode in="SourceGraphic" />
+                                    </feMerge>
+                                </filter>
+                                <!-- Head gradient -->
+                                <radialGradient id="head-grad" cx="50%" cy="50%" r="50%">
+                                    <stop offset="0%" stop-color="rgba(99,102,241,0.12)" />
+                                    <stop offset="100%" stop-color="rgba(5,9,26,0.0)" />
+                                </radialGradient>
+                            </defs>
+
+                            <!-- ── Head outline ── -->
+                            <circle cx="220" cy="235" r="185" fill="url(#head-grad)" stroke="rgba(165,180,252,0.30)"
+                                stroke-width="1.5" />
+                            <!-- Nose -->
+                            <path d="M208,52 Q220,30 232,52" fill="none" stroke="rgba(165,180,252,0.35)"
+                                stroke-width="1.5" stroke-linecap="round" />
+                            <!-- Left ear -->
+                            <ellipse cx="35" cy="235" rx="12" ry="22" fill="rgba(5,9,26,0.7)"
+                                stroke="rgba(165,180,252,0.30)" stroke-width="1.5" />
+                            <!-- Right ear -->
+                            <ellipse cx="405" cy="235" rx="12" ry="22" fill="rgba(5,9,26,0.7)"
+                                stroke="rgba(165,180,252,0.30)" stroke-width="1.5" />
+
+                            <!-- ── Connection lines (drawn first, under electrodes) ── -->
+                            <g id="topo-connections"></g>
+
+                            <!-- ── Electrode groups ── -->
+                            <!-- Each group: transparent hit-area + name label + t-value -->
+
+                            <!-- Fpz  t=+1.5  pos=(220, 80) -->
+                            <g class="topo-electrode" data-id="Fpz" style="cursor:pointer;">
+                                <circle class="e-hit" cx="220" cy="80" r="22" fill="transparent" stroke="none" />
+                                <text class="e-label" x="220" y="76" text-anchor="middle"
+                                    font-family="JetBrains Mono,monospace" font-size="11" fill="#F0F4FF"
+                                    font-weight="600">Fpz</text>
+                                <text class="e-tval" x="220" y="91" text-anchor="middle"
+                                    font-family="JetBrains Mono,monospace" font-size="12" fill="#86efac">+1.5</text>
+                            </g>
+
+                            <!-- F3  t=+1.5  pos=(130, 148) -->
+                            <g class="topo-electrode" data-id="F3" style="cursor:pointer;">
+                                <circle class="e-hit" cx="130" cy="148" r="22" fill="transparent" stroke="none" />
+                                <text class="e-label" x="130" y="144" text-anchor="middle"
+                                    font-family="JetBrains Mono,monospace" font-size="11" fill="#F0F4FF"
+                                    font-weight="600">F3</text>
+                                <text class="e-tval" x="130" y="159" text-anchor="middle"
+                                    font-family="JetBrains Mono,monospace" font-size="12" fill="#86efac">+1.5</text>
+                            </g>
+
+                            <!-- Fz  t=+2.5  pos=(220, 148) TARGET -->
+                            <g class="topo-electrode" data-id="Fz" style="cursor:pointer;">
+                                <circle class="e-hit" cx="220" cy="148" r="24" fill="transparent" stroke="none" />
+                                <text class="e-label" x="220" y="144" text-anchor="middle"
+                                    font-family="JetBrains Mono,monospace" font-size="12" fill="#F0F4FF"
+                                    font-weight="700">Fz ★</text>
+                                <text class="e-tval" x="220" y="161" text-anchor="middle"
+                                    font-family="JetBrains Mono,monospace" font-size="13" fill="#2DD4BF">+2.5</text>
+                            </g>
+
+                            <!-- F4  t=+1.5  pos=(310, 148) -->
+                            <g class="topo-electrode" data-id="F4" style="cursor:pointer;">
+                                <circle class="e-hit" cx="310" cy="148" r="22" fill="transparent" stroke="none" />
+                                <text class="e-label" x="310" y="144" text-anchor="middle"
+                                    font-family="JetBrains Mono,monospace" font-size="11" fill="#F0F4FF"
+                                    font-weight="600">F4</text>
+                                <text class="e-tval" x="310" y="159" text-anchor="middle"
+                                    font-family="JetBrains Mono,monospace" font-size="12" fill="#86efac">+1.5</text>
+                            </g>
+
+                            <!-- C3  t=-1.2  pos=(100, 235) -->
+                            <g class="topo-electrode" data-id="C3" style="cursor:pointer;">
+                                <circle class="e-hit" cx="100" cy="235" r="22" fill="transparent" stroke="none" />
+                                <text class="e-label" x="100" y="231" text-anchor="middle"
+                                    font-family="JetBrains Mono,monospace" font-size="11" fill="#F0F4FF"
+                                    font-weight="600">C3</text>
+                                <text class="e-tval" x="100" y="246" text-anchor="middle"
+                                    font-family="JetBrains Mono,monospace" font-size="12" fill="#fca5a5">-1.2</text>
+                            </g>
+
+                            <!-- Cz  t=0.0  pos=(220, 235) -->
+                            <g class="topo-electrode" data-id="Cz" style="cursor:pointer;">
+                                <circle class="e-hit" cx="220" cy="235" r="22" fill="transparent" stroke="none" />
+                                <text class="e-label" x="220" y="231" text-anchor="middle"
+                                    font-family="JetBrains Mono,monospace" font-size="11" fill="#F0F4FF"
+                                    font-weight="600">Cz</text>
+                                <text class="e-tval" x="220" y="246" text-anchor="middle"
+                                    font-family="JetBrains Mono,monospace" font-size="12" fill="#B8C4E0">0.0</text>
+                            </g>
+
+                            <!-- C4  t=-1.2  pos=(340, 235) -->
+                            <g class="topo-electrode" data-id="C4" style="cursor:pointer;">
+                                <circle class="e-hit" cx="340" cy="235" r="22" fill="transparent" stroke="none" />
+                                <text class="e-label" x="340" y="231" text-anchor="middle"
+                                    font-family="JetBrains Mono,monospace" font-size="11" fill="#F0F4FF"
+                                    font-weight="600">C4</text>
+                                <text class="e-tval" x="340" y="246" text-anchor="middle"
+                                    font-family="JetBrains Mono,monospace" font-size="12" fill="#fca5a5">-1.2</text>
+                            </g>
+
+                            <!-- P3  t=-1.2  pos=(130, 322) -->
+                            <g class="topo-electrode" data-id="P3" style="cursor:pointer;">
+                                <circle class="e-hit" cx="130" cy="322" r="22" fill="transparent" stroke="none" />
+                                <text class="e-label" x="130" y="318" text-anchor="middle"
+                                    font-family="JetBrains Mono,monospace" font-size="11" fill="#F0F4FF"
+                                    font-weight="600">P3</text>
+                                <text class="e-tval" x="130" y="333" text-anchor="middle"
+                                    font-family="JetBrains Mono,monospace" font-size="12" fill="#fca5a5">-1.2</text>
+                            </g>
+
+                            <!-- Pz  t=-2.0  pos=(220, 322) -->
+                            <g class="topo-electrode" data-id="Pz" style="cursor:pointer;">
+                                <circle class="e-hit" cx="220" cy="322" r="22" fill="transparent" stroke="none" />
+                                <text class="e-label" x="220" y="318" text-anchor="middle"
+                                    font-family="JetBrains Mono,monospace" font-size="11" fill="#F0F4FF"
+                                    font-weight="600">Pz</text>
+                                <text class="e-tval" x="220" y="333" text-anchor="middle"
+                                    font-family="JetBrains Mono,monospace" font-size="12" fill="#ef4444">-2.0</text>
+                            </g>
+
+                            <!-- P4  t=0.0  pos=(310, 322) -->
+                            <g class="topo-electrode" data-id="P4" style="cursor:pointer;">
+                                <circle class="e-hit" cx="310" cy="322" r="22" fill="transparent" stroke="none" />
+                                <text class="e-label" x="310" y="318" text-anchor="middle"
+                                    font-family="JetBrains Mono,monospace" font-size="11" fill="#F0F4FF"
+                                    font-weight="600">P4</text>
+                                <text class="e-tval" x="310" y="333" text-anchor="middle"
+                                    font-family="JetBrains Mono,monospace" font-size="12" fill="#B8C4E0">0.0</text>
+                            </g>
+
+                            <!-- Anterior / Posterior labels -->
+                            <text x="220" y="28" text-anchor="middle" font-family="Inter,sans-serif" font-size="10"
+                                fill="rgba(165,180,252,0.5)" letter-spacing="3" font-weight="600">ANTERIOR</text>
+                            <text x="220" y="432" text-anchor="middle" font-family="Inter,sans-serif" font-size="10"
+                                fill="rgba(165,180,252,0.5)" letter-spacing="3" font-weight="600">POSTERIOR</text>
+                            <text x="20" y="240" text-anchor="middle" font-family="Inter,sans-serif" font-size="10"
+                                fill="rgba(165,180,252,0.5)" letter-spacing="2" font-weight="600"
+                                transform="rotate(-90,20,240)">LEFT</text>
+                            <text x="420" y="240" text-anchor="middle" font-family="Inter,sans-serif" font-size="10"
+                                fill="rgba(165,180,252,0.5)" letter-spacing="2" font-weight="600"
+                                transform="rotate(90,420,240)">RIGHT</text>
+                        </svg>
+                    </div>
+
+                    <!-- Info panel -->
+                    <div id="topo-info-panel" style="
+                        width:220px;flex-shrink:0;
+                        background:var(--glass-bg);
+                        border:1px solid var(--glass-border);
+                        border-radius:14px;padding:20px;
+                        backdrop-filter:blur(12px);
+                        min-height:260px;
+                        display:flex;flex-direction:column;gap:12px;
+                        transition:border-color 0.3s;
+                    ">
+                        <p id="topo-hint" style="color:var(--text-muted);font-size:0.82rem;text-align:center;
+                            margin:auto;line-height:1.6;">
+                            &#x1F446; Hover over an electrode to explore its adjacency
+                        </p>
+                        <div id="topo-detail" style="display:none;flex-direction:column;gap:10px;">
+                            <div>
+                                <p
+                                    style="font-family:'Inter',sans-serif;font-size:0.65rem;font-weight:800;
+                                    letter-spacing:3px;text-transform:uppercase;color:var(--text-muted);margin-bottom:4px;">
+                                    Active Electrode
+                                </p>
+                                <p id="topo-name" style="font-family:'JetBrains Mono',monospace;
+                                    font-size:1.5rem;font-weight:700;color:#fff;line-height:1;"></p>
+                            </div>
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                                <div
+                                    style="background:rgba(5,9,26,0.6);border-radius:8px;padding:10px;text-align:center;">
+                                    <p style="font-size:0.6rem;font-weight:700;letter-spacing:2px;
+                                        text-transform:uppercase;color:var(--text-muted);margin-bottom:4px;">t-value
+                                    </p>
+                                    <p id="topo-tval" style="font-family:'JetBrains Mono',monospace;
+                                        font-size:1.1rem;font-weight:700;"></p>
+                                </div>
+                                <div
+                                    style="background:rgba(5,9,26,0.6);border-radius:8px;padding:10px;text-align:center;">
+                                    <p style="font-size:0.6rem;font-weight:700;letter-spacing:2px;
+                                        text-transform:uppercase;color:var(--text-muted);margin-bottom:4px;">Universe
+                                    </p>
+                                    <p id="topo-universe" style="font-family:'Inter',sans-serif;
+                                        font-size:0.78rem;font-weight:700;"></p>
+                                </div>
+                            </div>
+                            <div>
+                                <p
+                                    style="font-family:'Inter',sans-serif;font-size:0.65rem;font-weight:800;
+                                    letter-spacing:3px;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;">
+                                    Neighbours &nbsp;<span id="topo-n-count" style="color:#5EEAD4;
+                                        text-shadow:0 0 8px rgba(45,212,191,0.6);font-size:0.9rem;"></span>
+                                </p>
+                                <div id="topo-neighbors" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+                            </div>
+                            <div id="topo-note" style="border-left:2px solid rgba(165,180,252,0.4);
+                                padding:8px 12px;border-radius:0 8px 8px 0;
+                                background:rgba(99,102,241,0.08);">
+                                <p id="topo-note-text" style="font-size:0.78rem;color:#C8D5F0;
+                                    line-height:1.5;text-align:left;"></p>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Legend -->
+                <div style="display:flex;flex-wrap:wrap;gap:16px;justify-content:center;margin-top:18px;">
+                    <div style="display:flex;align-items:center;gap:8px;font-size:0.8rem;color:var(--text-muted);">
+                        <span style="width:12px;height:12px;border-radius:50%;background:#86efac;
+                            box-shadow:0 0 6px rgba(134,239,172,0.7);flex-shrink:0;"></span>Positive <em>t</em>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:8px;font-size:0.8rem;color:var(--text-muted);">
+                        <span style="width:12px;height:12px;border-radius:50%;background:#2DD4BF;
+                            box-shadow:0 0 6px rgba(45,212,191,0.8);flex-shrink:0;"></span>Target (Fz)
+                    </div>
+                    <div style="display:flex;align-items:center;gap:8px;font-size:0.8rem;color:var(--text-muted);">
+                        <span style="width:12px;height:12px;border-radius:50%;background:#fca5a5;
+                            box-shadow:0 0 6px rgba(252,165,165,0.7);flex-shrink:0;"></span>Negative <em>t</em>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:8px;font-size:0.8rem;color:var(--text-muted);">
+                        <span style="width:12px;height:12px;border-radius:50%;background:#B8C4E0;
+                            box-shadow:0 0 4px rgba(184,196,224,0.4);flex-shrink:0;"></span>Zero
+                    </div>
+                    <div style="display:flex;align-items:center;gap:8px;font-size:0.8rem;color:var(--text-muted);">
+                        <span style="width:22px;height:2px;background:rgba(255,210,80,0.8);
+                            border-radius:1px;box-shadow:0 0 4px rgba(255,210,80,0.6);"></span>Active neighbour link
+                    </div>
+                </div>
+            </div>
+
+            <!-- Topomap interaction script -->
+            <script>
+                (function () {
+                    const ELECTRODES = {
+                        Fpz: { cx: 220, cy: 80, tval: +1.5, color: '#86efac', fillBg: '#1a2e1a', neighbors: ['F3', 'Fz', 'F4'] },
+                        F3: { cx: 130, cy: 148, tval: +1.5, color: '#86efac', fillBg: '#1a2e1a', neighbors: ['Fpz', 'Fz', 'C3'] },
+                        Fz: { cx: 220, cy: 148, tval: +2.5, color: '#2DD4BF', fillBg: '#0f2e2a', neighbors: ['Fpz', 'F3', 'F4', 'Cz'], isTarget: true },
+                        F4: { cx: 310, cy: 148, tval: +1.5, color: '#86efac', fillBg: '#1a2e1a', neighbors: ['Fpz', 'Fz', 'C4'] },
+                        C3: { cx: 100, cy: 235, tval: -1.2, color: '#fca5a5', fillBg: '#2e1a1a', neighbors: ['F3', 'Cz', 'P3'] },
+                        Cz: { cx: 220, cy: 235, tval: 0.0, color: '#B8C4E0', fillBg: '#1a1a2e', neighbors: ['Fz', 'C3', 'C4', 'Pz'] },
+                        C4: { cx: 340, cy: 235, tval: -1.2, color: '#fca5a5', fillBg: '#2e1a1a', neighbors: ['F4', 'Cz', 'P4'] },
+                        P3: { cx: 130, cy: 322, tval: -1.2, color: '#fca5a5', fillBg: '#2e1a1a', neighbors: ['C3', 'Pz'] },
+                        Pz: { cx: 220, cy: 322, tval: -2.0, color: '#ef4444', fillBg: '#2e1010', neighbors: ['Cz', 'P3', 'P4'] },
+                        P4: { cx: 310, cy: 322, tval: 0.0, color: '#B8C4E0', fillBg: '#1a1a2e', neighbors: ['C4', 'Pz'] },
+                    };
+
+                    const UNIVERSE_LABEL = {
+                        pos: '<span style="color:#86efac;">&#x2295; Positive</span>',
+                        neg: '<span style="color:#fca5a5;">&#x2296; Negative</span>',
+                        zero: '<span style="color:#B8C4E0;">&#x2195; Zero</span>',
+                    };
+
+                    const NOTES = {
+                        Fpz: 'A positive frontal pole electrode. Part of the broad frontal cluster in Slice 1.',
+                        F3: 'Positive left-frontal. Connects the frontal cluster to the central strip via C3.',
+                        Fz: '&#x1F3AF; Our target! Its 4 neighbours keep it embedded in the large frontal cluster at threshold 1.5.',
+                        F4: 'Positive right-frontal. Mirror of F3. Bridges the frontal cluster to C4.',
+                        C3: 'Negative left-central. Despite neighbouring the positive cluster, it is excluded by the polarity split.',
+                        Cz: 'The critical bridge. Its zero value breaks the frontal cluster away from the parietal cluster.',
+                        C4: 'Negative right-central. Mirror of C3. Excluded from the positive universe.',
+                        P3: 'Negative left-parietal. Part of the posterior negative cluster.',
+                        Pz: 'Strongest negative electrode (t = −2.0). The "target" of the negative universe.',
+                        P4: 'Zero parietal electrode. Acts as a border node between Pz and C4.',
+                    };
+
+                    const svg = document.getElementById('topomap');
+                    const connLayer = document.getElementById('topo-connections');
+                    const hint = document.getElementById('topo-hint');
+                    const detail = document.getElementById('topo-detail');
+                    const nameEl = document.getElementById('topo-name');
+                    const tvalEl = document.getElementById('topo-tval');
+                    const univEl = document.getElementById('topo-universe');
+                    const nbrEl = document.getElementById('topo-neighbors');
+                    const noteEl = document.getElementById('topo-note-text');
+                    const nCntEl = document.getElementById('topo-n-count');
+                    const panel = document.getElementById('topo-info-panel');
+
+                    const elGroups = {};
+                    svg.querySelectorAll('.topo-electrode').forEach(g => {
+                        elGroups[g.dataset.id] = g;
+                    });
+
+                    function getUniverse(tval) {
+                        if (tval > 0) return UNIVERSE_LABEL.pos;
+                        if (tval < 0) return UNIVERSE_LABEL.neg;
+                        return UNIVERSE_LABEL.zero;
+                    }
+
+                    function tvalColor(tval) {
+                        if (tval > 1.5) return '#2DD4BF';
+                        if (tval > 0) return '#86efac';
+                        if (tval < 0) return '#fca5a5';
+                        return '#B8C4E0';
+                    }
+
+                    function drawConnections(activeId) {
+                        connLayer.innerHTML = '';
+                        const src = ELECTRODES[activeId];
+                        src.neighbors.forEach(nbrId => {
+                            const nbr = ELECTRODES[nbrId];
+                            const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                            line.setAttribute('x1', src.cx);
+                            line.setAttribute('y1', src.cy);
+                            line.setAttribute('x2', nbr.cx);
+                            line.setAttribute('y2', nbr.cy);
+                            line.setAttribute('stroke', 'rgba(255,210,80,0.75)');
+                            line.setAttribute('stroke-width', '1.2');
+                            line.setAttribute('stroke-linecap', 'round');
+                            line.setAttribute('stroke-dasharray', '5,4');
+                            line.style.animation = 'dash-flow 1.2s linear infinite';
+                            connLayer.appendChild(line);
+                        });
+                    }
+
+                    function clearConnections() { connLayer.innerHTML = ''; }
+
+                    function setElectrodeState(id, state) {
+                        const g = elGroups[id];
+                        const el = ELECTRODES[id];
+                        const lbl = g.querySelector('.e-label');
+                        const tv = g.querySelector('.e-tval');
+                        const baseFz = el.isTarget ? 12 : 11;
+
+                        if (state === 'active') {
+                            lbl.setAttribute('filter', 'url(#glow-strong)');
+                            lbl.setAttribute('font-size', String(baseFz + 2));
+                            lbl.setAttribute('font-weight', '800');
+                            lbl.setAttribute('fill', '#ffffff');
+                            tv.setAttribute('fill', el.color);
+                            tv.setAttribute('font-size', String(el.isTarget ? 15 : 14));
+                            tv.setAttribute('filter', 'url(#glow-soft)');
+                            g.style.opacity = '1';
+
+                        } else if (state === 'neighbor') {
+                            lbl.setAttribute('filter', 'url(#glow-soft)');
+                            lbl.setAttribute('font-size', String(baseFz + 1));
+                            lbl.setAttribute('font-weight', '700');
+                            lbl.setAttribute('fill', '#ffffff');
+                            tv.setAttribute('fill', el.color);
+                            tv.setAttribute('font-size', String(el.isTarget ? 14 : 13));
+                            tv.setAttribute('filter', 'url(#glow-soft)');
+                            g.style.opacity = '1';
+
+                        } else if (state === 'dim') {
+                            lbl.setAttribute('filter', '');
+                            lbl.setAttribute('font-size', String(baseFz));
+                            lbl.setAttribute('font-weight', el.isTarget ? '700' : '600');
+                            lbl.setAttribute('fill', 'rgba(240,244,255,0.22)');
+                            tv.setAttribute('fill', 'rgba(184,196,224,0.18)');
+                            tv.setAttribute('font-size', '12');
+                            tv.setAttribute('filter', '');
+                            g.style.opacity = '0.35';
+
+                        } else { // default
+                            lbl.setAttribute('filter', '');
+                            lbl.setAttribute('font-size', String(baseFz));
+                            lbl.setAttribute('font-weight', el.isTarget ? '700' : '600');
+                            lbl.setAttribute('fill', '#F0F4FF');
+                            tv.setAttribute('fill', el.color);
+                            tv.setAttribute('font-size', el.isTarget ? '13' : '12');
+                            tv.setAttribute('filter', '');
+                            g.style.opacity = '1';
+                        }
+                    }
+
+                    function onEnter(id) {
+                        const el = ELECTRODES[id];
+                        const nbrs = el.neighbors;
+
+                        // Update all electrode states
+                        Object.keys(ELECTRODES).forEach(eid => {
+                            if (eid === id) setElectrodeState(eid, 'active');
+                            else if (nbrs.includes(eid)) setElectrodeState(eid, 'neighbor');
+                            else setElectrodeState(eid, 'dim');
+                        });
+
+                        drawConnections(id);
+
+                        // Update panel
+                        hint.style.display = 'none';
+                        detail.style.display = 'flex';
+                        nameEl.textContent = id + (el.isTarget ? ' ★' : '');
+                        nameEl.style.color = el.color;
+                        nameEl.style.textShadow = `0 0 16px ${el.color}99`;
+                        const sign = el.tval > 0 ? '+' : '';
+                        tvalEl.textContent = sign + el.tval.toFixed(1);
+                        tvalEl.style.color = tvalColor(el.tval);
+                        univEl.innerHTML = getUniverse(el.tval);
+                        nCntEl.textContent = `(${nbrs.length})`;
+
+                        nbrEl.innerHTML = '';
+                        nbrs.forEach(nid => {
+                            const n = ELECTRODES[nid];
+                            const chip = document.createElement('span');
+                            chip.style.cssText = `
+                            display:inline-flex;align-items:center;gap:5px;
+                            padding:4px 10px;border-radius:999px;
+                            font-family:JetBrains Mono,monospace;font-size:0.75rem;font-weight:600;
+                            color:${n.color};
+                            background:${n.color}22;
+                            border:1px solid ${n.color}66;
+                        `;
+                            chip.innerHTML = `<span style="width:6px;height:6px;border-radius:50%;
+                            background:${n.color};box-shadow:0 0 4px ${n.color};flex-shrink:0;"></span>${nid}`;
+                            nbrEl.appendChild(chip);
+                        });
+
+                        noteEl.innerHTML = NOTES[id] || '';
+                        panel.style.borderColor = `${el.color}88`;
+                    }
+
+                    function onLeave() {
+                        Object.keys(ELECTRODES).forEach(eid => setElectrodeState(eid, 'default'));
+                        clearConnections();
+                        hint.style.display = 'block';
+                        detail.style.display = 'none';
+                        panel.style.borderColor = 'rgba(165,180,252,0.35)';
+                    }
+
+                    Object.keys(ELECTRODES).forEach(id => {
+                        const g = elGroups[id];
+                        g.addEventListener('mouseenter', () => onEnter(id));
+                        g.addEventListener('mouseleave', onLeave);
+                        // Touch support
+                        g.addEventListener('touchstart', e => { e.preventDefault(); onEnter(id); }, { passive: false });
+                        g.addEventListener('touchend', e => { e.preventDefault(); onLeave(); }, { passive: false });
+                    });
+
+                    // Inject dash animation keyframes once
+                    if (!document.getElementById('topo-style')) {
+                        const s = document.createElement('style');
+                        s.id = 'topo-style';
+                        s.textContent = `
+                        @keyframes dash-flow {
+                            to { stroke-dashoffset: -18; }
+                        }
+                        .topo-electrode { transition: opacity 0.25s ease; }
+                        .topo-electrode circle, .topo-electrode text { transition: all 0.22s ease; }
+                    `;
+                        document.head.appendChild(s);
+                    }
+                })();
+            </script>
+
+        </div><!-- end interactive topomap -->
+
+        </div><!-- end section-block -->
+
+        <hr class="section-divider">
+
+        <!-- ═══ Phase 1 ═══ -->
+        <div class="section-block">
+            <div class="phase-header">
+                <div class="phase-number">1</div>
+                <h2>
+                    <small>Phase 1</small>
+                    Splitting the Universes
+                </h2>
+            </div>
+
+            <div class="glass-card">
+                <p>
+                    Before any integration happens, eTFCE performs a <strong>polarity split</strong>.
+                    Positive and negative signals are separated into two independent universes to prevent
+                    zero-crossing crashes — a signed peak riding through zero would otherwise cancel
+                    itself out mid-calculation.
+                </p>
+                <p style="margin-top:12px;">
+                    Our target electrode <strong>Fz has a <em>t</em>-value of +2.5</strong>, so it lives
+                    in the <span class="highlight">Positive Universe</span>.
+                </p>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:20px 0;">
+                <div class="glass-card" style="border-color:rgba(165,180,252,0.45);">
+                    <p
+                        style="font-family:'Inter',sans-serif;font-size:0.7rem;font-weight:800;letter-spacing:3px;text-transform:uppercase;color:#A5B4FC;margin-bottom:12px;text-align:left;">
+                        &#x2295; Positive Universe</p>
+                    <p
+                        style="text-align:left;font-family:'JetBrains Mono',monospace;font-size:0.85rem;line-height:1.9;">
+                        Fpz: <span class="td-pos">1.5</span><br>
+                        F3: &nbsp;<span class="td-pos">1.5</span><br>
+                        Fz: &nbsp;<span class="highlight-teal" style="font-weight:700;">2.5</span><br>
+                        F4: &nbsp;<span class="td-pos">1.5</span><br>
+                        <span style="color:var(--text-muted);">all others: 0.0</span>
+                    </p>
+                </div>
+                <div class="glass-card" style="border-color:rgba(252,165,165,0.35);opacity:0.7;">
+                    <p
+                        style="font-family:'Inter',sans-serif;font-size:0.7rem;font-weight:800;letter-spacing:3px;text-transform:uppercase;color:#fca5a5;margin-bottom:12px;text-align:left;">
+                        &#x2296; Negative Universe</p>
+                    <p style="text-align:left;color:var(--text-muted);font-size:0.88rem;">
+                        Fz was <em>positive</em>, so it is locked to <strong>0.0</strong> here.
+                        It will accumulate exactly <strong>0.00 mass</strong> in the negative tail —
+                        which we will use in the final recombination step.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <hr class="section-divider">
+
+        <!-- ═══ Phase 2 ═══ -->
+        <div class="section-block">
+            <div class="phase-header">
+                <div class="phase-number">2</div>
+                <h2>
+                    <small>Phase 2</small>
+                    Defining the Exact Slices (eTFCE)
+                </h2>
+            </div>
+
+            <div class="glass-card">
+                <p>
+                    The key difference between classical TFCE and <strong>exact TFCE (eTFCE)</strong> is
+                    how the integration steps are chosen. Instead of a user-defined step-size swept from
+                    zero to the maximum, eTFCE uses <strong>only the unique height values
+                        actually present in the data</strong> as its integration boundaries.
+                </p>
+                <p style="margin-top:12px;">
+                    In the Positive Universe, the only values are <strong>1.5</strong> and <strong>2.5</strong>.
+                    Because integration always starts from the "ground" (height = 0), this gives us
+                    exactly <strong>two horizontal slices</strong>:
+                </p>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:20px 0;">
+                <div class="glass-card">
+                    <p
+                        style="font-family:'JetBrains Mono',monospace;font-size:0.8rem;color:var(--accent-solid);margin-bottom:6px;">
+                        Slice 1</p>
+                    <p>From $0.0 \rightarrow 1.5$</p>
+                    <p style="margin-top:6px;color:var(--text-muted);">Step height $\Delta h = 1.5$</p>
+                </div>
+                <div class="glass-card">
+                    <p
+                        style="font-family:'JetBrains Mono',monospace;font-size:0.8rem;color:var(--accent-teal-solid);margin-bottom:6px;">
+                        Slice 2</p>
+                    <p>From $1.5 \rightarrow 2.5$</p>
+                    <p style="margin-top:6px;color:var(--text-muted);">Step height $\Delta h = 1.0$</p>
+                </div>
+            </div>
+
+            <div class="glass-card">
+                <p
+                    style="text-align:left;font-family:'Inter',sans-serif;font-size:0.72rem;font-weight:800;letter-spacing:3px;text-transform:uppercase;color:var(--accent-solid);margin-bottom:14px;">
+                    Standard MEEG Parameters</p>
+                <p>We use the standard weights from Mensen &amp; Khatami (2013):</p>
+                <ul style="margin:14px 0 0 20px;color:var(--text-muted);line-height:2;">
+                    <li>Extent exponent $E = 0.5$ &nbsp;&nbsp;(i.e., square root of cluster size)</li>
+                    <li>Height exponent $H = 2.0$ &nbsp;&nbsp;(i.e., height squared)</li>
+                </ul>
+                <div class="equation-block" style="margin-top:18px;">
+                    $$\text{Mass}_\text{slice} = e^{E} \cdot h^{H} \cdot \Delta h$$
+                </div>
+                <p style="text-align:center;color:var(--text-muted);font-size:0.88rem;">
+                    where $e$ = cluster extent (number of electrodes), $h$ = threshold height of the slice,
+                    $\Delta h$ = slice thickness.
+                </p>
+            </div>
+        </div>
+
+        <hr class="section-divider">
+
+        <!-- ═══ Phase 3 ═══ -->
+        <div class="section-block">
+            <div class="phase-header">
+                <div class="phase-number">3</div>
+                <h2>
+                    <small>Phase 3</small>
+                    The Integration Loop for Fz
+                </h2>
+            </div>
+
+            <p style="color:var(--text-muted);margin-bottom:24px;">
+                For each slice, the algorithm performs three sub-steps:
+                <strong>(i)</strong> build a binary mask of surviving channels,
+                <strong>(ii)</strong> trace the connected cluster containing Fz via the adjacency web, and
+                <strong>(iii)</strong> accumulate the slice mass.
+            </p>
+
+            <!-- Slice 1 -->
+            <div class="step-card slice-1">
+                <div class="step-label">Slice 1 &mdash; Threshold $h = 1.5$ &nbsp;|&nbsp; $\Delta h = 1.5$</div>
+                <h3>The broad frontal foundation</h3>
+
+                <p style="color:var(--text-muted);margin-bottom:16px;font-size:0.92rem;">
+                    <strong style="color:#fff;">Step i &mdash; Binary Mask.</strong>
+                    Every channel whose value $\geq 1.5$ becomes <code>1</code>; the rest become <code>0</code>.
+                </p>
+                <div class="mask-grid">
+                    <div class="mask-item on">
+                        <div class="mask-dot"></div>Fpz (1.5) → 1
+                    </div>
+                    <div class="mask-item on">
+                        <div class="mask-dot"></div>F3 &nbsp;(1.5) → 1
+                    </div>
+                    <div class="mask-item on" style="border-color:rgba(45,212,191,0.55);">
+                        <div class="mask-dot" style="background:#2DD4BF;box-shadow:0 0 8px rgba(45,212,191,0.9);"></div>
+                        Fz &nbsp;(2.5) → 1
+                    </div>
+                    <div class="mask-item on">
+                        <div class="mask-dot"></div>F4 &nbsp;(1.5) → 1
+                    </div>
+                    <div class="mask-item off">
+                        <div class="mask-dot"></div>C3 → 0
+                    </div>
+                    <div class="mask-item off">
+                        <div class="mask-dot"></div>Cz → 0
+                    </div>
+                    <div class="mask-item off">
+                        <div class="mask-dot"></div>C4 → 0
+                    </div>
+                    <div class="mask-item off">
+                        <div class="mask-dot"></div>P3 → 0
+                    </div>
+                    <div class="mask-item off">
+                        <div class="mask-dot"></div>Pz → 0
+                    </div>
+                    <div class="mask-item off">
+                        <div class="mask-dot"></div>P4 → 0
+                    </div>
+                </div>
+
+                <p style="color:var(--text-muted);margin:20px 0 10px;font-size:0.92rem;">
+                    <strong style="color:#fff;">Step ii &mdash; Adjacency Check.</strong>
+                    Fz is a <code>1</code>. The algorithm traces its physical neighbors from the adjacency table:
+                </p>
+                <ul style="margin:0 0 14px 20px;color:var(--text-muted);line-height:2;font-size:0.9rem;">
+                    <li>Fpz → <span class="td-pos">1</span> &nbsp;<strong style="color:#A5B4FC;">(Connected)</strong>
+                    </li>
+                    <li>F3 &nbsp;→ <span class="td-pos">1</span> &nbsp;<strong
+                            style="color:#A5B4FC;">(Connected)</strong></li>
+                    <li>F4 &nbsp;→ <span class="td-pos">1</span> &nbsp;<strong
+                            style="color:#A5B4FC;">(Connected)</strong></li>
+                    <li>Cz &nbsp;→ <span class="td-zero">0</span> &nbsp;<em>(Bridge broken)</em></li>
+                </ul>
+                <div class="insight-box">
+                    <p>
+                        <strong>Fz, Fpz, F3, and F4 form a single, unbroken frontal cluster.</strong>
+                        The cluster extent $e = 4$.
+                    </p>
+                </div>
+
+                <p style="color:var(--text-muted);margin:20px 0 10px;font-size:0.92rem;">
+                    <strong style="color:#fff;">Step iii &mdash; Calculate Mass for Fz at Slice 1:</strong>
+                </p>
+                <div class="equation-block">
+                    $$\text{Mass} = \sqrt{4} \cdot (1.5)^2 \cdot 1.5 = 2 \cdot 2.25 \cdot 1.5 = \mathbf{6.75}$$
+                </div>
+            </div>
+
+            <!-- Slice 2 -->
+            <div class="step-card slice-2" style="margin-top:20px;">
+                <div class="step-label">Slice 2 &mdash; Threshold $h = 2.5$ &nbsp;|&nbsp; $\Delta h = 1.0$</div>
+                <h3>The isolated peak</h3>
+
+                <p style="color:var(--text-muted);margin-bottom:16px;font-size:0.92rem;">
+                    <strong style="color:#fff;">Step i &mdash; Binary Mask.</strong>
+                    The threshold rises to 2.5. Only channels with value $\geq 2.5$ survive.
+                </p>
+                <div class="mask-grid">
+                    <div class="mask-item off">
+                        <div class="mask-dot"></div>Fpz (1.5) → 0 ↓
+                    </div>
+                    <div class="mask-item off">
+                        <div class="mask-dot"></div>F3 &nbsp;(1.5) → 0 ↓
+                    </div>
+                    <div class="mask-item on" style="border-color:rgba(45,212,191,0.55);">
+                        <div class="mask-dot" style="background:#2DD4BF;box-shadow:0 0 8px rgba(45,212,191,0.9);"></div>
+                        Fz &nbsp;(2.5) → 1 ✓
+                    </div>
+                    <div class="mask-item off">
+                        <div class="mask-dot"></div>F4 &nbsp;(1.5) → 0 ↓
+                    </div>
+                    <div class="mask-item off">
+                        <div class="mask-dot"></div>C3 → 0
+                    </div>
+                    <div class="mask-item off">
+                        <div class="mask-dot"></div>Cz → 0
+                    </div>
+                    <div class="mask-item off">
+                        <div class="mask-dot"></div>C4 → 0
+                    </div>
+                    <div class="mask-item off">
+                        <div class="mask-dot"></div>P3 → 0
+                    </div>
+                    <div class="mask-item off">
+                        <div class="mask-dot"></div>Pz → 0
+                    </div>
+                    <div class="mask-item off">
+                        <div class="mask-dot"></div>P4 → 0
+                    </div>
+                </div>
+
+                <p style="color:var(--text-muted);margin:20px 0 10px;font-size:0.92rem;">
+                    <strong style="color:#fff;">Step ii &mdash; Adjacency Check.</strong>
+                    All frontal neighbours of Fz have dropped below the threshold and become <code>0</code>.
+                    Fz now stands completely alone.
+                </p>
+                <div class="insight-box" style="border-left-color:#A5B4FC;background:rgba(99,102,241,0.08);">
+                    <p>
+                        <strong>Fz is a cluster of one.</strong> The cluster extent $e = 1$.
+                    </p>
+                </div>
+
+                <p style="color:var(--text-muted);margin:20px 0 10px;font-size:0.92rem;">
+                    <strong style="color:#fff;">Step iii &mdash; Calculate Mass for Fz at Slice 2:</strong>
+                </p>
+                <div class="equation-block">
+                    $$\text{Mass} = \sqrt{1} \cdot (2.5)^2 \cdot 1.0 = 1 \cdot 6.25 \cdot 1.0 = \mathbf{6.25}$$
+                </div>
+            </div>
+        </div>
+
+        <hr class="section-divider">
+
+        <!-- ═══ Phase 4 ═══ -->
+        <div class="section-block">
+            <div class="phase-header">
+                <div class="phase-number">4</div>
+                <h2>
+                    <small>Phase 4</small>
+                    Final Recombination
+                </h2>
+            </div>
+
+            <div class="glass-card">
+                <p>
+                    The integration loop is complete. We now sum the per-slice masses from the
+                    Positive Universe and subtract any mass from the Negative Universe.
+                </p>
+            </div>
+
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Universe</th>
+                            <th>Slice</th>
+                            <th>Mass</th>
+                            <th>Running Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td style="color:#A5B4FC;font-weight:600;">Positive</td>
+                            <td class="td-neighbors">Slice 1 &nbsp;($h=1.5$, $e=4$)</td>
+                            <td class="td-pos">6.75</td>
+                            <td>6.75</td>
+                        </tr>
+                        <tr>
+                            <td style="color:#A5B4FC;font-weight:600;">Positive</td>
+                            <td class="td-neighbors">Slice 2 &nbsp;($h=2.5$, $e=1$)</td>
+                            <td class="td-pos">6.25</td>
+                            <td>13.00</td>
+                        </tr>
+                        <tr>
+                            <td style="color:#fca5a5;font-weight:600;">Negative</td>
+                            <td class="td-neighbors">Fz locked to 0 in this universe</td>
+                            <td class="td-zero">0.00</td>
+                            <td class="td-zero">0.00</td>
+                        </tr>
+                        <tr class="sum-row">
+                            <td colspan="3" style="font-family:'JetBrains Mono',monospace;">
+                                eTFCE<sub>Fz</sub> = Positive &minus; Negative = 13.00 &minus; 0.00
+                            </td>
+                            <td style="color:#5EEAD4;font-size:1.15rem;text-shadow:0 0 12px rgba(45,212,191,0.7);">
+                                +13.00
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="equation-block" style="margin-top:20px;">
+                $$\text{eTFCE}_{Fz} = \underbrace{6.75}_{\text{Slice 1}} + \underbrace{6.25}_{\text{Slice 2}} -
+                \underbrace{0.00}_{\text{Negative}} = \mathbf{+13.00}$$
+            </div>
+
+            <div class="result-callout">
+                <div class="result-icon">&#x1F3AF;</div>
+                <div class="result-body">
+                    <h4>Final eTFCE Score &mdash; Electrode Fz</h4>
+                    <div class="result-value">eTFCE<sub>Fz</sub> = +13.00</div>
+                </div>
+            </div>
+        </div>
+
+        <hr class="section-divider">
+
+        <!-- ═══ Intuition ═══ -->
+        <div class="section-block">
+            <div class="phase-header">
+                <div class="phase-number">&#x2605;</div>
+                <h2>
+                    <small>Final Intuition Check</small>
+                    What the Math is Really Saying
+                </h2>
+            </div>
+
+            <div class="glass-card">
+                <p>
+                    Look at how beautifully the mathematics mirrors the neuroscience.
+                </p>
+                <p style="margin-top:12px;">
+                    Fz had a raw peak of +2.5. When it was at the <em>top</em> of its peak (Slice 2),
+                    it was <strong>standing alone</strong> — its cluster extent was 1,
+                    so it accumulated mass slowly (only $6.25$). This reflects the biological reality
+                    that an isolated peak, no matter how tall, carries limited interpretive weight.
+                </p>
+                <p style="margin-top:12px;">
+                    But because Fz was <strong>resting on a broad, highly active frontal foundation</strong>
+                    (Slice 1 — the wide plateau shared with Fpz, F3, F4), its frontal neighbours
+                    literally <em>pushed it up</em>, donating a massive bonus of $6.75$ to its base.
+                    The cluster's spatial breadth was captured, not just the electrode's height.
+                </p>
+            </div>
+
+            <div class="glass-card"
+                style="margin-top:20px;background:linear-gradient(135deg,rgba(99,102,241,0.15),rgba(20,184,166,0.10));border-color:rgba(165,180,252,0.50);">
+                <p style="text-align:center;font-size:1.05rem;color:#fff;line-height:1.8;">
+                    By integrating <strong>both the broad foundation and the isolated peak</strong>,
+                    eTFCE successfully captured the total <span class="highlight">topological volume</span>
+                    of electrode Fz &mdash; a quantity that is simultaneously sensitive to
+                    <span class="highlight-teal">height</span> <em>and</em>
+                    <span class="highlight-teal">spatial extent</span>,
+                    without any arbitrary threshold choice.
+                </p>
+            </div>
+
+            <div class="insight-box" style="margin-top:24px;">
+                <p>
+                    <strong>The practical upshot:</strong> TFCE will naturally score a tall, spatially
+                    isolated blip lower than a moderately tall but spatially broad cluster. This is
+                    exactly what we want — true neural effects tend to be <em>topographically coherent</em>,
+                    whereas noise spikes tend to be <em>spatially isolated</em>. TFCE exploits this
+                    distinction mathematically, giving you mass-univariate inference that respects the
+                    spatial structure of EEG data.
+                </p>
+            </div>
+        </div>
+
+    </article>
+
+    <!-- ── Bridge Concept Section ── -->
+    <section style="max-width:860px;margin:0 auto;padding:0 5% 60px;position:relative;z-index:2;">
+
+        <hr style="border:none;height:1px;
+            background:linear-gradient(90deg,transparent,rgba(165,180,252,0.35),transparent);
+            margin-bottom:48px;">
+
+        <!-- Section header -->
+        <div class="phase-header" style="margin-bottom:24px;">
+            <div class="phase-number">&#x1F310;</div>
+            <h2>
+                <small>Key Concept</small>
+                The Bridge: How Clusters Grow Beyond Direct Neighbours
+            </h2>
+        </div>
+
+        <!-- Hook question -->
+        <div class="glass-card">
+            <p>
+                A sharp student looking at the adjacency table will notice something: <strong>F3 and F4 are
+                    not listed as direct neighbours of each other.</strong> They sit on opposite sides of the
+                forehead. So why did they both end up in the same cluster of size <em>e</em> = 4 in Slice 1?
+            </p>
+            <p style="margin-top:12px;">
+                The answer reveals one of TFCE's most important — and most frequently misunderstood — properties:
+                <strong>a cluster is a connected network, not just a collection of immediate neighbours.</strong>
+            </p>
+        </div>
+
+        <!-- Rule callout -->
+        <div style="margin:24px 0;padding:20px 28px;border-radius:14px;
+            background:linear-gradient(135deg,rgba(99,102,241,0.18),rgba(20,184,166,0.10));
+            border:1px solid rgba(165,180,252,0.45);
+            box-shadow:0 4px 24px rgba(99,102,241,0.15);">
+            <p style="font-family:'Inter',sans-serif;font-size:0.68rem;font-weight:800;
+                letter-spacing:3px;text-transform:uppercase;color:#5EEAD4;margin-bottom:10px;">
+                &#x1F4D6; The Cluster Rule
+            </p>
+            <p style="font-size:1.0rem;color:#fff;line-height:1.7;">
+                To belong to the same cluster as another electrode, you do <em>not</em> need to touch it
+                directly. You only need an <strong>unbroken chain of surviving&nbsp;1s</strong> connecting
+                you to it — like a path through a graph.
+            </p>
+        </div>
+
+        <!-- Step-by-step trace -->
+        <div class="glass-card" style="margin-bottom:20px;">
+            <p style="font-family:'Inter',sans-serif;font-size:0.68rem;font-weight:800;
+                letter-spacing:3px;text-transform:uppercase;color:#A5B4FC;margin-bottom:16px;">
+                &#x1F50E; Tracing the Cluster: Slice 1 Mask
+            </p>
+
+            <!-- Mask reminder -->
+            <p style="color:var(--text-muted);font-size:0.88rem;margin-bottom:14px;">
+                At threshold <strong style="color:#fff;">h = 1.5</strong>, the binary mask is:
+            </p>
+            <div class="mask-grid" style="margin-bottom:22px;">
+                <div class="mask-item on">
+                    <div class="mask-dot"></div>Fpz → 1
+                </div>
+                <div class="mask-item on">
+                    <div class="mask-dot"></div>F3 &nbsp;→ 1
+                </div>
+                <div class="mask-item on" style="border-color:rgba(45,212,191,0.55);">
+                    <div class="mask-dot" style="background:#2DD4BF;box-shadow:0 0 8px rgba(45,212,191,0.9);"></div>
+                    Fz &nbsp;→ 1
+                </div>
+                <div class="mask-item on">
+                    <div class="mask-dot"></div>F4 &nbsp;→ 1
+                </div>
+                <div class="mask-item off">
+                    <div class="mask-dot"></div>C3 → 0
+                </div>
+                <div class="mask-item off">
+                    <div class="mask-dot"></div>Cz → 0
+                </div>
+                <div class="mask-item off">
+                    <div class="mask-dot"></div>C4 → 0
+                </div>
+                <div class="mask-item off">
+                    <div class="mask-dot"></div>P3 → 0
+                </div>
+                <div class="mask-item off">
+                    <div class="mask-dot"></div>Pz → 0
+                </div>
+                <div class="mask-item off">
+                    <div class="mask-dot"></div>P4 → 0
+                </div>
+            </div>
+
+            <!-- Step cards -->
+            <p style="color:var(--text-muted);font-size:0.88rem;margin-bottom:14px;">
+                Now trace the flood-fill algorithm starting from <strong style="color:#86efac;">F4</strong>:
+            </p>
+            <div style="display:flex;flex-direction:column;gap:10px;">
+
+                <div style="display:flex;align-items:flex-start;gap:14px;
+                    padding:14px 18px;border-radius:10px;
+                    background:rgba(134,239,172,0.08);border:1px solid rgba(134,239,172,0.30);">
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:1rem;font-weight:700;
+                        color:#86efac;flex-shrink:0;line-height:1.4;">①</span>
+                    <div>
+                        <p style="color:#fff;font-weight:600;margin-bottom:4px;">F4 checks its direct neighbours</p>
+                        <p style="color:var(--text-muted);font-size:0.88rem;line-height:1.6;">
+                            From the adjacency table: F4's neighbours are <code>Fpz</code>, <code>Fz</code>, and
+                            <code>C4</code>. Check mask: Fpz&nbsp;=&nbsp;1 ✓, Fz&nbsp;=&nbsp;1 ✓, C4&nbsp;=&nbsp;0 ✗.
+                            <br><strong style="color:#86efac;">Cluster so far: {F4, Fpz, Fz} — extent&nbsp;= 3</strong>
+                        </p>
+                    </div>
+                </div>
+
+                <div style="display:flex;align-items:flex-start;gap:14px;
+                    padding:14px 18px;border-radius:10px;
+                    background:rgba(45,212,191,0.08);border:1px solid rgba(45,212,191,0.30);">
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:1rem;font-weight:700;
+                        color:#2DD4BF;flex-shrink:0;line-height:1.4;">②</span>
+                    <div>
+                        <p style="color:#fff;font-weight:600;margin-bottom:4px;">Fpz and Fz act as bridges</p>
+                        <p style="color:var(--text-muted);font-size:0.88rem;line-height:1.6;">
+                            The algorithm now expands from every newly added node. Both <code>Fpz</code> and
+                            <code>Fz</code> list <code>F3</code> among their direct neighbours. F3's mask value
+                            is 1 ✓ — so F3 is absorbed into the cluster via this shared bridge.
+                            <br><strong style="color:#2DD4BF;">Cluster grows: {F4, Fpz, Fz, F3} — extent&nbsp;=
+                                4</strong>
+                        </p>
+                    </div>
+                </div>
+
+                <div style="display:flex;align-items:flex-start;gap:14px;
+                    padding:14px 18px;border-radius:10px;
+                    background:rgba(99,102,241,0.08);border:1px solid rgba(165,180,252,0.25);">
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:1rem;font-weight:700;
+                        color:#A5B4FC;flex-shrink:0;line-height:1.4;">③</span>
+                    <div>
+                        <p style="color:#fff;font-weight:600;margin-bottom:4px;">No further growth</p>
+                        <p style="color:var(--text-muted);font-size:0.88rem;line-height:1.6;">
+                            The frontier of newly-added nodes (F3) has neighbours C3 (mask&nbsp;=&nbsp;0) and
+                            Cz (mask&nbsp;=&nbsp;0). Both bridges are broken. The flood-fill terminates.
+                            <br><strong style="color:#A5B4FC;">Final cluster: {Fpz, F3, Fz, F4} — e&nbsp;= 4 ✓</strong>
+                        </p>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Bridge diagram -->
+        <div style="margin:24px 0;">
+            <p style="font-family:'Inter',sans-serif;font-size:0.68rem;font-weight:800;
+                letter-spacing:3px;text-transform:uppercase;color:#5EEAD4;margin-bottom:14px;text-align:center;">
+                &#x1F309; The Bridge Visualised
+            </p>
+            <div style="display:flex;align-items:center;justify-content:center;gap:0;flex-wrap:wrap;">
+                <!-- F3 -->
+                <div style="text-align:center;padding:14px 18px;border-radius:12px;
+                    background:rgba(134,239,172,0.12);border:2px solid rgba(134,239,172,0.5);min-width:60px;">
+                    <p style="font-family:'JetBrains Mono',monospace;font-weight:700;color:#86efac;font-size:1rem;">F3
+                    </p>
+                    <p style="font-size:0.7rem;color:var(--text-muted);margin-top:2px;">+1.5</p>
+                </div>
+                <!-- Arrow -->
+                <div style="display:flex;flex-direction:column;align-items:center;padding:0 6px;">
+                    <p style="font-size:0.58rem;color:#5EEAD4;letter-spacing:1px;font-weight:700;margin-bottom:2px;">
+                        BRIDGE</p>
+                    <div
+                        style="width:60px;height:2px;background:linear-gradient(90deg,rgba(134,239,172,0.6),rgba(45,212,191,0.9),rgba(134,239,172,0.6));border-radius:1px;position:relative;">
+                        <div
+                            style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:6px;height:6px;border-radius:50%;background:#2DD4BF;box-shadow:0 0 6px rgba(45,212,191,0.8);">
+                        </div>
+                    </div>
+                </div>
+                <!-- Fpz bridge -->
+                <div style="text-align:center;padding:14px 18px;border-radius:12px;
+                    background:rgba(134,239,172,0.12);border:2px solid rgba(134,239,172,0.5);min-width:60px;">
+                    <p style="font-family:'JetBrains Mono',monospace;font-weight:700;color:#86efac;font-size:1rem;">Fpz
+                    </p>
+                    <p style="font-size:0.7rem;color:var(--text-muted);margin-top:2px;">+1.5</p>
+                </div>
+                <!-- Arrow -->
+                <div style="display:flex;flex-direction:column;align-items:center;padding:0 6px;">
+                    <p style="font-size:0.58rem;color:#5EEAD4;letter-spacing:1px;font-weight:700;margin-bottom:2px;">
+                        BRIDGE</p>
+                    <div
+                        style="width:60px;height:2px;background:linear-gradient(90deg,rgba(134,239,172,0.6),rgba(45,212,191,0.9),rgba(134,239,172,0.6));border-radius:1px;position:relative;">
+                        <div
+                            style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:6px;height:6px;border-radius:50%;background:#2DD4BF;box-shadow:0 0 6px rgba(45,212,191,0.8);">
+                        </div>
+                    </div>
+                </div>
+                <!-- Fz -->
+                <div style="text-align:center;padding:14px 18px;border-radius:12px;
+                    background:rgba(45,212,191,0.15);border:2px solid rgba(45,212,191,0.7);min-width:60px;
+                    box-shadow:0 0 16px rgba(45,212,191,0.25);">
+                    <p style="font-family:'JetBrains Mono',monospace;font-weight:700;color:#2DD4BF;font-size:1rem;">Fz ★
+                    </p>
+                    <p style="font-size:0.7rem;color:var(--text-muted);margin-top:2px;">+2.5</p>
+                </div>
+                <!-- Arrow -->
+                <div style="display:flex;flex-direction:column;align-items:center;padding:0 6px;">
+                    <p style="font-size:0.58rem;color:#5EEAD4;letter-spacing:1px;font-weight:700;margin-bottom:2px;">
+                        BRIDGE</p>
+                    <div
+                        style="width:60px;height:2px;background:linear-gradient(90deg,rgba(134,239,172,0.6),rgba(45,212,191,0.9),rgba(134,239,172,0.6));border-radius:1px;position:relative;">
+                        <div
+                            style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:6px;height:6px;border-radius:50%;background:#2DD4BF;box-shadow:0 0 6px rgba(45,212,191,0.8);">
+                        </div>
+                    </div>
+                </div>
+                <!-- F4 -->
+                <div style="text-align:center;padding:14px 18px;border-radius:12px;
+                    background:rgba(134,239,172,0.12);border:2px solid rgba(134,239,172,0.5);min-width:60px;">
+                    <p style="font-family:'JetBrains Mono',monospace;font-weight:700;color:#86efac;font-size:1rem;">F4
+                    </p>
+                    <p style="font-size:0.7rem;color:var(--text-muted);margin-top:2px;">+1.5</p>
+                </div>
+            </div>
+            <p style="text-align:center;color:var(--text-muted);font-size:0.82rem;margin-top:12px;">
+                F3 and F4 are <em>not</em> direct neighbours — but they share a connected path through Fpz and Fz.
+                One unbroken chain &rarr; one cluster.
+            </p>
+        </div>
+
+        <!-- The broken-bridge contrast -->
+        <div style="margin:24px 0;">
+            <p style="font-family:'Inter',sans-serif;font-size:0.68rem;font-weight:800;
+                letter-spacing:3px;text-transform:uppercase;color:#fca5a5;margin-bottom:14px;text-align:center;">
+                &#x274C; What If the Bridge Were Broken?
+            </p>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                <div class="glass-card" style="border-color:rgba(252,165,165,0.35);text-align:center;">
+                    <p style="font-size:0.68rem;font-weight:800;letter-spacing:3px;text-transform:uppercase;
+                        color:#fca5a5;margin-bottom:12px;">If Fpz = 0 &amp; Fz = 0</p>
+                    <div
+                        style="display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:12px;flex-wrap:wrap;">
+                        <span style="padding:6px 14px;border-radius:8px;
+                            background:rgba(134,239,172,0.1);border:1px solid rgba(134,239,172,0.4);
+                            font-family:'JetBrains Mono',monospace;font-size:0.85rem;color:#86efac;">F3</span>
+                        <span style="color:var(--text-muted);font-size:1.2rem;">&#x2715;</span>
+                        <span
+                            style="padding:6px 14px;border-radius:8px;
+                            background:rgba(55,65,81,0.4);border:1px solid rgba(165,180,252,0.15);
+                            font-family:'JetBrains Mono',monospace;font-size:0.85rem;color:rgba(240,244,255,0.3);">Fpz</span>
+                        <span style="color:var(--text-muted);font-size:1.2rem;">&#x2715;</span>
+                        <span
+                            style="padding:6px 14px;border-radius:8px;
+                            background:rgba(55,65,81,0.4);border:1px solid rgba(165,180,252,0.15);
+                            font-family:'JetBrains Mono',monospace;font-size:0.85rem;color:rgba(240,244,255,0.3);">Fz</span>
+                        <span style="color:var(--text-muted);font-size:1.2rem;">&#x2715;</span>
+                        <span style="padding:6px 14px;border-radius:8px;
+                            background:rgba(134,239,172,0.1);border:1px solid rgba(134,239,172,0.4);
+                            font-family:'JetBrains Mono',monospace;font-size:0.85rem;color:#86efac;">F4</span>
+                    </div>
+                    <p style="color:var(--text-muted);font-size:0.82rem;line-height:1.6;">
+                        F3 = isolated cluster of <strong style="color:#fca5a5;">e&nbsp;= 1</strong><br>
+                        F4 = isolated cluster of <strong style="color:#fca5a5;">e&nbsp;= 1</strong><br>
+                        Both receive <strong style="color:#fca5a5;">far less TFCE mass.</strong>
+                    </p>
+                </div>
+                <div class="glass-card" style="border-color:rgba(45,212,191,0.45);text-align:center;">
+                    <p style="font-size:0.68rem;font-weight:800;letter-spacing:3px;text-transform:uppercase;
+                        color:#2DD4BF;margin-bottom:12px;">Reality: Fpz = 1 &amp; Fz = 1</p>
+                    <div
+                        style="display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:12px;flex-wrap:wrap;">
+                        <span style="padding:6px 14px;border-radius:8px;
+                            background:rgba(134,239,172,0.1);border:1px solid rgba(134,239,172,0.4);
+                            font-family:'JetBrains Mono',monospace;font-size:0.85rem;color:#86efac;">F3</span>
+                        <span style="color:#2DD4BF;font-size:1.2rem;">&#x2015;</span>
+                        <span style="padding:6px 14px;border-radius:8px;
+                            background:rgba(134,239,172,0.1);border:1px solid rgba(134,239,172,0.4);
+                            font-family:'JetBrains Mono',monospace;font-size:0.85rem;color:#86efac;">Fpz</span>
+                        <span style="color:#2DD4BF;font-size:1.2rem;">&#x2015;</span>
+                        <span style="padding:6px 14px;border-radius:8px;
+                            background:rgba(45,212,191,0.12);border:1px solid rgba(45,212,191,0.6);
+                            font-family:'JetBrains Mono',monospace;font-size:0.85rem;color:#2DD4BF;">Fz</span>
+                        <span style="color:#2DD4BF;font-size:1.2rem;">&#x2015;</span>
+                        <span style="padding:6px 14px;border-radius:8px;
+                            background:rgba(134,239,172,0.1);border:1px solid rgba(134,239,172,0.4);
+                            font-family:'JetBrains Mono',monospace;font-size:0.85rem;color:#86efac;">F4</span>
+                    </div>
+                    <p style="color:var(--text-muted);font-size:0.82rem;line-height:1.6;">
+                        One merged cluster of <strong style="color:#2DD4BF;">e&nbsp;= 4</strong><br>
+                        All four electrodes share the same spatial bonus.<br>
+                        <strong style="color:#2DD4BF;">Far more TFCE mass for everyone.</strong>
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Takeaway box -->
+        <div class="insight-box" style="margin-top:8px;">
+            <p>
+                <strong>The key insight:</strong> Every active electrode in a cluster is rewarded for the
+                <em>total spatial reach</em> of the cluster — not just its own patch of cortex. An electrode
+                sitting at the edge of a large network (like F3 or F4 here) receives the same extent bonus
+                as the electrodes at the centre (Fpz, Fz). The middle electrodes act as spatial
+                <em>amplifiers</em>, magnifying the statistical weight of every electrode they bridge together.
+            </p>
+        </div>
+
+    </section>
+
+    <!-- ── P.S. Section ── -->
+    <section style="max-width:860px;margin:0 auto;padding:0 5% 80px;position:relative;z-index:2;">
+
+
+        <hr
+            style="border:none;height:1px;background:linear-gradient(90deg,transparent,rgba(165,180,252,0.35),transparent);margin-bottom:48px;">
+
+        <!-- PS header -->
+        <div style="display:flex;align-items:center;gap:16px;margin-bottom:24px;">
+            <div style="width:48px;height:48px;border-radius:50%;flex-shrink:0;
+                background:linear-gradient(135deg,#0f172a,#1e1b4b);
+                border:2px solid rgba(165,180,252,0.5);
+                box-shadow:0 0 20px rgba(99,102,241,0.5);
+                display:flex;align-items:center;justify-content:center;
+                font-family:'Playfair Display',serif;font-size:1rem;color:#A5B4FC;font-style:italic;">
+                PS
+            </div>
+            <div>
+                <p style="font-family:'Inter',sans-serif;font-size:0.68rem;font-weight:800;
+                    letter-spacing:3px;text-transform:uppercase;color:#5EEAD4;margin-bottom:4px;text-align:left;">
+                    Postscript &mdash; A Natural Follow-Up Question
+                </p>
+                <h2
+                    style="font-size:clamp(1.3rem,2.8vw,1.75rem);color:#fff;
+                    text-shadow:0 0 20px rgba(165,180,252,0.4);
+                    border:none;padding:0;margin:0;display:block;font-family:'Playfair Display',serif;font-weight:400;">
+                    When Can One Electrode Have <span style="color:#C4B5FD;">Both</span> Positive <em>and</em> Negative
+                    Mass?
+                </h2>
+            </div>
+        </div>
+
+        <!-- Rule restatement -->
+        <div style="background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:16px;
+            padding:28px 32px;backdrop-filter:blur(12px);margin-bottom:20px;
+            box-shadow:0 4px 30px rgba(0,0,0,0.35),inset 0 1px 0 rgba(255,255,255,0.07);">
+            <p>
+                An electrode has exactly one raw <em>t</em>-value at any given statistical snapshot.
+                That value is either positive or negative — it cannot be both simultaneously.
+                Therefore, for a <strong>single static map</strong>, the final TFCE equation
+                <strong>always has one side guaranteed to be zero</strong>:
+            </p>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:20px 0;">
+                <div style="background:rgba(99,102,241,0.15);border:1px solid rgba(165,180,252,0.40);
+                    border-radius:12px;padding:16px 20px;text-align:center;">
+                    <p
+                        style="font-family:'Inter',sans-serif;font-size:0.68rem;font-weight:800;
+                        letter-spacing:3px;text-transform:uppercase;color:#A5B4FC;margin-bottom:8px;text-align:center;">
+                        Positive electrode
+                    </p>
+                    <p style="font-family:'JetBrains Mono',monospace;font-size:1rem;color:#fff;">
+                        13.00 &minus; <span style="color:var(--text-muted);">0.00</span> = <span
+                            style="color:#86efac;font-weight:700;">+13.00</span>
+                    </p>
+                </div>
+                <div style="background:rgba(220,38,38,0.10);border:1px solid rgba(252,165,165,0.35);
+                    border-radius:12px;padding:16px 20px;text-align:center;">
+                    <p
+                        style="font-family:'Inter',sans-serif;font-size:0.68rem;font-weight:800;
+                        letter-spacing:3px;text-transform:uppercase;color:#fca5a5;margin-bottom:8px;text-align:center;">
+                        Negative electrode
+                    </p>
+                    <p style="font-family:'JetBrains Mono',monospace;font-size:1rem;color:#fff;">
+                        <span style="color:var(--text-muted);">0.00</span> &minus; 8.50 = <span
+                            style="color:#fca5a5;font-weight:700;">&minus;8.50</span>
+                    </p>
+                </div>
+            </div>
+            <p>
+                The equation is <code
+                    style="background:var(--code-bg);padding:2px 8px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:0.88rem;">Positive &minus; Negative</code>.
+                For any single electrode in a single static map, one of those two terms is
+                <strong>mathematically locked to zero</strong>. There is no exception — it is a
+                structural property of the polarity split.
+            </p>
+        </div>
+
+        <!-- The exception -->
+        <div style="background:linear-gradient(135deg,rgba(99,102,241,0.20),rgba(20,184,166,0.12));
+            border:2px solid rgba(165,180,252,0.50);border-radius:16px;padding:28px 32px;
+            margin-bottom:20px;position:relative;overflow:hidden;
+            box-shadow:0 0 40px rgba(99,102,241,0.20),inset 0 1px 0 rgba(255,255,255,0.08);">
+            <div
+                style="position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(165,180,252,0.06),transparent);animation:shimmer 3s infinite;">
+            </div>
+            <p style="font-family:'Inter',sans-serif;font-size:0.68rem;font-weight:800;
+                letter-spacing:3px;text-transform:uppercase;color:#5EEAD4;margin-bottom:12px;text-align:left;">
+                &#x26A1; The Only Exception &mdash; Adding Dimensions
+            </p>
+            <p>
+                The single situation where electrode Fz appears in the output with
+                <em>both</em> a positive and a negative TFCE mass is when you move from a
+                <strong>static snapshot</strong> to a <strong>multi-dimensional</strong> analysis —
+                for example, running TFCE across a <strong>Channels &times; Time</strong> grid
+                (as in ERP or time-frequency analyses in MNE-Python or FieldTrip).
+            </p>
+            <p style="margin-top:12px;">
+                In that setting, each data point is a unique
+                <code
+                    style="background:rgba(0,0,0,0.3);padding:2px 8px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:0.85rem;">(channel, time)</code>
+                coordinate. Fz at 100 ms and Fz at 200 ms are treated as
+                <strong>two entirely separate data points</strong> by the algorithm.
+            </p>
+        </div>
+
+        <!-- Time-series example -->
+        <div style="background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:16px;
+            padding:28px 32px;backdrop-filter:blur(12px);margin-bottom:20px;">
+            <p style="font-family:'Inter',sans-serif;font-size:0.68rem;font-weight:800;
+                letter-spacing:3px;text-transform:uppercase;color:#A5B4FC;margin-bottom:16px;text-align:left;">
+                &#x1F4CA; Worked Example &mdash; Fz over a 300 ms ERP Window
+            </p>
+            <p>Imagine Fz's <em>t</em>-value evolves across time during a task:</p>
+
+            <!-- Timeline visual -->
+            <div style="margin:24px 0;display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
+                <div style="border-radius:12px;padding:18px 14px;text-align:center;
+                    background:rgba(99,102,241,0.18);border:1px solid rgba(165,180,252,0.45);">
+                    <p style="font-family:'JetBrains Mono',monospace;font-size:0.72rem;color:#A5B4FC;
+                        letter-spacing:2px;margin-bottom:8px;">Fz @ 100 ms</p>
+                    <p style="font-size:1.4rem;font-weight:700;color:#86efac;
+                        text-shadow:0 0 16px rgba(134,239,172,0.6);">t = +3.0</p>
+                    <p style="font-size:0.8rem;color:var(--text-muted);margin-top:6px;">Positive Universe &#x2192; large
+                        mass</p>
+                </div>
+                <div style="border-radius:12px;padding:18px 14px;text-align:center;
+                    background:rgba(99,102,241,0.08);border:1px solid rgba(165,180,252,0.20);">
+                    <p style="font-family:'JetBrains Mono',monospace;font-size:0.72rem;color:var(--text-muted);
+                        letter-spacing:2px;margin-bottom:8px;">Fz @ 150 ms</p>
+                    <p style="font-size:1.4rem;font-weight:700;color:var(--text-muted);">t = +0.2</p>
+                    <p style="font-size:0.8rem;color:var(--text-muted);margin-top:6px;">Positive Universe &#x2192; tiny
+                        mass</p>
+                </div>
+                <div style="border-radius:12px;padding:18px 14px;text-align:center;
+                    background:rgba(220,38,38,0.12);border:1px solid rgba(252,165,165,0.38);">
+                    <p style="font-family:'JetBrains Mono',monospace;font-size:0.72rem;color:#fca5a5;
+                        letter-spacing:2px;margin-bottom:8px;">Fz @ 200 ms</p>
+                    <p style="font-size:1.4rem;font-weight:700;color:#fca5a5;
+                        text-shadow:0 0 16px rgba(252,165,165,0.6);">t = &minus;2.5</p>
+                    <p style="font-size:0.8rem;color:var(--text-muted);margin-top:6px;">Negative Universe &#x2192;
+                        negative mass</p>
+                </div>
+            </div>
+
+            <p>
+                When the algorithm processes the full 2-D grid, Fz's output array across time
+                will contain both positive eTFCE scores (around 100 ms) and negative eTFCE scores
+                (around 200 ms). But zoom into any single
+                <code
+                    style="background:var(--code-bg);padding:2px 8px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:0.85rem;">(Fz, t)</code>
+                coordinate — and the iron rule holds:
+                <strong>it belongs to exactly one universe, and its score from the other is zero.</strong>
+            </p>
+        </div>
+
+        <!-- Iron rule summary -->
+        <div style="border-left:3px solid #C4B5FD;padding:18px 24px;
+            background:rgba(99,102,241,0.07);border-radius:0 12px 12px 0;">
+            <p style="color:#C8D5F0;text-align:left;">
+                <strong style="color:#C4B5FD;">The iron rule, restated precisely:</strong>
+                For any single data coordinate — whether that is
+                <code
+                    style="background:var(--code-bg);padding:2px 6px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:0.85rem;">(channel)</code>
+                in a static map or
+                <code
+                    style="background:var(--code-bg);padding:2px 6px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:0.85rem;">(channel, time)</code>
+                in an ERP —
+                the raw value is either positive or negative, never both.
+                It therefore belongs to exactly one universe.
+                Its eTFCE score from the other universe is permanently zero.
+                What changes in multi-dimensional data is that the <em>same electrode label</em>
+                appears at many different coordinates, each with its own polarity and its own universe membership.
+            </p>
+        </div>
+
+    </section>
+
+
+    <!-- ── Neural particle canvas (same as homepage) ── -->
+    <script>
+        const canvas = document.getElementById('neural-canvas');
+        const ctx = canvas.getContext('2d');
+        let W, H, particles;
+        function resize() { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
+        function initParticles() {
+            particles = Array.from({ length: 120 }, () => ({
+                x: Math.random() * W, y: Math.random() * H,
+                vx: (Math.random() - 0.5) * 0.45, vy: (Math.random() - 0.5) * 0.45,
+                r: Math.random() * 2.2 + 0.8
+            }));
+        }
+        function draw() {
+            ctx.clearRect(0, 0, W, H);
+            for (let i = 0; i < particles.length; i++) {
+                for (let j = i + 1; j < particles.length; j++) {
+                    const dx = particles[i].x - particles[j].x;
+                    const dy = particles[i].y - particles[j].y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < 140) {
+                        ctx.beginPath();
+                        ctx.strokeStyle = `rgba(165,180,252,${0.28 * (1 - dist / 140)})`;
+                        ctx.lineWidth = 0.8;
+                        ctx.moveTo(particles[i].x, particles[i].y);
+                        ctx.lineTo(particles[j].x, particles[j].y);
+                        ctx.stroke();
+                    }
+                }
+            }
+            particles.forEach(p => {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(165,180,252,0.72)';
+                ctx.fill();
+                p.x += p.vx; p.y += p.vy;
+                if (p.x < 0 || p.x > W) p.vx *= -1;
+                if (p.y < 0 || p.y > H) p.vy *= -1;
+            });
+            requestAnimationFrame(draw);
+        }
+        window.addEventListener('resize', () => { resize(); initParticles(); });
+        resize(); initParticles(); draw();
+    </script>
+
+    <!-- ── References Section ── -->
+    <section style="max-width:860px;margin:0 auto;padding:0 5% 100px;position:relative;z-index:2;">
+
+
+        <!-- Section header -->
+        <div style="display:flex;align-items:center;gap:16px;margin-bottom:32px;">
+            <div style="width:48px;height:48px;border-radius:50%;flex-shrink:0;
+                background:linear-gradient(135deg,#0f172a,#1e293b);
+                border:2px solid rgba(94,234,212,0.5);
+                box-shadow:0 0 20px rgba(20,184,166,0.4);
+                display:flex;align-items:center;justify-content:center;font-size:1.3rem;">
+                &#x1F4DA;
+            </div>
+            <h2 style="font-size:clamp(1.3rem,2.8vw,1.75rem);color:#fff;
+                text-shadow:0 0 20px rgba(94,234,212,0.3);
+                border:none;padding:0;margin:0;display:block;
+                font-family:'Playfair Display',serif;font-weight:400;">
+                Further reading
+            </h2>
+        </div>
+
+        <!-- Reference List -->
+        <ol
+            style="color:rgba(165,180,252,0.8);font-family:'Inter',sans-serif;line-height:1.6;padding-left:1.5rem;display:flex;flex-direction:column;gap:20px;">
+            <!-- Ref 1 -->
+            <li style="padding-left:8px;color:#5EEAD4;font-family:'JetBrains Mono',monospace;font-weight:700;">
+                <div style="font-family:'Inter',sans-serif;">
+                    <a href="https://benediktehinger.de/blog/science/threshold-free-cluster-enhancement-explained/"
+                        target="_blank" rel="noopener"
+                        style="color:#fff;text-decoration:underline;text-decoration-color:rgba(94,234,212,0.4);font-weight:600;font-size:0.95rem;transition:color 0.2s;"
+                        onmouseover="this.style.color='#5EEAD4'" onmouseout="this.style.color='#fff'">Threshold Free
+                        Cluster Enhancement explained</a>
+                    <span style="font-size:0.9rem;margin-left:6px;" title="Blog Post">&#x1F4DD;</span><br>
+                    <span style="color:var(--text-muted);font-size:0.85rem;font-weight:400;">Benedikt V. Ehinger — the
+                        definitive visual walkthrough of how TFCE works, with diagrams showing the height &times; extent
+                        integration across thresholds.</span>
+                </div>
+            </li>
+
+            <!-- Ref 2 -->
+            <li style="padding-left:8px;color:#5EEAD4;font-family:'JetBrains Mono',monospace;font-weight:700;">
+                <div style="font-family:'Inter',sans-serif;">
+                    <a href="https://benediktehinger.de/blog/science/statistics-cluster-permutation-test/"
+                        target="_blank" rel="noopener"
+                        style="color:#fff;text-decoration:underline;text-decoration-color:rgba(94,234,212,0.4);font-weight:600;font-size:0.95rem;transition:color 0.2s;"
+                        onmouseover="this.style.color='#5EEAD4'" onmouseout="this.style.color='#fff'">Statistics:
+                        Cluster Permutation Test</a>
+                    <span style="font-size:0.9rem;margin-left:6px;" title="Blog Post">&#x1F4DD;</span><br>
+                    <span style="color:var(--text-muted);font-size:0.85rem;font-weight:400;">Benedikt V. Ehinger —
+                        companion post explaining the permutation logic that gives TFCE scores their null distribution
+                        and p-values.</span>
+                </div>
+            </li>
+
+            <!-- Ref 3 -->
+            <li style="padding-left:8px;color:#A5B4FC;font-family:'JetBrains Mono',monospace;font-weight:700;">
+                <div style="font-family:'Inter',sans-serif;">
+                    <a href="https://www.fieldtriptoolbox.org/faq/how_does_ft_prepare_neighbours_work/" target="_blank"
+                        rel="noopener"
+                        style="color:#fff;text-decoration:underline;text-decoration-color:rgba(165,180,252,0.4);font-weight:600;font-size:0.95rem;transition:color 0.2s;"
+                        onmouseover="this.style.color='#A5B4FC'" onmouseout="this.style.color='#fff'">Know your
+                        neighbours: how channels are connected spatially</a>
+                    <span style="font-size:0.9rem;margin-left:6px;" title="Documentation">&#x1F4D6;</span><br>
+                    <span style="color:var(--text-muted);font-size:0.85rem;font-weight:400;">FieldTrip FAQ — explains
+                        how <code>ft_prepare_neighbours</code> builds the adjacency graph that TFCE and cluster tests
+                        rely on.</span>
+                </div>
+            </li>
+
+            <!-- Ref 4 -->
+            <li style="padding-left:8px;color:#fca5a5;font-family:'JetBrains Mono',monospace;font-weight:700;">
+                <div style="font-family:'Inter',sans-serif;">
+                    <a href="https://www.youtube.com/watch?v=51y6OAGeS2Q" target="_blank" rel="noopener"
+                        style="color:#fff;text-decoration:underline;text-decoration-color:rgba(252,165,165,0.4);font-weight:600;font-size:0.95rem;transition:color 0.2s;"
+                        onmouseover="this.style.color='#fca5a5'" onmouseout="this.style.color='#fff'">Cluster-based
+                        multiple comparisons correction</a>
+                    <span style="font-size:0.9rem;margin-left:6px;" title="Video">&#x1F3A5;</span><br>
+                    <span style="color:var(--text-muted);font-size:0.85rem;font-weight:400;">Mike X Cohen — clear
+                        lecture on why cluster correction beats voxelwise FWE/FDR and how the permutation null
+                        distribution is built.</span>
+                </div>
+            </li>
+
+            <!-- Ref 5 -->
+            <li style="padding-left:8px;color:#fca5a5;font-family:'JetBrains Mono',monospace;font-weight:700;">
+                <div style="font-family:'Inter',sans-serif;">
+                    <a href="https://www.youtube.com/watch?v=fAYFtpKwJRQ&list=PLn0OLiymPak1Ch2ce47MqwpIw0x3m6iZ7&index=6"
+                        target="_blank" rel="noopener"
+                        style="color:#fff;text-decoration:underline;text-decoration-color:rgba(252,165,165,0.4);font-weight:600;font-size:0.95rem;transition:color 0.2s;"
+                        onmouseover="this.style.color='#fca5a5'" onmouseout="this.style.color='#fff'">Extreme
+                        pixel-based multiple comparisons correction</a>
+                    <span style="font-size:0.9rem;margin-left:6px;" title="Video">&#x1F3A5;</span><br>
+                    <span style="color:var(--text-muted);font-size:0.85rem;font-weight:400;">Mike X Cohen — walks
+                        through the extreme-value (eTFCE-style) variant and how the maximum statistic distribution
+                        controls family-wise error.</span>
+                </div>
+            </li>
+
+            <!-- Ref 6 -->
+            <li style="padding-left:8px;color:#fca5a5;font-family:'JetBrains Mono',monospace;font-weight:700;">
+                <div style="font-family:'Inter',sans-serif;">
+                    <a href="https://www.youtube.com/watch?v=Dx143jsZDIs&list=PLiIiytU7ZWCak7VmAQefTK0luhNCIOSaz&index=14"
+                        target="_blank" rel="noopener"
+                        style="color:#fff;text-decoration:underline;text-decoration-color:rgba(252,165,165,0.4);font-weight:600;font-size:0.95rem;transition:color 0.2s;"
+                        onmouseover="this.style.color='#fca5a5'" onmouseout="this.style.color='#fff'">Correcting for
+                        multiple comparisons with cluster-based permutation</a>
+                    <span style="font-size:0.9rem;margin-left:6px;" title="Video">&#x1F3A5;</span><br>
+                    <span style="color:var(--text-muted);font-size:0.85rem;font-weight:400;">Lecture video covering the
+                        full cluster-permutation pipeline — from forming clusters to building the null distribution and
+                        reading off p-values.</span>
+                </div>
+            </li>
+
+            <!-- Ref 7 -->
+            <li style="padding-left:8px;color:#fca5a5;font-family:'JetBrains Mono',monospace;font-weight:700;">
+                <div style="font-family:'Inter',sans-serif;">
+                    <a href="https://www.youtube.com/watch?v=q7cWw8WC0Ws" target="_blank" rel="noopener"
+                        style="color:#fff;text-decoration:underline;text-decoration-color:rgba(252,165,165,0.4);font-weight:600;font-size:0.95rem;transition:color 0.2s;"
+                        onmouseover="this.style.color='#fca5a5'" onmouseout="this.style.color='#fff'">Brief paper
+                        overview: Threshold free cluster enhancement</a>
+                    <span style="font-size:0.9rem;margin-left:6px;" title="Video">&#x1F3A5;</span><br>
+                    <span style="color:var(--text-muted);font-size:0.85rem;font-weight:400;">A compact video walkthrough
+                        of the original Smith &amp; Nichols (2009) TFCE paper — great for connecting the mathematical
+                        formalism to implementation.</span>
+                </div>
+            </li>
+
+            <!-- Ref 8 -->
+            <li style="padding-left:8px;color:#C4B5FD;font-family:'JetBrains Mono',monospace;font-weight:700;">
+                <div style="font-family:'Inter',sans-serif;">
+                    <a href="https://www.fieldtriptoolbox.org/faq/stats/clusterstats_interpretation/" target="_blank"
+                        rel="noopener"
+                        style="color:#fff;text-decoration:underline;text-decoration-color:rgba(196,181,253,0.4);font-weight:600;font-size:0.95rem;transition:color 0.2s;"
+                        onmouseover="this.style.color='#C4B5FD'" onmouseout="this.style.color='#fff'">How should I
+                        interpret the results of a cluster-based permutation test?</a>
+                    <span style="font-size:0.9rem;margin-left:6px;" title="Documentation">&#x1F4D6;</span><br>
+                    <span style="color:var(--text-muted);font-size:0.85rem;font-weight:400;">FieldTrip FAQ — the
+                        authoritative guide to reading cluster-stat output correctly, including what the cluster p-value
+                        actually means and common misconceptions.</span>
+                </div>
+            </li>
+        </ol>
+
+
+
+    </section>
+    <!-- ── Footer ── -->
+    <footer
+        style="text-align:center;color:var(--text-muted);font-size:0.78rem;padding-bottom:40px;position:relative;z-index:2;">
+        <p>Built with &#x2665; for the neuroscience community &middot;
+            <a href="https://github.com/rahulvenugopal/EEGOdyssey" target="_blank"
+                style="color:var(--text-muted);text-decoration:underline;">GitHub</a>
+        </p>
+        <p style="margin-top:8px;opacity:0.5;">&#xA9; 2026 Rahul Venugopal &middot; CC BY 4.0</p>
+    </footer>
+
+</body>
+
+</html>
