@@ -1,1 +1,1364 @@
-<html><body><h1>Welcome to Day 1</h1></body></html>
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Day 1: NumPy Indexing, Slicing &amp; Dicing — EEG Analysis Odyssey</title>
+    <meta name="description"
+        content="Day 1 of the 20-Day EEG Analysis Odyssey: A hands-on walkthrough of NumPy indexing, slicing and dicing for EEG data — integer access, range slices, multi-axis slicing, step strides, boolean masks, np.where &amp; np.take, reshape &amp; ravel, transpose, and views vs copies. Nine sections matching the teaching script." />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+    <style>
+        /* ── Design Tokens ─────────────────────────────────────────────── */
+        :root {
+            --bg-deep: #05091a;
+            --text-main: #F0F4FF;
+            --text-muted: #B8C4E0;
+            --accent-solid: #A5B4FC;
+            --accent-teal-solid: #2DD4BF;
+            --glass-bg: rgba(99, 102, 241, 0.10);
+            --glass-border: rgba(165, 180, 252, 0.35);
+            --code-bg: rgba(15, 15, 58, 0.85);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            background-color: var(--bg-deep);
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            line-height: 1.75;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        h1,
+        h2,
+        h3,
+        h4 {
+            font-family: 'Playfair Display', serif;
+            font-weight: 400;
+        }
+
+        p {
+            text-align: justify;
+        }
+
+        /* ── Animated background ───────────────────────────────────────── */
+        .ambient-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background:
+                radial-gradient(ellipse at 15% 55%, rgba(99, 102, 241, 0.55), transparent 45%),
+                radial-gradient(ellipse at 85% 15%, rgba(20, 184, 166, 0.50), transparent 45%),
+                radial-gradient(ellipse at 50% 95%, rgba(167, 139, 250, 0.30), transparent 50%);
+            filter: blur(60px);
+            z-index: -2;
+            animation: breathe 12s infinite alternate ease-in-out;
+        }
+
+        @keyframes breathe {
+            0% {
+                transform: scale(1);
+                opacity: 0.85;
+            }
+
+            100% {
+                transform: scale(1.08);
+                opacity: 1;
+            }
+        }
+
+        canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        /* ── Nav ───────────────────────────────────────────────────────── */
+        .top-nav {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 5%;
+            background: rgba(5, 9, 26, 0.80);
+            backdrop-filter: blur(18px);
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .back-link {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--accent-solid);
+            text-decoration: none;
+            font-size: 0.85rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            transition: color 0.2s, gap 0.2s;
+        }
+
+        .back-link:hover {
+            color: #fff;
+            gap: 12px;
+        }
+
+        .nav-day-label {
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: var(--accent-teal-solid);
+            text-shadow: 0 0 12px rgba(45, 212, 191, 0.7);
+        }
+
+        /* ── Hero ──────────────────────────────────────────────────────── */
+        .hero {
+            padding: 80px 5% 60px;
+            max-width: 1000px;
+            margin: 0 auto;
+            text-align: center;
+            position: relative;
+            z-index: 2;
+        }
+
+        .day-pill {
+            display: inline-block;
+            padding: 6px 20px;
+            border-radius: 999px;
+            background: rgba(99, 102, 241, 0.20);
+            border: 1px solid rgba(165, 180, 252, 0.6);
+            font-size: 0.75rem;
+            font-weight: 800;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            color: #5EEAD4;
+            margin-bottom: 20px;
+            text-shadow: 0 0 14px rgba(45, 212, 191, 0.8);
+            backdrop-filter: blur(12px);
+        }
+
+        .hero h1 {
+            font-size: clamp(2.2rem, 5vw, 3.8rem);
+            line-height: 1.1;
+            letter-spacing: -0.02em;
+            color: #fff;
+            text-shadow: 0 0 40px rgba(165, 180, 252, 0.9), 0 0 80px rgba(99, 102, 241, 0.5);
+            margin-bottom: 16px;
+        }
+
+        .hero-subtitle {
+            font-size: clamp(1rem, 2vw, 1.2rem);
+            color: #C8D5F0;
+            max-width: 700px;
+            margin: 0 auto 28px;
+            font-family: 'Inter', sans-serif;
+            text-align: center;
+        }
+
+        .highlight {
+            color: #C4B5FD;
+            text-shadow: 0 0 30px rgba(165, 180, 252, 1), 0 0 60px rgba(99, 102, 241, 0.6);
+        }
+
+        .highlight-teal {
+            color: #5EEAD4;
+            text-shadow: 0 0 25px rgba(45, 212, 191, 0.9);
+        }
+
+        .badges {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .badge {
+            padding: 6px 16px;
+            border-radius: 999px;
+            background: rgba(99, 102, 241, 0.15);
+            border: 1px solid rgba(165, 180, 252, 0.5);
+            font-size: 0.78rem;
+            font-weight: 500;
+            color: #E0E7FF;
+            backdrop-filter: blur(8px);
+        }
+
+        /* ── Article ───────────────────────────────────────────────────── */
+        article {
+            max-width: 860px;
+            margin: 0 auto;
+            padding: 0 5% 80px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .section-block {
+            margin-bottom: 56px;
+        }
+
+        .phase-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .phase-number {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            background: linear-gradient(135deg, #6366F1, #8B5CF6);
+            border: 2px solid rgba(165, 180, 252, 0.5);
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Playfair Display', serif;
+            font-size: 1.3rem;
+            color: #fff;
+        }
+
+        .phase-header h2 {
+            font-size: clamp(1.4rem, 3vw, 1.9rem);
+            color: #fff;
+            text-shadow: 0 0 20px rgba(165, 180, 252, 0.4);
+            border: none;
+            padding: 0;
+            margin: 0;
+            display: block;
+        }
+
+        .phase-header h2 small {
+            display: block;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: #5EEAD4;
+            margin-bottom: 4px;
+        }
+
+        /* ── Glass card ────────────────────────────────────────────────── */
+        .glass-card {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 28px 32px;
+            backdrop-filter: blur(12px);
+            margin: 20px 0;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+
+        .glass-card:hover {
+            border-color: rgba(165, 180, 252, 0.55);
+            box-shadow: 0 8px 40px rgba(99, 102, 241, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        }
+
+        .glass-card p+p {
+            margin-top: 10px;
+        }
+
+        /* ── Code block ────────────────────────────────────────────────── */
+        .code-block {
+            background: var(--code-bg);
+            border: 1px solid rgba(165, 180, 252, 0.20);
+            border-radius: 12px;
+            padding: 20px 24px;
+            margin: 16px 0;
+            overflow-x: auto;
+            position: relative;
+        }
+
+        .code-block pre {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.84rem;
+            color: #E0E7FF;
+            line-height: 1.7;
+            white-space: pre;
+        }
+
+        .c-comment {
+            color: #6B7DB3;
+            font-style: italic;
+        }
+
+        .c-keyword {
+            color: #C4B5FD;
+            font-weight: 500;
+        }
+
+        .c-func {
+            color: #5EEAD4;
+        }
+
+        .c-string {
+            color: #86efac;
+        }
+
+        .c-number {
+            color: #FCA5A5;
+        }
+
+        .c-var {
+            color: #A5B4FC;
+        }
+
+        .code-tag {
+            position: absolute;
+            top: 12px;
+            right: 16px;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.62rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: rgba(165, 180, 252, 0.5);
+        }
+
+        /* ── Insight box ─────────────────────────────────────────────────── */
+        .insight-box {
+            border-left: 3px solid var(--accent-teal-solid);
+            padding: 18px 24px;
+            margin: 24px 0;
+            background: rgba(20, 184, 166, 0.07);
+            border-radius: 0 12px 12px 0;
+        }
+
+        .insight-box p {
+            color: #C8D5F0;
+            text-align: left;
+        }
+
+        .insight-box strong {
+            color: var(--accent-teal-solid);
+        }
+
+        .insight-box.purple {
+            border-left-color: #A5B4FC;
+            background: rgba(99, 102, 241, 0.07);
+        }
+
+        .insight-box.purple strong {
+            color: #A5B4FC;
+        }
+
+        /* ── Warning box ──────────────────────────────────────────────────── */
+        .warn-box {
+            border-left: 3px solid #FCA5A5;
+            padding: 18px 24px;
+            margin: 24px 0;
+            background: rgba(220, 38, 38, 0.07);
+            border-radius: 0 12px 12px 0;
+        }
+
+        .warn-box p {
+            color: #C8D5F0;
+            text-align: left;
+        }
+
+        .warn-box strong {
+            color: #FCA5A5;
+        }
+
+        /* ── Result callout ─────────────────────────────────────────────── */
+        .result-callout {
+            display: flex;
+            align-items: center;
+            gap: 18px;
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.22), rgba(20, 184, 166, 0.15));
+            border: 2px solid rgba(165, 180, 252, 0.55);
+            border-radius: 16px;
+            padding: 24px 28px;
+            margin: 28px 0;
+            box-shadow: 0 0 40px rgba(99, 102, 241, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .result-callout::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(90deg, transparent, rgba(165, 180, 252, 0.08), transparent);
+            animation: shimmer 2.5s infinite;
+        }
+
+        .result-icon {
+            font-size: 2.2rem;
+            flex-shrink: 0;
+        }
+
+        .result-body h4 {
+            font-family: 'Inter', sans-serif;
+            font-size: 0.7rem;
+            font-weight: 800;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: #5EEAD4;
+            margin-bottom: 6px;
+        }
+
+        .result-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.2rem;
+            color: #fff;
+            font-weight: 500;
+            text-shadow: 0 0 20px rgba(165, 180, 252, 0.7);
+        }
+
+        @keyframes shimmer {
+            0% {
+                transform: translateX(-100%);
+            }
+
+            100% {
+                transform: translateX(100%);
+            }
+        }
+
+        /* ── Section divider ────────────────────────────────────────────── */
+        .section-divider {
+            border: none;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--glass-border), transparent);
+            margin: 48px 0;
+        }
+
+        /* ── Two-col grid ────────────────────────────────────────────────── */
+        .two-col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin: 20px 0;
+        }
+
+        /* ── Compare cards ───────────────────────────────────────────────── */
+        .compare-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin: 20px 0;
+        }
+
+        .compare-card {
+            border-radius: 14px;
+            padding: 22px 24px;
+        }
+
+        .compare-card.view-card {
+            background: rgba(99, 102, 241, 0.15);
+            border: 1px solid rgba(165, 180, 252, 0.40);
+        }
+
+        .compare-card.copy-card {
+            background: rgba(20, 184, 166, 0.12);
+            border: 1px solid rgba(45, 212, 191, 0.35);
+        }
+
+        .compare-card .card-label {
+            font-family: 'Inter', sans-serif;
+            font-size: 0.68rem;
+            font-weight: 800;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+
+        .compare-card.view-card .card-label {
+            color: #A5B4FC;
+        }
+
+        .compare-card.copy-card .card-label {
+            color: #2DD4BF;
+        }
+
+        /* ── Extra section ───────────────────────────────────────────────── */
+        section.extra {
+            max-width: 860px;
+            margin: 0 auto;
+            padding: 0 5% 80px;
+            position: relative;
+            z-index: 2;
+        }
+
+        /* ── Footer ─────────────────────────────────────────────────────── */
+        footer {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            border-top: 1px solid var(--glass-border);
+            position: relative;
+            z-index: 2;
+        }
+
+        footer a {
+            color: var(--accent-solid);
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+
+        /* ── Scrollbar ───────────────────────────────────────────────────── */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #050814;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(129, 140, 248, 0.4);
+            border-radius: 3px;
+        }
+
+        /* ── Inline code ─────────────────────────────────────────────────── */
+        code {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.86em;
+            background: var(--code-bg);
+            padding: 2px 7px;
+            border-radius: 5px;
+            color: #A5B4FC;
+            border: 1px solid rgba(165, 180, 252, 0.15);
+        }
+
+        /* ── Responsive ──────────────────────────────────────────────────── */
+        @media (max-width: 640px) {
+
+            .two-col,
+            .compare-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .glass-card {
+                padding: 20px;
+            }
+
+            .result-callout {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="ambient-background"></div>
+    <canvas id="neural-canvas"></canvas>
+
+    <!-- ── Navigation ── -->
+    <nav class="top-nav">
+        <a href="../index.html" class="back-link">&#x2190; Back to Odyssey</a>
+        <span class="nav-day-label">Day 1 of 20</span>
+    </nav>
+
+    <!-- ── Hero ── -->
+    <header class="hero">
+        <div class="day-pill">&#x2726; Day 1 &middot; NumPy Foundations</div>
+        <h1>
+            <span class="highlight">Indexing, Slicing</span><br>
+            <span class="highlight-teal">&amp; Dicing Neural Data</span>
+        </h1>
+        <p class="hero-subtitle">
+            Master the nine essential NumPy operations for navigating a 5-dimensional EEG dataset &mdash;
+            from a single integer index to the critical memory difference between a view and a copy.
+        </p>
+        <div class="badges">
+            <span class="badge">&#x1F9E0; 5-D Array: (G, T, S, C, F)</span>
+            <span class="badge">&#x1F4E1; 32 Channels &middot; 6 Features</span>
+            <span class="badge">&#x1F465; 3 Groups &middot; 30 Subjects</span>
+            <span class="badge">&#x23F1; 3 Timepoints</span>
+            <span class="badge">&#x1F40D; Pure NumPy</span>
+        </div>
+    </header>
+
+    <!-- ── Article ── -->
+    <article>
+
+        <!-- ═══ Dataset Overview ═══ -->
+        <div class="section-block">
+            <div class="glass-card">
+                <p>
+                    Every indexing operation in this guide targets a single array: <code>data</code>,
+                    loaded from <code>neural_data.npy</code>. Its five axes encode the full
+                    experimental structure. Shape: <code>(G=3, T=3, S=30, C=32, F=6)</code>.
+                </p>
+            </div>
+
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:12px;margin:20px 0;">
+                <div
+                    style="border-radius:12px;padding:18px;text-align:center;background:rgba(99,102,241,0.14);border:1px solid rgba(165,180,252,0.35);">
+                    <p style="font-family:'JetBrains Mono',monospace;font-size:1.5rem;font-weight:700;color:#A5B4FC;">
+                        axis 0</p>
+                    <p style="font-size:0.78rem;color:var(--text-muted);margin-top:4px;"><strong style="color:#fff;">G =
+                            3</strong><br>Groups<br><em>Control &middot; Patient &middot; Treatment</em></p>
+                </div>
+                <div
+                    style="border-radius:12px;padding:18px;text-align:center;background:rgba(20,184,166,0.12);border:1px solid rgba(45,212,191,0.30);">
+                    <p style="font-family:'JetBrains Mono',monospace;font-size:1.5rem;font-weight:700;color:#2DD4BF;">
+                        axis 1</p>
+                    <p style="font-size:0.78rem;color:var(--text-muted);margin-top:4px;"><strong style="color:#fff;">T = 3</strong><br>Timepoints<br><em>Baseline &middot; Task &middot; Rest</em></p>
+                </div>
+                <div
+                    style="border-radius:12px;padding:18px;text-align:center;background:rgba(167,139,250,0.12);border:1px solid rgba(196,181,253,0.30);">
+                    <p style="font-family:'JetBrains Mono',monospace;font-size:1.5rem;font-weight:700;color:#C4B5FD;">
+                        axis 2</p>
+                    <p style="font-size:0.78rem;color:var(--text-muted);margin-top:4px;"><strong style="color:#fff;">S =
+                            30</strong><br>Subjects<br><em>per group</em></p>
+                </div>
+                <div
+                    style="border-radius:12px;padding:18px;text-align:center;background:rgba(134,239,172,0.10);border:1px solid rgba(134,239,172,0.28);">
+                    <p style="font-family:'JetBrains Mono',monospace;font-size:1.5rem;font-weight:700;color:#86efac;">
+                        axis 3</p>
+                    <p style="font-size:0.78rem;color:var(--text-muted);margin-top:4px;"><strong style="color:#fff;">C =
+                            32</strong><br>Channels<br><em>EEG electrodes</em></p>
+                </div>
+                <div
+                    style="border-radius:12px;padding:18px;text-align:center;background:rgba(252,165,165,0.10);border:1px solid rgba(252,165,165,0.28);">
+                    <p style="font-family:'JetBrains Mono',monospace;font-size:1.5rem;font-weight:700;color:#fca5a5;">
+                        axis 4</p>
+                    <p style="font-size:0.78rem;color:var(--text-muted);margin-top:4px;"><strong style="color:#fff;">F =
+                            6</strong><br>Features<br><em>&delta; &theta; &alpha; &beta; &gamma; broadband</em></p>
+                </div>
+            </div>
+        </div>
+
+        <hr class="section-divider">
+
+        <!-- ═══ �1 Integer Indexing ═══ -->
+        <div class="section-block">
+            <div class="phase-header">
+                <div class="phase-number">1</div>
+                <h2>Single-element access</h2>
+            </div>
+
+            <div class="glass-card">
+                <p>
+                    Provide one integer per axis to pull out a single scalar. Python counts from zero,
+                    and <strong>negative indices count backwards from the end</strong> &mdash;
+                    <code>-1</code> is always the last element on that axis.
+                </p>
+            </div>
+
+            <div class="code-block">
+                <span class="code-tag">Python</span>
+                <pre><span class="c-comment"># First element on every axis &rarr; scalar</span>
+v = data[0, 0, 0, 0, 0]
+
+<span class="c-comment"># Patient(1) &middot; timepoint 3 &middot; subject 14 &middot; channel 9 &middot; alpha(2)</span>
+v2 = data[1, 3, 14, 9, 2]
+
+<span class="c-comment"># Negative indices count from the end</span>
+data[-1, -1, -1, -1, -1]   <span class="c-comment"># last Treatment &middot; last time &middot; last subject &middot; Oz &middot; gamma</span></pre>
+            </div>
+
+            <div class="insight-box">
+                <p>
+                    <strong>Mental model:</strong> Think of each integer as locking a door on that axis.
+                    Five integers &rarr; five locked doors &rarr; one scalar falls out. The result has
+                    <strong>zero dimensions</strong> &mdash; it is a pure Python number.
+                </p>
+            </div>
+        </div>
+
+        <hr class="section-divider">
+
+        <!-- ═══ �2 Range Slicing ═══ -->
+        <div class="section-block">
+            <div class="phase-header">
+                <div class="phase-number">2</div>
+                <h2>Start &amp; stop along one axis</h2>
+            </div>
+
+            <div class="glass-card">
+                <p>
+                    Replace an integer with <code>start:stop</code> to select a <em>range</em> of
+                    elements along that axis. Use bare <code>:</code> to select <strong>all</strong>
+                    elements. Omitting <code>start</code> defaults to <code>0</code>; omitting
+                    <code>stop</code> defaults to the axis length.
+                </p>
+            </div>
+
+            <div class="code-block">
+                <span class="code-tag">Python</span>
+                <pre><span class="c-comment"># ':' means ALL elements along that axis</span>
+ts = data[1, :, 0, 9, 2]       <span class="c-comment"># shape (3,) &mdash; Patient, all time, sub0, Cz, alpha</span>
+
+<span class="c-comment"># First half of channels</span>
+first_half = data[1, 0, 0, :C//2, 2]   <span class="c-comment"># shape (16,)</span>
+
+<span class="c-comment"># Last half of channels  ('0:' == ':')</span>
+secnd_half = data[1, 0:, 0, C//2:, 2]  <span class="c-comment"># shape (3, 16)</span>
+
+<span class="c-comment"># Controls &middot; Baseline &middot; all subjects &middot; all channels &middot; alpha</span>
+epoch = data[0, 0, :, :, 2]            <span class="c-comment"># shape (30, 32)</span></pre>
+            </div>
+
+            <div class="insight-box">
+                <p>
+                    <strong>Stop is exclusive.</strong> <code>data[..., :C//2, ...]</code> returns
+                    indices <code>0 &hellip; C//2 - 1</code>. This is why <code>:C//2</code> and
+                    <code>C//2:</code> partition the axis perfectly without overlap or gap.
+                </p>
+            </div>
+        </div>
+
+        <hr class="section-divider">
+
+        <!-- ═══ �3 Multi-axis Slicing ═══ -->
+        <div class="section-block">
+            <div class="phase-header">
+                <div class="phase-number">3</div>
+                <h2>Combining slices across all dims</h2>
+            </div>
+
+            <div class="glass-card">
+                <p>
+                    Any mix of integers and slices can appear across the five axes simultaneously.
+                    NumPy resolves each axis independently and returns the tensor product of the surviving
+                    index sets. A common EEG pattern: lock group + timepoint, slice subjects + channels,
+                    lock feature.
+                </p>
+            </div>
+
+            <div class="code-block">
+                <span class="code-tag">Python</span>
+                <pre><span class="c-comment"># Patient &middot; Baseline &middot; all subjects &middot; frontal channels (idx 2&ndash;6) &middot; alpha</span>
+fron_alpha = data[1, 0, :, 2:7, 2]     <span class="c-comment"># shape (30, 5)</span>
+
+<span class="c-comment"># All groups &middot; patient+treatment windows &middot; first 10 subjects &middot; all ch &middot; theta+alpha</span>
+combo = data[:, 1:3, :10, :, 1:3]      <span class="c-comment"># shape (3, 2, 10, 32, 2)</span>
+
+<span class="c-comment"># Compare occipital vs frontal alpha across ALL data</span>
+occ_alpha = data[:, :, :, 17:20, 2].mean()   <span class="c-comment"># scalar</span>
+fro_alpha = data[:, :, :,  2:7,  2].mean()   <span class="c-comment"># scalar</span></pre>
+            </div>
+
+            <div class="insight-box">
+                <p>
+                    <strong>Output shape rule:</strong> Count the colons &mdash; each one contributes
+                    a dimension to the output. Integers reduce the rank; slices preserve it.
+                    <code>data[1, 0, :, 2:7, 2]</code> has 2 surviving axes &rarr; shape <code>(30, 5)</code>.
+                </p>
+            </div>
+        </div>
+
+        <hr class="section-divider">
+
+        <!-- ═══ �4 Step Slicing ═══ -->
+        <div class="section-block">
+            <div class="phase-header">
+                <div class="phase-number">4</div>
+                <h2>Downsampling &amp; reversal</h2>
+            </div>
+
+            <div class="glass-card">
+                <p>
+                    Add a third number to the slice syntax: <code>start:stop:step</code>.
+                    A step of <code>2</code> takes every other element. A step of <code>-1</code>
+                    <strong>reverses</strong> the axis &mdash; perfect for flipping the time axis to
+                    inspect causality or symmetry. Both operations return <em>views</em>.
+                </p>
+            </div>
+
+            <div class="code-block">
+                <span class="code-tag">Python</span>
+                <pre><span class="c-comment"># Every alternate (even-indexed) subject</span>
+ds4_even = data[:, :, ::2, :, :]      <span class="c-comment"># shape (3, 3, 15, 32, 6)</span>
+
+<span class="c-comment"># Every alternate (odd-indexed) subject</span>
+ds4_odd  = data[:, :, 1::2, :, :]    <span class="c-comment"># shape (3, 3, 15, 32, 6)</span>
+
+<span class="c-comment"># Reverse the time axis for Control &middot; sub0 &middot; channel0 &middot; all features</span>
+rev = data[0, ::-1, 0, 0, :]         <span class="c-comment"># shape (3, 6)  &mdash; time runs backward</span></pre>
+            </div>
+
+            <div class="two-col">
+                <div class="glass-card" style="margin:0;">
+                    <p
+                        style="font-family:'Inter',sans-serif;font-size:0.7rem;font-weight:800;letter-spacing:3px;text-transform:uppercase;color:#A5B4FC;margin-bottom:8px;">
+                        &#x2935; Downsampling</p>
+                    <p style="font-size:0.9rem;text-align:left;">
+                        <code>::2</code> &rarr; indices <code>0, 2, 4, &hellip;</code><br>
+                        <code>1::2</code> &rarr; indices <code>1, 3, 5, &hellip;</code><br>
+                        Together they perfectly partition subjects into even and odd cross-validation folds.
+                    </p>
+                </div>
+                <div class="glass-card" style="margin:0;">
+                    <p
+                        style="font-family:'Inter',sans-serif;font-size:0.7rem;font-weight:800;letter-spacing:3px;text-transform:uppercase;color:#2DD4BF;margin-bottom:8px;">
+                        &#x21BA; Reversal</p>
+                    <p style="font-size:0.9rem;text-align:left;">
+                        <code>::-1</code> &rarr; step is <code>-1</code>, start defaults to the last
+                        index. Produces a flipped <strong>view</strong> &mdash; no data is copied
+                        and no extra memory is allocated.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <hr class="section-divider">
+
+        <!-- ═══ �5 Boolean Mask Indexing ═══ -->
+        <div class="section-block">
+            <div class="phase-header">
+                <div class="phase-number">5</div>
+                <h2>Filter by value condition</h2>
+            </div>
+
+            <div class="glass-card">
+                <p>
+                    A comparison like <code>data &gt; 1.0</code> produces a boolean array of the same
+                    shape. Passing it back into <code>data[mask]</code> extracts only the elements where
+                    the mask is <code>True</code>, returning a <strong>1-D array</strong> of surviving values.
+                </p>
+                <p>
+                    <code>np.where(condition)</code> (single argument) returns the <em>indices</em>
+                    of <code>True</code> positions &mdash; useful for downstream operations that need
+                    coordinates, not values.
+                </p>
+            </div>
+
+            <div class="code-block">
+                <span class="code-tag">Python</span>
+                <pre><span class="c-comment"># What fraction of values are likely artifacts (&gt; 1.0)?</span>
+art_mask = data &gt; 1.0
+art_mask.sum()                            <span class="c-comment"># total artifact cells</span>
+
+<span class="c-comment"># Per-subject mean alpha for Control group  &rarr;  shape (30,)</span>
+ctrl_alpha = data[0, :, :, :, 2]          <span class="c-comment"># (3, 30, 32)</span>
+subj_mean  = ctrl_alpha.mean(axis=(0,2))  <span class="c-comment"># collapse time &amp; channels &rarr; (30,)</span>
+threshold  = subj_mean.mean() + subj_mean.std()
+high_alpha = np.where(subj_mean &gt; threshold)[0]  <span class="c-comment"># high-alpha subject indices</span>
+
+<span class="c-comment"># Broadband spike detection in Patient group</span>
+pat_bb  = data[1, :, :, :, 5].mean(axis=(1,2))   <span class="c-comment"># (3,)</span>
+thr2    = pat_bb.mean() + 2 * pat_bb.std()
+spike_t = np.where(pat_bb &gt; thr2)[0]             <span class="c-comment"># spike timepoint indices</span>
+
+<span class="c-comment"># Compound mask: high alpha AND high beta simultaneously</span>
+hi_a = data[1,:,:,:,2] &gt; data[1,:,:,:,2].mean() + data[1,:,:,:,2].std()
+hi_b = data[1,:,:,:,3] &gt; data[1,:,:,:,3].mean() + data[1,:,:,:,3].std()
+overlap = (hi_a &amp; hi_b).mean()    <span class="c-comment"># fraction of co-elevated cells</span></pre>
+            </div>
+
+            <div class="insight-box">
+                <p>
+                    <strong>Boolean indexing always returns a copy.</strong> The output is a flat 1-D array,
+                    because there is no guarantee the surviving elements form a regular rectangular block.
+                    Modifying it does <em>not</em> affect <code>data</code>.
+                </p>
+            </div>
+        </div>
+
+        <hr class="section-divider">
+
+        <!-- ═══ �6 np.where / np.take / np.clip ═══ -->
+        <div class="section-block">
+            <div class="phase-header">
+                <div class="phase-number">6</div>
+                <h2>np.where, np.take &amp; np.clip</h2>
+            </div>
+
+            <div class="glass-card">
+                <p>
+                    Three closely related utilities extend the indexing toolbox beyond pure subscripting:
+                </p>
+                <ul style="margin:12px 0 0 20px;color:var(--text-muted);line-height:2.1;">
+                    <li><code>np.where(cond, a, b)</code> &mdash; element-wise ternary; same shape as <code>cond</code>
+                    </li>
+                    <li><code>np.where(cond)</code> &mdash; returns index arrays of <code>True</code> positions (like
+                        <code>find()</code>)
+                    </li>
+                    <li><code>np.take(arr, indices, axis)</code> &mdash; gather non-contiguous elements along one axis
+                    </li>
+                    <li><code>np.clip(arr, lo, hi)</code> &mdash; clamp all values into <code>[lo, hi]</code></li>
+                </ul>
+            </div>
+
+            <div class="code-block">
+                <span class="code-tag">Python</span>
+                <pre><span class="c-comment"># np.where(cond, true_val, false_val) &mdash; zero out artifacts</span>
+clean = np.where(data &gt; 1.0, 0.0, data)   <span class="c-comment"># clean.max() &le; 1.0</span>
+
+<span class="c-comment"># np.where(cond) &mdash; return indices (like MATLAB find)</span>
+idxs = np.where(subj_mean &gt; threshold)    <span class="c-comment"># tuple of arrays, one per dim</span>
+
+<span class="c-comment"># np.take &mdash; gather theta(1) &middot; alpha(2) &middot; beta(3) along axis 4</span>
+tba = np.take(data, indices=[1, 2, 3], axis=4)  <span class="c-comment"># shape (3, 3, 30, 32, 3)</span>
+
+<span class="c-comment"># np.clip &mdash; clamp every value to [0, 1.0]</span>
+clamped = np.clip(data, 0, 1.0)            <span class="c-comment"># all artifacts capped at 1.0</span></pre>
+            </div>
+
+            <div class="two-col">
+                <div class="glass-card" style="margin:0;">
+                    <p
+                        style="font-family:'Inter',sans-serif;font-size:0.7rem;font-weight:800;letter-spacing:3px;text-transform:uppercase;color:#A5B4FC;margin-bottom:8px;">
+                        np.where (3-arg)</p>
+                    <p style="font-size:0.88rem;color:var(--text-muted);text-align:left;">Operates element-by-element.
+                        Returns an array of the <em>same shape</em>. Ideal for artifact zeroing without losing the
+                        original array layout.</p>
+                </div>
+                <div class="glass-card" style="margin:0;">
+                    <p
+                        style="font-family:'Inter',sans-serif;font-size:0.7rem;font-weight:800;letter-spacing:3px;text-transform:uppercase;color:#2DD4BF;margin-bottom:8px;">
+                        np.take vs fancy index</p>
+                    <p style="font-size:0.88rem;color:var(--text-muted);text-align:left;">
+                        <code>np.take(data, [1,2,3], axis=4)</code> equals <code>data[..., [1,2,3]]</code>. Both produce
+                        a <strong>copy</strong>. <code>np.take</code> is preferred when the axis is chosen at runtime.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <hr class="section-divider">
+
+        <!-- ═══ �7 Reshape & Ravel ═══ -->
+        <div class="section-block">
+            <div class="phase-header">
+                <div class="phase-number">7</div>
+                <h2>Changing array shape</h2>
+            </div>
+
+            <div class="glass-card">
+                <p>
+                    <code>reshape</code> reinterprets the memory layout without touching the data &mdash;
+                    it returns a <strong>view</strong> when possible. The total number of elements must stay
+                    constant. <code>ravel()</code> flattens to 1-D, and <code>np.newaxis</code> inserts a
+                    length-1 dimension for broadcasting or framework compatibility.
+                </p>
+            </div>
+
+            <div class="code-block">
+                <span class="code-tag">Python</span>
+                <pre><span class="c-comment"># Classic ML: design matrix  (rows = observations, cols = features)</span>
+<span class="c-comment"># Step 1: bring subjects adjacent to groups &rarr; (G, S, T, C, F)</span>
+d_swap = data.transpose(0, 2, 1, 3, 4)
+
+<span class="c-comment"># Step 2: collapse G&times;S into rows, T&times;C&times;F into columns</span>
+X = d_swap.reshape(G * S, T * C * F)   <span class="c-comment"># shape (90, 576)  &larr; sklearn-ready</span>
+
+<span class="c-comment"># Flatten to 1-D</span>
+flat = data.ravel()                     <span class="c-comment"># shape (51_840,)</span>
+
+<span class="c-comment"># Add a batch axis at front (deep-learning frameworks)</span>
+batched = data[np.newaxis]              <span class="c-comment"># shape (1, 3, 3, 30, 32, 6)</span>
+
+<span class="c-comment"># Merge subjects &times; channels (connectivity analyses)</span>
+merged = data.reshape(G, T, S * C, F)  <span class="c-comment"># shape (3, 3, 960, 6)</span></pre>
+            </div>
+
+            <div class="result-callout">
+                <div class="result-icon">&#x1F4CA;</div>
+                <div class="result-body">
+                    <h4>Design Matrix for scikit-learn</h4>
+                    <div class="result-value">X.shape = (90, 576)</div>
+                    <p style="color:var(--text-muted);font-size:0.88rem;margin-top:6px;">
+                        90 = 3 groups &times; 30 subjects &nbsp;&bull;&nbsp;
+                        576 = 3 times &times; 32 channels &times; 6 features
+                    </p>
+                </div>
+            </div>
+
+            <div class="insight-box">
+                <p>
+                    <strong>Always transpose before reshape</strong> when collapsing multiple axes together.
+                    <code>reshape</code> merges axes in C-order (row-major), so the axes you want to merge
+                    <em>must be adjacent</em> first. A <code>transpose</code> rearranges them into the
+                    right order.
+                </p>
+            </div>
+        </div>
+
+        <hr class="section-divider">
+
+        <!-- ═══ �8 Transpose ═══ -->
+        <div class="section-block">
+            <div class="phase-header">
+                <div class="phase-number">8</div>
+                <h2>Reordering axes</h2>
+            </div>
+
+            <div class="glass-card">
+                <p>
+                    <code>transpose(*axes)</code> reorders the dimensions of an array, returning a
+                    <strong>view</strong> &mdash; no data is copied, only the strides are rearranged.
+                    The <code>.T</code> shorthand is equivalent to <code>transpose(1, 0)</code> and
+                    works on 2-D arrays.
+                </p>
+            </div>
+
+            <div class="code-block">
+                <span class="code-tag">Python</span>
+                <pre><span class="c-comment"># (G,T,S,C,F) &rarr; (F,G,T,S,C)  features-first layout</span>
+feat_first = data.transpose(4, 0, 1, 2, 3)    <span class="c-comment"># shape (6, 3, 3, 30, 32)</span>
+
+<span class="c-comment"># (G,T,S,C,F) &rarr; (G,T,S,F,C)  swap channels &harr; features</span>
+ch_feat_swap = data.transpose(0, 1, 2, 4, 3)  <span class="c-comment"># shape (3, 3, 30, 6, 32)</span>
+
+<span class="c-comment"># 2-D shorthand  &rarr;  (3,30) becomes (30,3)</span>
+mat2d = data[0, :, :, 0, 0]   <span class="c-comment"># shape (3, 30)</span>
+mat2d.T                        <span class="c-comment"># shape (30, 3)</span></pre>
+            </div>
+
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:20px 0;">
+                <div
+                    style="border-radius:12px;padding:16px;text-align:center;background:rgba(99,102,241,0.12);border:1px solid rgba(165,180,252,0.30);">
+                    <p
+                        style="font-family:'JetBrains Mono',monospace;font-size:0.78rem;color:#A5B4FC;margin-bottom:6px;">
+                        Original</p>
+                    <p style="font-family:'JetBrains Mono',monospace;font-size:0.82rem;color:#fff;">(G,T,S,C,F)</p>
+                    <p style="font-size:0.72rem;color:var(--text-muted);margin-top:4px;">axes [0,1,2,3,4]</p>
+                </div>
+                <div
+                    style="border-radius:12px;padding:16px;text-align:center;background:rgba(20,184,166,0.12);border:1px solid rgba(45,212,191,0.30);">
+                    <p
+                        style="font-family:'JetBrains Mono',monospace;font-size:0.78rem;color:#2DD4BF;margin-bottom:6px;">
+                        Features-first</p>
+                    <p style="font-family:'JetBrains Mono',monospace;font-size:0.82rem;color:#fff;">(F,G,T,S,C)</p>
+                    <p style="font-size:0.72rem;color:var(--text-muted);margin-top:4px;">transpose(4,0,1,2,3)</p>
+                </div>
+                <div
+                    style="border-radius:12px;padding:16px;text-align:center;background:rgba(167,139,250,0.12);border:1px solid rgba(196,181,253,0.30);">
+                    <p
+                        style="font-family:'JetBrains Mono',monospace;font-size:0.78rem;color:#C4B5FD;margin-bottom:6px;">
+                        Ch &harr; Feat</p>
+                    <p style="font-family:'JetBrains Mono',monospace;font-size:0.82rem;color:#fff;">(G,T,S,F,C)</p>
+                    <p style="font-size:0.72rem;color:var(--text-muted);margin-top:4px;">transpose(0,1,2,4,3)</p>
+                </div>
+            </div>
+
+            <div class="insight-box">
+                <p>
+                    <strong>Transpose is a view.</strong> <code>np.shares_memory(data, data.transpose(...))</code>
+                    returns <code>True</code>. Mutations through the transposed array propagate back to
+                    the original &mdash; use <code>.copy()</code> if you need independence.
+                </p>
+            </div>
+        </div>
+
+        <hr class="section-divider">
+
+        <!-- ═══ �9 Views vs Copies ═══ -->
+        <div class="section-block">
+            <div class="phase-header">
+                <div class="phase-number">9</div>
+                <h2>The critical memory gotcha</h2>
+            </div>
+
+            <div class="glass-card">
+                <p>
+                    This is the most important concept in NumPy memory management.
+                    Some operations share memory with the original array (<em>views</em>);
+                    others produce independent data (<em>copies</em>). Mutating a view propagates
+                    the change back to the source &mdash; silently, with no warning.
+                </p>
+            </div>
+
+            <div class="compare-grid">
+                <div class="compare-card view-card">
+                    <div class="card-label">&#x1F441; Views (shared memory)</div>
+                    <ul
+                        style="text-align:left;list-style:none;display:flex;flex-direction:column;gap:8px;font-size:0.88rem;">
+                        <li style="display:flex;align-items:center;gap:8px;"><span
+                                style="color:#A5B4FC;font-weight:700;">&#x2713;</span><span>Basic slicing
+                                <code>data[0, :50, &hellip;]</code></span></li>
+                        <li style="display:flex;align-items:center;gap:8px;"><span
+                                style="color:#A5B4FC;font-weight:700;">&#x2713;</span><span><code>data.transpose(&hellip;)</code></span>
+                        </li>
+                        <li style="display:flex;align-items:center;gap:8px;"><span
+                                style="color:#A5B4FC;font-weight:700;">&#x2713;</span><span><code>data.reshape(&hellip;)</code>
+                                (usually)</span></li>
+                        <li style="display:flex;align-items:center;gap:8px;"><span
+                                style="color:#A5B4FC;font-weight:700;">&#x2713;</span><span>Step slices
+                                <code>data[::2, &hellip;]</code></span></li>
+                    </ul>
+                </div>
+                <div class="compare-card copy-card">
+                    <div class="card-label">&#x1F4CB; Copies (independent)</div>
+                    <ul
+                        style="text-align:left;list-style:none;display:flex;flex-direction:column;gap:8px;font-size:0.88rem;">
+                        <li style="display:flex;align-items:center;gap:8px;"><span
+                                style="color:#2DD4BF;font-weight:700;">&#x2713;</span><span>Fancy indexing
+                                <code>data[[0,1],&hellip;]</code></span></li>
+                        <li style="display:flex;align-items:center;gap:8px;"><span
+                                style="color:#2DD4BF;font-weight:700;">&#x2713;</span><span>Boolean indexing
+                                <code>data[mask]</code></span></li>
+                        <li style="display:flex;align-items:center;gap:8px;"><span
+                                style="color:#2DD4BF;font-weight:700;">&#x2713;</span><span><code>np.where</code> &amp;
+                                <code>np.take</code> results</span></li>
+                        <li style="display:flex;align-items:center;gap:8px;"><span
+                                style="color:#2DD4BF;font-weight:700;">&#x2713;</span><span>Explicit
+                                <code>.copy()</code> call</span></li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="code-block">
+                <span class="code-tag">Python</span>
+                <pre><span class="c-comment"># Create candidates</span>
+view        = data[0, :50, :, :, :]           <span class="c-comment"># basic slice</span>
+fancy_copy  = data[[0, 1], :, :, :, :]        <span class="c-comment"># fancy index</span>
+bool_copy   = data[data &gt; 0.5]               <span class="c-comment"># boolean index</span>
+transpose_v = data.transpose(4, 0, 1, 2, 3)  <span class="c-comment"># transpose</span>
+
+<span class="c-comment"># Verify with np.shares_memory</span>
+np.shares_memory(view,       data)   <span class="c-comment"># &rarr; True   (view!)</span>
+np.shares_memory(fancy_copy, data)   <span class="c-comment"># &rarr; False  (copy)</span>
+np.shares_memory(bool_copy,  data)   <span class="c-comment"># &rarr; False  (copy)</span>
+np.shares_memory(transpose_v,data)   <span class="c-comment"># &rarr; True   (view!)</span>
+
+<span class="c-comment"># Danger: mutating a view changes the original</span>
+backup = data[0, 0, 0, 0, 0]
+view[0, 0, 0, 0] = 999.0              <span class="c-comment"># writes through to data</span>
+data[0, 0, 0, 0, 0]                   <span class="c-comment"># &rarr; 999.0  &larr; original changed!</span>
+data[0, 0, 0, 0, 0] = backup          <span class="c-comment"># restore</span>
+
+<span class="c-comment"># Safe pattern: always copy before in-place ops</span>
+safe = data[0].copy()
+safe *= 99                             <span class="c-comment"># data is untouched</span></pre>
+            </div>
+
+            <div class="warn-box">
+                <p>
+                    <strong>The silent-mutation bug:</strong> If you pass a slice to a function and that
+                    function modifies it in-place, your original <code>data</code> is permanently altered
+                    &mdash; no warning, no error. Always call <code>.copy()</code> on any slice you hand
+                    to code you don't fully control.
+                </p>
+            </div>
+
+            <div class="result-callout" style="margin-top:32px;">
+                <div class="result-icon">&#x1F4A1;</div>
+                <div class="result-body">
+                    <h4>The Golden Rule</h4>
+                    <div class="result-value" style="font-size:1rem;line-height:1.8;">
+                        Basic slicing &amp; transpose &rarr; <span style="color:#A5B4FC;">VIEW</span><br>
+                        Fancy &amp; boolean indexing &rarr; <span style="color:#2DD4BF;">COPY</span>
+                    </div>
+                    <p style="color:var(--text-muted);font-size:0.85rem;margin-top:8px;">
+                        When in doubt: <code>arr.base is not None</code> indicates <em>arr</em> is a view.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+    </article>
+
+    <!-- ── Summary cheat-sheet section ── -->
+    <section class="extra">
+        <hr
+            style="border:none;height:1px;background:linear-gradient(90deg,transparent,rgba(165,180,252,0.35),transparent);margin-bottom:48px;">
+
+        <div class="phase-header" style="margin-bottom:24px;">
+            <div class="phase-number">&#x2605;</div>
+            <h2>Day 1 Cheat-Sheet</h2>
+        </div>
+
+        <div
+            style="overflow-x:auto;border-radius:14px;border:1px solid var(--glass-border);box-shadow:0 4px 30px rgba(0,0,0,0.4);">
+            <table style="width:100%;border-collapse:collapse;font-size:0.88rem;">
+                <thead style="background:linear-gradient(135deg,rgba(99,102,241,0.30),rgba(20,184,166,0.18));">
+                    <tr>
+                        <th
+                            style="padding:14px 20px;text-align:left;font-family:'Inter',sans-serif;font-weight:700;font-size:0.73rem;letter-spacing:2px;text-transform:uppercase;color:var(--accent-solid);border-bottom:1px solid var(--glass-border);">
+                            Section</th>
+                        <th
+                            style="padding:14px 20px;text-align:left;font-family:'Inter',sans-serif;font-weight:700;font-size:0.73rem;letter-spacing:2px;text-transform:uppercase;color:var(--accent-solid);border-bottom:1px solid var(--glass-border);">
+                            Syntax example</th>
+                        <th
+                            style="padding:14px 20px;text-align:left;font-family:'Inter',sans-serif;font-weight:700;font-size:0.73rem;letter-spacing:2px;text-transform:uppercase;color:var(--accent-solid);border-bottom:1px solid var(--glass-border);">
+                            Returns</th>
+                        <th
+                            style="padding:14px 20px;text-align:left;font-family:'Inter',sans-serif;font-weight:700;font-size:0.73rem;letter-spacing:2px;text-transform:uppercase;color:var(--accent-solid);border-bottom:1px solid var(--glass-border);">
+                            View / Copy</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr style="border-bottom:1px solid rgba(165,180,252,0.12);transition:background 0.2s;"
+                        onmouseover="this.style.background='rgba(99,102,241,0.08)'"
+                        onmouseout="this.style.background=''">
+                        <td style="padding:12px 20px;color:#fff;font-weight:600;">1 Integer</td>
+                        <td
+                            style="padding:12px 20px;font-family:'JetBrains Mono',monospace;color:#A5B4FC;font-size:0.82rem;">
+                            <code>data[0,0,0,0,0]</code>
+                        </td>
+                        <td style="padding:12px 20px;color:var(--text-muted);">Scalar (0-D)</td>
+                        <td style="padding:12px 20px;color:#86efac;">View</td>
+                    </tr>
+                    <tr style="border-bottom:1px solid rgba(165,180,252,0.12);transition:background 0.2s;"
+                        onmouseover="this.style.background='rgba(99,102,241,0.08)'"
+                        onmouseout="this.style.background=''">
+                        <td style="padding:12px 20px;color:#fff;font-weight:600;">2 Range slice</td>
+                        <td
+                            style="padding:12px 20px;font-family:'JetBrains Mono',monospace;color:#A5B4FC;font-size:0.82rem;">
+                            <code>data[1, :, 0, :16, 2]</code>
+                        </td>
+                        <td style="padding:12px 20px;color:var(--text-muted);">N-D array</td>
+                        <td style="padding:12px 20px;color:#86efac;">View</td>
+                    </tr>
+                    <tr style="border-bottom:1px solid rgba(165,180,252,0.12);transition:background 0.2s;"
+                        onmouseover="this.style.background='rgba(99,102,241,0.08)'"
+                        onmouseout="this.style.background=''">
+                        <td style="padding:12px 20px;color:#fff;font-weight:600;">3 Multi-axis</td>
+                        <td
+                            style="padding:12px 20px;font-family:'JetBrains Mono',monospace;color:#A5B4FC;font-size:0.82rem;">
+                            <code>data[:, 1:3, :10, :, 1:3]</code>
+                        </td>
+                        <td style="padding:12px 20px;color:var(--text-muted);">N-D array</td>
+                        <td style="padding:12px 20px;color:#86efac;">View</td>
+                    </tr>
+                    <tr style="border-bottom:1px solid rgba(165,180,252,0.12);transition:background 0.2s;"
+                        onmouseover="this.style.background='rgba(99,102,241,0.08)'"
+                        onmouseout="this.style.background=''">
+                        <td style="padding:12px 20px;color:#fff;font-weight:600;">4 Step slice</td>
+                        <td
+                            style="padding:12px 20px;font-family:'JetBrains Mono',monospace;color:#A5B4FC;font-size:0.82rem;">
+                            <code>data[:, :, ::2, :, :]</code>
+                        </td>
+                        <td style="padding:12px 20px;color:var(--text-muted);">N-D array</td>
+                        <td style="padding:12px 20px;color:#86efac;">View</td>
+                    </tr>
+                    <tr style="border-bottom:1px solid rgba(165,180,252,0.12);transition:background 0.2s;"
+                        onmouseover="this.style.background='rgba(99,102,241,0.08)'"
+                        onmouseout="this.style.background=''">
+                        <td style="padding:12px 20px;color:#fff;font-weight:600;">5 Boolean mask</td>
+                        <td
+                            style="padding:12px 20px;font-family:'JetBrains Mono',monospace;color:#A5B4FC;font-size:0.82rem;">
+                            <code>data[data &gt; 1.0]</code>
+                        </td>
+                        <td style="padding:12px 20px;color:var(--text-muted);">1-D array</td>
+                        <td style="padding:12px 20px;color:#2DD4BF;">Copy</td>
+                    </tr>
+                    <tr style="border-bottom:1px solid rgba(165,180,252,0.12);transition:background 0.2s;"
+                        onmouseover="this.style.background='rgba(99,102,241,0.08)'"
+                        onmouseout="this.style.background=''">
+                        <td style="padding:12px 20px;color:#fff;font-weight:600;">6 np.where / np.take</td>
+                        <td
+                            style="padding:12px 20px;font-family:'JetBrains Mono',monospace;color:#A5B4FC;font-size:0.82rem;">
+                            <code>np.where(cond, a, b)</code>
+                        </td>
+                        <td style="padding:12px 20px;color:var(--text-muted);">Same shape</td>
+                        <td style="padding:12px 20px;color:#2DD4BF;">Copy</td>
+                    </tr>
+                    <tr style="border-bottom:1px solid rgba(165,180,252,0.12);transition:background 0.2s;"
+                        onmouseover="this.style.background='rgba(99,102,241,0.08)'"
+                        onmouseout="this.style.background=''">
+                        <td style="padding:12px 20px;color:#fff;font-weight:600;">7 Reshape / Ravel</td>
+                        <td
+                            style="padding:12px 20px;font-family:'JetBrains Mono',monospace;color:#A5B4FC;font-size:0.82rem;">
+                            <code>data.reshape(G*S, -1)</code>
+                        </td>
+                        <td style="padding:12px 20px;color:var(--text-muted);">N-D array</td>
+                        <td style="padding:12px 20px;color:#86efac;">View (usually)</td>
+                    </tr>
+                    <tr style="border-bottom:1px solid rgba(165,180,252,0.12);transition:background 0.2s;"
+                        onmouseover="this.style.background='rgba(99,102,241,0.08)'"
+                        onmouseout="this.style.background=''">
+                        <td style="padding:12px 20px;color:#fff;font-weight:600;">8 Transpose</td>
+                        <td
+                            style="padding:12px 20px;font-family:'JetBrains Mono',monospace;color:#A5B4FC;font-size:0.82rem;">
+                            <code>data.transpose(4,0,1,2,3)</code>
+                        </td>
+                        <td style="padding:12px 20px;color:var(--text-muted);">N-D array</td>
+                        <td style="padding:12px 20px;color:#86efac;">View</td>
+                    </tr>
+                    <tr style="transition:background 0.2s;" onmouseover="this.style.background='rgba(99,102,241,0.08)'"
+                        onmouseout="this.style.background=''">
+                        <td style="padding:12px 20px;color:#fff;font-weight:600;">9 Views vs copies</td>
+                        <td
+                            style="padding:12px 20px;font-family:'JetBrains Mono',monospace;color:#A5B4FC;font-size:0.82rem;">
+                            <code>np.shares_memory(a, b)</code>
+                        </td>
+                        <td style="padding:12px 20px;color:var(--text-muted);">bool</td>
+                        <td style="padding:12px 20px;color:#fca5a5;">Diagnostic</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- ── Neural particle canvas ── -->
+    <script>
+        const canvas = document.getElementById('neural-canvas');
+        const ctx = canvas.getContext('2d');
+        let W, H, particles;
+        function resize() { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
+        function initParticles() {
+            particles = Array.from({ length: 120 }, () => ({
+                x: Math.random() * W, y: Math.random() * H,
+                vx: (Math.random() - 0.5) * 0.45, vy: (Math.random() - 0.5) * 0.45,
+                r: Math.random() * 2.2 + 0.8
+            }));
+        }
+        function draw() {
+            ctx.clearRect(0, 0, W, H);
+            for (let i = 0; i < particles.length; i++) {
+                for (let j = i + 1; j < particles.length; j++) {
+                    const dx = particles[i].x - particles[j].x;
+                    const dy = particles[i].y - particles[j].y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < 140) {
+                        ctx.beginPath();
+                        ctx.strokeStyle = `rgba(165,180,252,${0.28 * (1 - dist / 140)})`;
+                        ctx.lineWidth = 0.8;
+                        ctx.moveTo(particles[i].x, particles[i].y);
+                        ctx.lineTo(particles[j].x, particles[j].y);
+                        ctx.stroke();
+                    }
+                }
+            }
+            particles.forEach(p => {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(165,180,252,0.72)';
+                ctx.fill();
+                p.x += p.vx; p.y += p.vy;
+                if (p.x < 0 || p.x > W) p.vx *= -1;
+                if (p.y < 0 || p.y > H) p.vy *= -1;
+            });
+            requestAnimationFrame(draw);
+        }
+        window.addEventListener('resize', () => { resize(); initParticles(); });
+        resize(); initParticles(); draw();
+    </script>
+
+    <!-- ── Footer ── -->
+    <footer>
+        <p>
+            Day 1 &mdash; <a href="../index.html">EEG Analysis Odyssey</a> &nbsp;&bull;&nbsp;
+            NumPy Indexing, Slicing &amp; Dicing &nbsp;&bull;&nbsp;
+            Dataset: <code>neural_data.npy</code> &nbsp;&bull;&nbsp;
+            Script: <code>01_day1_study_guide.py</code>
+        </p>
+    </footer>
+
+</body>
+
+</html>
