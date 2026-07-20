@@ -5,15 +5,15 @@ Dataset loaded from  neural_data.npy
 
 Sections
 --------
-  §1   Integer indexing        — single element access
-  §2   Range slicing           — start:stop along one axis
-  §3   Multi-axis slicing      — combining slices across all dims
-  §4   Step / stride slicing   — downsampling, reversal
-  §5   Boolean (mask) indexing — filter by value condition
-  §6   np.where & np.take      — conditional / gather utilities
-  §7   Reshape & ravel         — changing array shape
-  §8   Transpose               — reordering axes
-  §9  Views vs copies         — the critical memory gotcha
+  1   Integer indexing        — single element access
+  2   Range slicing           — start:stop along one axis
+  3   Multi-axis slicing      — combining slices across all dims
+  4   Step / stride slicing   — downsampling, reversal
+  5   Boolean (mask) indexing — filter by value condition
+  6   np.where & np.take      — conditional / gather utilities
+  7   Reshape & ravel         — changing array shape
+  8   Transpose               — reordering axes
+  9  Views vs copies         — the critical memory gotcha
 
 """
 
@@ -96,60 +96,42 @@ hi_b = data[1, :, :, :, 3] > data[1,:,:,:,3].mean() + data[1,:,:,:,3].std()
 print(f"  High-alpha & high-beta (Patient): {(hi_a & hi_b).sum():,} cells  "
       f"({100*(hi_a & hi_b).mean():.2f}%)")
 
-#%% 6.  np.where & np.take 
+#%% 6.  where, clip, find and take
 
 # np.where(condition, value_if_true, value_if_false)
 clean = np.where(data > 1.0, 0.0, data)      # zero out artifacts
-print(f"  np.where: artifact-zeroed max = {clean.max():.5f}  (was {data.max():.5f})")
+
+# np.clip — related utility for clamping (not indexing but often paired)
+clamped = np.clip(data, 0, 1.0)
 
 # np.where with one arg returns indices (like find())
 idxs = np.where(subj_mean > threshold)       # returns tuple of arrays
 print(f"  np.where(condition) → indices: {idxs[0]}")
 
 # np.take — gather along one axis with an index array
-tba  = np.take(data, indices=[1, 2, 3], axis=4)   # (3,200,30,32,3) theta·alpha·beta
-print(f"  np.take([theta,alpha,beta])  : shape={tba.shape}")
-
-# np.clip — related utility for clamping (not indexing but often paired)
-clamped = np.clip(data, 0, 1.0)
-print(f"  np.clip([0,1.0]) max         = {clamped.max():.5f}")
+tba  = np.take(data, indices=[1, 2, 3], axis=4)
 
 #%% 7. RESHAPE & RAVEL
 
-# Common ML pattern: observation matrix (G*S, T*C*F)
-# Step 1: bring subjects axis next to groups → (G, S, T, C, F)
+# Some analysis pipelines want the data in specific order
+# Bring subjects axis next to groups → (G, S, T, C, F)
 d_swap  = data.transpose(0, 2, 1, 3, 4)
+
+# Move features axis first: (G,T,S,C,F) → (F,G,T,S,C)
+feat_first = data.transpose(4, 0, 1, 2, 3)
+
 # Step 2: flatten groups × subjects into rows, rest into columns
 X = d_swap.reshape(G * S, T * C * F)
 print(f"  Design matrix (G*S, T*C*F)  : {X.shape}  — ready for PCA / sklearn")
 
 # Flatten completely to 1-D
 flat = data.ravel()
-print(f"  ravel()                      : {flat.shape}  ({flat.size:,} elements)")
-
-# Add a batch axis at front (for deep learning)
-batched = data[np.newaxis, :, :, :, :, :]   # (1, 3, 200, 30, 32, 6)
-print(f"  newaxis batch dim            : {batched.shape}")
 
 # Merge subjects & channels into one axis (common for connectivity analyses)
 merged = data.reshape(G, T, S * C, F)
 print(f"  Merge S×C                    : {merged.shape}")
 
-#%% 8. TRANSPOSE
-
-# Move features axis first: (G,T,S,C,F) → (F,G,T,S,C)
-feat_first = data.transpose(4, 0, 1, 2, 3)
-print(f"  Features-first               : {feat_first.shape}")
-
-# Swap channels ↔ features: (G,T,S,C,F) → (G,T,S,F,C)
-ch_feat_swap = data.transpose(0, 1, 2, 4, 3)
-print(f"  Channels ↔ features swap     : {ch_feat_swap.shape}")
-
-# .T shorthand works on 2-D arrays
-mat2d = data[0, :, :, 0, 0]       # (200, 30)
-print(f"  2-D .T shorthand             : {mat2d.shape} → {mat2d.T.shape}")
-
-#%% 9.  VIEWS vs COPIES
+#%% 8.  VIEWS vs COPIES
 
 print(  "     Basic slicing    → VIEW   (shares memory  ⟹  mutations propagate)")
 print(  "     Fancy indexing   → COPY  (independent  ⟹  safe to mutate)")
