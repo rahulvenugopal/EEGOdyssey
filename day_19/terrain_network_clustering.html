@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D TE-FCE: Realistic Terrain Clustering</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+            background: #070a10;
+            color: #e2e8f0;
+        }
+
+        #canvas-container {
+            position: absolute;
+            inset: 0;
+            z-index: 1;
+        }
+
+        /* UI Panel — TOP RIGHT */
+        #ui-panel {
+            position: absolute;
+            top: 22px;
+            right: 22px;
+            left: auto;
+            width: 360px;
+            background: rgba(7, 10, 16, 0.72);
+            backdrop-filter: blur(32px) saturate(1.2);
+            -webkit-backdrop-filter: blur(32px) saturate(1.2);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 20px;
+            padding: 28px;
+            z-index: 10;
+            box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5);
+            transition: opacity 0.3s;
+        }
+
+        h1 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 4px;
+            letter-spacing: -0.3px;
+        }
+
+        .subtitle {
+            font-size: 0.8rem;
+            color: #64748b;
+            margin-bottom: 22px;
+            font-weight: 400;
+            line-height: 1.5;
+        }
+
+        .control-group {
+            margin-bottom: 18px;
+        }
+
+        .control-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.82rem;
+            font-weight: 500;
+            color: #94a3b8;
+            margin-bottom: 10px;
+        }
+
+        .control-label .value {
+            font-family: 'SF Mono', 'Courier New', monospace;
+            color: #fff;
+            font-size: 0.85rem;
+            font-weight: 600;
+            background: rgba(255,255,255,0.06);
+            padding: 2px 8px;
+            border-radius: 6px;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.06);
+            border-radius: 2px;
+            outline: none;
+            -webkit-appearance: none;
+            cursor: pointer;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #fff;
+            box-shadow: 0 2px 12px rgba(255, 255, 255, 0.25), 0 0 0 4px rgba(255,255,255,0.05);
+            cursor: pointer;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.15);
+            box-shadow: 0 2px 16px rgba(255, 255, 255, 0.35), 0 0 0 6px rgba(255,255,255,0.08);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 13px;
+            border: none;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.07);
+            color: #e2e8f0;
+            font-weight: 500;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            margin-bottom: 18px;
+            letter-spacing: 0.2px;
+        }
+
+        .btn:hover {
+            background: rgba(255, 255, 255, 0.12);
+            transform: translateY(-1px);
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        #cluster-panel {
+            background: rgba(0, 0, 0, 0.22);
+            border-radius: 14px;
+            padding: 18px;
+            border: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        .panel-title {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            color: #475569;
+            letter-spacing: 1.5px;
+            font-weight: 700;
+            margin-bottom: 12px;
+        }
+
+        .cluster-item {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 10px;
+            padding: 12px 14px;
+            margin-bottom: 8px;
+            border-left: 3px solid;
+            transition: all 0.3s ease;
+        }
+
+        .cluster-item:last-child { margin-bottom: 0; }
+
+        .cluster-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.82rem;
+            font-weight: 500;
+            margin-bottom: 6px;
+        }
+
+        .cluster-nodes {
+            font-family: 'SF Mono', 'Courier New', monospace;
+            font-size: 0.75rem;
+            color: #64748b;
+        }
+
+        .cluster-mass {
+            font-size: 0.75rem;
+            color: #94a3b8;
+            margin-top: 4px;
+            font-weight: 500;
+        }
+
+        #instructions {
+            position: absolute;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(7, 10, 16, 0.65);
+            backdrop-filter: blur(12px);
+            padding: 10px 28px;
+            border-radius: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            font-size: 0.8rem;
+            color: #64748b;
+            z-index: 10;
+            pointer-events: none;
+            font-weight: 400;
+            letter-spacing: 0.2px;
+        }
+
+        /* Node labels */
+        .node-label {
+            position: absolute;
+            font-family: 'Inter', sans-serif;
+            font-size: 11px;
+            pointer-events: none;
+            transform: translate(-50%, -100%);
+            z-index: 5;
+            text-align: center;
+            transition: opacity 0.4s ease, filter 0.4s ease;
+        }
+
+        .node-label .id {
+            font-weight: 600;
+            font-size: 12px;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.9), 0 1px 3px rgba(0,0,0,0.8);
+            letter-spacing: 0.5px;
+            color: #fff;
+        }
+
+        .node-label .val {
+            font-family: 'SF Mono', 'Courier New', monospace;
+            font-size: 10px;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 2px 7px;
+            border-radius: 6px;
+            margin-top: 3px;
+            display: inline-block;
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255,255,255,0.06);
+            color: #cbd5e1;
+        }
+
+        .node-label.submerged {
+            opacity: 0.35;
+            filter: grayscale(0.8);
+        }
+
+        .node-label.flat {
+            opacity: 0.45;
+        }
+
+        .node-label.active {
+            opacity: 1;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body>
+
+    <div id="canvas-container"></div>
+    <div id="instructions">Drag to orbit · Scroll to zoom · Right-click to pan</div>
+
+    <div id="ui-panel">
+        <h1>Terrain Network Analysis</h1>
+        <p class="subtitle" id="desc-text">
+            Realistic geospatial clustering. Raise the flood level to observe how the terrain network fragments into isolated peaks.
+        </p>
+
+        <button class="btn" id="toggleUniverseBtn">Switch to Negative Topology</button>
+
+        <div class="control-group">
+            <div class="control-label">
+                <span>Flood Level (h)</span>
+                <span class="value" id="h-display">0.00</span>
+            </div>
+            <input type="range" id="waterSlider" min="0" max="3" step="0.05" value="0">
+        </div>
+
+        <div id="cluster-panel">
+            <div class="panel-title">Active Clusters</div>
+            <div id="cluster-list"></div>
+        </div>
+    </div>
+
+    <script>
+        // ==================== DATA (exactly as in original V1) ====================
+        let currentUniverse = 'positive';
+
+        const nodes = [
+            { id: 'F3',  x: -4, z: -4, t: 2.5 },
+            { id: 'Fz',  x: 0,  z: -4, t: 1.5 },
+            { id: 'F4',  x: 4,  z: -4, t: 2.5 },
+            { id: 'C3',  x: -5, z: 0,  t: 0.0 },
+            { id: 'Cz',  x: 0,  z: 0,  t: 0.0 },
+            { id: 'C4',  x: 5,  z: 0,  t: 0.0 },
+            { id: 'P3',  x: -4, z: 4,  t: -3.0 },
+            { id: 'Pz',  x: 0,  z: 4,  t: -1.8 },
+            { id: 'P4',  x: 4,  z: 4,  t: -3.0 }
+        ];
+
+        const adjacency = {
+            'F3': ['Fz', 'C3'],
+            'Fz': ['F3', 'F4', 'Cz'],
+            'F4': ['Fz', 'C4'],
+            'C3': ['F3', 'Cz', 'P3'],
+            'Cz': ['Fz', 'C3', 'C4', 'Pz'],
+            'C4': ['F4', 'Cz', 'P4'],
+            'P3': ['C3', 'Pz'],
+            'Pz': ['Cz', 'P3', 'P4'],
+            'P4': ['C4', 'Pz']
+        };
+
+        const palette = [0xe07a5f, 0x3d405b, 0x81b29a, 0xf2cc8f];
+
+        function getMappedT(rawT) {
+            if (currentUniverse === 'positive') return rawT > 0 ? rawT : 0;
+            return rawT < 0 ? Math.abs(rawT) : 0;
+        }
+
+        function hexToWebColor(hex) {
+            return '#' + hex.toString(16).padStart(6, '0');
+        }
+
+        // ==================== SCENE SETUP ====================
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x070a10);
+        scene.fog = new THREE.FogExp2(0x070a10, 0.018);
+
+        const camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.1, 300);
+        camera.position.set(2, 16, 18);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.1;
+        renderer.outputEncoding = THREE.sRGBEncoding;
+        container.appendChild(renderer.domElement);
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.maxPolarAngle = Math.PI / 2 - 0.04;
+        controls.minDistance = 5;
+        controls.maxDistance = 50;
+        controls.target.set(0, 1, 0);
+
+        // ==================== LIGHTING ====================
+        const ambientLight = new THREE.HemisphereLight(0x87ceeb, 0x3d5a3d, 0.5);
+        scene.add(ambientLight);
+
+        const sunLight = new THREE.DirectionalLight(0xfff5e6, 1.2);
+        sunLight.position.set(12, 20, -8);
+        sunLight.castShadow = true;
+        sunLight.shadow.mapSize.width = 2048;
+        sunLight.shadow.mapSize.height = 2048;
+        sunLight.shadow.camera.near = 0.5;
+        sunLight.shadow.camera.far = 60;
+        sunLight.shadow.camera.left = -25;
+        sunLight.shadow.camera.right = 25;
+        sunLight.shadow.camera.top = 25;
+        sunLight.shadow.camera.bottom = -25;
+        sunLight.shadow.bias = -0.0005;
+        scene.add(sunLight);
+
+        const fillLight = new THREE.DirectionalLight(0x87ceeb, 0.3);
+        fillLight.position.set(-8, 10, 8);
+        scene.add(fillLight);
+
+        // ==================== TERRAIN ====================
+        const planeSize = 40;
+        const resolution = 180;
+        const terrainGeo = new THREE.PlaneGeometry(planeSize, planeSize, resolution, resolution);
+        terrainGeo.rotateX(-Math.PI / 2);
+
+        const terrainMat = new THREE.MeshStandardMaterial({
+            vertexColors: true,
+            roughness: 0.85,
+            metalness: 0.05,
+            flatShading: false
+        });
+        const terrain = new THREE.Mesh(terrainGeo, terrainMat);
+        terrain.receiveShadow = true;
+        terrain.castShadow = true;
+        scene.add(terrain);
+
+        function terrainNoise(x, z) {
+            return Math.sin(x * 0.8) * Math.cos(z * 0.8) * 0.08 +
+                   Math.sin(x * 2.1 + z * 1.3) * 0.04 +
+                   Math.cos(x * 0.4 - z * 1.7) * 0.06;
+        }
+
+        const COLOR_DEEP_WATER = new THREE.Color(0x1a3a4a);
+        const COLOR_SHALLOW_WATER = new THREE.Color(0x2a5a6a);
+        const COLOR_SAND = new THREE.Color(0xc2b280);
+        const COLOR_GRASS_LOW = new THREE.Color(0x5a8a4e);
+        const COLOR_GRASS_HIGH = new THREE.Color(0x3d6b3d);
+        const COLOR_ROCK = new THREE.Color(0x8b7d6b);
+        const COLOR_SNOW = new THREE.Color(0xe8e8e8);
+
+        function getTerrainColor(height, waterLevel) {
+            const color = new THREE.Color();
+
+            if (height < waterLevel - 0.3) {
+                color.copy(COLOR_DEEP_WATER);
+            } else if (height < waterLevel) {
+                const t = (height - (waterLevel - 0.3)) / 0.3;
+                color.lerpColors(COLOR_DEEP_WATER, COLOR_SHALLOW_WATER, t);
+            } else if (height < waterLevel + 0.15) {
+                const t = (height - waterLevel) / 0.15;
+                color.lerpColors(COLOR_SAND, COLOR_GRASS_LOW, t);
+            } else if (height < 1.0) {
+                const t = (height - (waterLevel + 0.15)) / (1.0 - waterLevel - 0.15);
+                color.lerpColors(COLOR_GRASS_LOW, COLOR_GRASS_HIGH, Math.min(t, 1));
+            } else if (height < 2.2) {
+                const t = (height - 1.0) / 1.2;
+                color.lerpColors(COLOR_GRASS_HIGH, COLOR_ROCK, t);
+            } else {
+                const t = Math.min((height - 2.2) / 1.0, 1);
+                color.lerpColors(COLOR_ROCK, COLOR_SNOW, t);
+            }
+            return color;
+        }
+
+        function rebuildTerrain() {
+            const positions = terrainGeo.attributes.position.array;
+            const colors = [];
+            const color = new THREE.Color();
+
+            for (let i = 0; i < positions.length; i += 3) {
+                const vx = positions[i];
+                const vz = positions[i + 2];
+                let elevation = terrainNoise(vx, vz);
+
+                nodes.forEach(n => {
+                    const mappedT = getMappedT(n.t);
+                    const distSq = (vx - n.x) ** 2 + (vz - n.z) ** 2;
+                    elevation += mappedT * Math.exp(-distSq / 5.5);
+                });
+
+                positions[i + 1] = Math.max(elevation, -1.5);
+                color.copy(getTerrainColor(elevation, 0));
+                colors.push(color.r, color.g, color.b);
+            }
+
+            terrainGeo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+            terrainGeo.attributes.position.needsUpdate = true;
+            terrainGeo.computeVertexNormals();
+        }
+
+        // ==================== GROUND NET ====================
+        const groundNetGroup = new THREE.Group();
+        const drawnLines = new Set();
+
+        nodes.forEach(n1 => {
+            const ringGeo = new THREE.RingGeometry(0.15, 0.22, 24);
+            ringGeo.rotateX(-Math.PI / 2);
+            const ringMat = new THREE.MeshBasicMaterial({ 
+                color: 0xffffff, 
+                transparent: true, 
+                opacity: 0.08, 
+                side: THREE.DoubleSide 
+            });
+            const ring = new THREE.Mesh(ringGeo, ringMat);
+            ring.position.set(n1.x, 0.03, n1.z);
+            groundNetGroup.add(ring);
+
+            adjacency[n1.id].forEach(n2Id => {
+                const pairId = [n1.id, n2Id].sort().join('-');
+                if (!drawnLines.has(pairId)) {
+                    const n2 = nodes.find(n => n.id === n2Id);
+                    const points = [
+                        new THREE.Vector3(n1.x, 0.02, n1.z),
+                        new THREE.Vector3(n2.x, 0.02, n2.z)
+                    ];
+                    const lineGeo = new THREE.BufferGeometry().setFromPoints(points);
+                    const lineMat = new THREE.LineBasicMaterial({ 
+                        color: 0xffffff, 
+                        transparent: true, 
+                        opacity: 0.06 
+                    });
+                    groundNetGroup.add(new THREE.Line(lineGeo, lineMat));
+                    drawnLines.add(pairId);
+                }
+            });
+        });
+        scene.add(groundNetGroup);
+
+        // ==================== DYNAMIC BRIDGES ====================
+        const bridgeGroup = new THREE.Group();
+        scene.add(bridgeGroup);
+
+        function drawBridges(clusters, nodeColorMap) {
+            while (bridgeGroup.children.length > 0) {
+                bridgeGroup.remove(bridgeGroup.children[0]);
+            }
+
+            clusters.forEach(cluster => {
+                if (cluster.length < 2) return;
+                const color = nodeColorMap[cluster[0]];
+
+                for (let i = 0; i < cluster.length; i++) {
+                    const n1Id = cluster[i];
+                    adjacency[n1Id].forEach(n2Id => {
+                        if (cluster.includes(n2Id) && n1Id < n2Id) {
+                            const n1 = nodes.find(n => n.id === n1Id);
+                            const n2 = nodes.find(n => n.id === n2Id);
+                            const t1 = getMappedT(n1.t);
+                            const t2 = getMappedT(n2.t);
+
+                            const midY = Math.max(t1, t2) * 0.6;
+                            const curve = new THREE.CatmullRomCurve3([
+                                new THREE.Vector3(n1.x, t1, n1.z),
+                                new THREE.Vector3((n1.x + n2.x) * 0.5, midY, (n1.z + n2.z) * 0.5),
+                                new THREE.Vector3(n2.x, t2, n2.z)
+                            ]);
+
+                            const tubeGeo = new THREE.TubeGeometry(curve, 20, 0.04, 8, false);
+                            const tubeMat = new THREE.MeshStandardMaterial({
+                                color: color,
+                                emissive: color,
+                                emissiveIntensity: 0.3,
+                                roughness: 0.4,
+                                metalness: 0.6
+                            });
+                            const tube = new THREE.Mesh(tubeGeo, tubeMat);
+                            tube.castShadow = true;
+                            bridgeGroup.add(tube);
+                        }
+                    });
+                }
+            });
+        }
+
+        // ==================== NODE MARKERS ====================
+        const markers = {};
+        const markerGroup = new THREE.Group();
+        scene.add(markerGroup);
+
+        nodes.forEach(n => {
+            const group = new THREE.Group();
+
+            const poleGeo = new THREE.CylinderGeometry(0.03, 0.03, 1, 8);
+            const poleMat = new THREE.MeshStandardMaterial({
+                color: 0x888888,
+                roughness: 0.3,
+                metalness: 0.9
+            });
+            const pole = new THREE.Mesh(poleGeo, poleMat);
+            pole.position.y = 0.5;
+            pole.castShadow = true;
+            group.add(pole);
+
+            const beaconGeo = new THREE.SphereGeometry(0.15, 16, 16);
+            const beaconMat = new THREE.MeshStandardMaterial({
+                color: 0xffffff,
+                emissive: 0xffffff,
+                emissiveIntensity: 1.5,
+                roughness: 0.2,
+                metalness: 0.1
+            });
+            const beacon = new THREE.Mesh(beaconGeo, beaconMat);
+            beacon.position.y = 1.0;
+            group.add(beacon);
+
+            const light = new THREE.PointLight(0xffffff, 0.6, 6);
+            light.position.y = 1.0;
+            light.castShadow = false;
+            group.add(light);
+
+            const baseGeo = new THREE.CylinderGeometry(0.2, 0.25, 0.05, 16);
+            const baseMat = new THREE.MeshStandardMaterial({
+                color: 0x555555,
+                roughness: 0.5,
+                metalness: 0.8
+            });
+            const base = new THREE.Mesh(baseGeo, baseMat);
+            base.position.y = 0.025;
+            base.receiveShadow = true;
+            group.add(base);
+
+            group.position.set(n.x, 0, n.z);
+            markerGroup.add(group);
+
+            markers[n.id] = { group, pole, beacon, light, beaconMat, poleMat };
+        });
+
+        function updateMarkers() {
+            nodes.forEach(n => {
+                const mappedT = getMappedT(n.t);
+                const m = markers[n.id];
+
+                if (mappedT > 0) {
+                    m.group.visible = true;
+                    m.pole.scale.y = mappedT;
+                    m.pole.position.y = mappedT / 2;
+                    m.beacon.position.y = mappedT;
+                    m.light.position.y = mappedT;
+                } else {
+                    m.group.visible = false;
+                }
+            });
+        }
+
+        // ==================== REALISTIC WATER ====================
+        const waterGeo = new THREE.PlaneGeometry(planeSize, planeSize, 64, 64);
+        waterGeo.rotateX(-Math.PI / 2);
+
+        const waterMat = new THREE.MeshPhysicalMaterial({
+            color: 0x1a4a5a,
+            metalness: 0.1,
+            roughness: 0.05,
+            transmission: 0.85,
+            ior: 1.33,
+            thickness: 3.0,
+            transparent: true,
+            opacity: 0.9,
+            side: THREE.DoubleSide,
+            depthWrite: false
+        });
+
+        const water = new THREE.Mesh(waterGeo, waterMat);
+        water.position.y = 0;
+        scene.add(water);
+
+        const waterPosOriginal = waterGeo.attributes.position.array.slice();
+
+        function animateWater(time) {
+            const positions = waterGeo.attributes.position.array;
+            for (let i = 0; i < positions.length; i += 3) {
+                const x = waterPosOriginal[i];
+                const z = waterPosOriginal[i + 2];
+                positions[i + 1] = Math.sin(x * 0.5 + time * 0.8) * 0.04 +
+                                   Math.cos(z * 0.4 + time * 0.6) * 0.03 +
+                                   Math.sin((x + z) * 0.3 + time * 0.4) * 0.02;
+            }
+            waterGeo.attributes.position.needsUpdate = true;
+            waterGeo.computeVertexNormals();
+        }
+
+        // ==================== HTML LABELS ====================
+        const labels = [];
+        nodes.forEach(n => {
+            const div = document.createElement('div');
+            div.className = 'node-label';
+            document.body.appendChild(div);
+            labels.push({ element: div, pos: new THREE.Vector3(n.x, 0, n.z), data: n });
+        });
+
+        // ==================== CLUSTERING ====================
+        function getClusters(threshold) {
+            const activeNodes = nodes.filter(n => getMappedT(n.t) >= threshold).map(n => n.id);
+            const visited = new Set();
+            const clusters = [];
+
+            activeNodes.forEach(nodeId => {
+                if (!visited.has(nodeId)) {
+                    const cluster = [];
+                    const queue = [nodeId];
+                    visited.add(nodeId);
+
+                    while (queue.length > 0) {
+                        const curr = queue.shift();
+                        cluster.push(curr);
+                        adjacency[curr].forEach(neighbor => {
+                            if (activeNodes.includes(neighbor) && !visited.has(neighbor)) {
+                                visited.add(neighbor);
+                                queue.push(neighbor);
+                            }
+                        });
+                    }
+                    clusters.push(cluster.sort());
+                }
+            });
+            return clusters;
+        }
+
+        // ==================== UI & INTERACTION ====================
+        const slider = document.getElementById('waterSlider');
+        const hDisplay = document.getElementById('h-display');
+        const toggleBtn = document.getElementById('toggleUniverseBtn');
+        const descText = document.getElementById('desc-text');
+        const clusterList = document.getElementById('cluster-list');
+
+        toggleBtn.addEventListener('click', () => {
+            currentUniverse = currentUniverse === 'positive' ? 'negative' : 'positive';
+
+            if (currentUniverse === 'positive') {
+                toggleBtn.innerText = 'Switch to Negative Topology';
+                descText.innerHTML = 'Realistic geospatial clustering. Raise the flood level to observe how the frontal terrain network fragments into isolated peaks.';
+            } else {
+                toggleBtn.innerText = 'Switch to Positive Topology';
+                descText.innerHTML = 'Negative topology view. The parietal peaks dominate. Raise the flood level past <strong>h = 1.8</strong> to break the Pz bridge.';
+            }
+
+            slider.value = 0;
+            rebuildTerrain();
+            updateMarkers();
+            updateSimulation(0);
+        });
+
+        function updateSimulation(h) {
+            water.position.y = h;
+            hDisplay.innerText = h.toFixed(2);
+
+            const activeClusters = getClusters(h);
+            clusterList.innerHTML = '';
+
+            if (activeClusters.length === 0) {
+                clusterList.innerHTML = '<div style="color:#475569; font-style:italic; font-size:0.82rem;">No active peaks above water level.</div>';
+            }
+
+            const nodeColorMap = {};
+
+            activeClusters.forEach((cluster, idx) => {
+                const extent = cluster.length;
+                const massMultiplier = Math.sqrt(extent).toFixed(2);
+                const hexColor = palette[idx % palette.length];
+                const webColor = hexToWebColor(hexColor);
+
+                cluster.forEach(nodeId => { nodeColorMap[nodeId] = hexColor; });
+
+                const el = document.createElement('div');
+                el.className = 'cluster-item';
+                el.style.borderLeftColor = webColor;
+
+                el.innerHTML = `
+                    <div class="cluster-header">
+                        <span style="color: ${webColor};">Cluster ${idx + 1}</span>
+                        <span style="color: #94a3b8; font-size: 0.75rem;">${extent} node${extent > 1 ? 's' : ''}</span>
+                    </div>
+                    <div class="cluster-nodes">{ ${cluster.join(', ')} }</div>
+                    <div class="cluster-mass">Mass multiplier: <span style="color:${webColor}; font-weight:600;">×${massMultiplier}</span></div>
+                `;
+                clusterList.appendChild(el);
+            });
+
+            drawBridges(activeClusters, nodeColorMap);
+
+            labels.forEach(labelObj => {
+                const { id, t } = labelObj.data;
+                const mappedT = getMappedT(t);
+                labelObj.pos.y = Math.max(mappedT, 0);
+
+                if (mappedT > 0) {
+                    const m = markers[id];
+
+                    if (h > mappedT) {
+                        labelObj.element.innerHTML = `<div class="id">${id}</div><div class="val">${mappedT.toFixed(1)}m</div>`;
+                        labelObj.element.className = 'node-label submerged';
+
+                        m.beaconMat.emissive.setHex(0x333333);
+                        m.beaconMat.color.setHex(0x555555);
+                        m.beaconMat.emissiveIntensity = 0.2;
+                        m.light.intensity = 0;
+                        m.poleMat.color.setHex(0x444444);
+                    } else {
+                        const assignedColor = nodeColorMap[id] || 0xffffff;
+                        const webColor = hexToWebColor(assignedColor);
+                        labelObj.element.innerHTML = `<div class="id" style="color:${webColor}">${id}</div><div class="val">${mappedT.toFixed(1)}m</div>`;
+                        labelObj.element.className = 'node-label active';
+
+                        m.beaconMat.emissive.setHex(assignedColor);
+                        m.beaconMat.color.setHex(assignedColor);
+                        m.beaconMat.emissiveIntensity = 1.5;
+                        m.light.color.setHex(assignedColor);
+                        m.light.intensity = 0.6;
+                        m.poleMat.color.setHex(0xaaaaaa);
+                    }
+                } else {
+                    labelObj.element.innerHTML = `<div class="id">${id}</div><div class="val">0.0m</div>`;
+                    labelObj.element.className = 'node-label flat';
+                }
+            });
+        }
+
+        slider.addEventListener('input', (e) => {
+            updateSimulation(parseFloat(e.target.value));
+        });
+
+        // ==================== RENDER LOOP ====================
+        const clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const time = clock.getElapsedTime();
+
+            animateWater(time);
+
+            nodes.forEach(n => {
+                const mappedT = getMappedT(n.t);
+                const m = markers[n.id];
+                if (mappedT > 0 && m.group.visible) {
+                    const pulse = 1.0 + Math.sin(time * 2 + n.x) * 0.15;
+                    m.beacon.scale.setScalar(pulse);
+                }
+            });
+
+            const tempV = new THREE.Vector3();
+            labels.forEach(labelObj => {
+                tempV.copy(labelObj.pos);
+                tempV.y += 0.7;
+                tempV.project(camera);
+
+                const x = (tempV.x * 0.5 + 0.5) * window.innerWidth;
+                const y = (tempV.y * -0.5 + 0.5) * window.innerHeight;
+
+                if (tempV.z < 1) {
+                    labelObj.element.style.left = `${x}px`;
+                    labelObj.element.style.top = `${y}px`;
+                    labelObj.element.style.display = 'block';
+                } else {
+                    labelObj.element.style.display = 'none';
+                }
+            });
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // ==================== INIT ====================
+        rebuildTerrain();
+        updateMarkers();
+        updateSimulation(0);
+        animate();
+    </script>
+</body>
+</html>
