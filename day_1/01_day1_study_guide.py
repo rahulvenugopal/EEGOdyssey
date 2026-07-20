@@ -33,7 +33,7 @@ regions = meta["regions"]
 #%% 1. Integer indexing
 v = data[0, 0, 0, 0, 0]
 
-v2 = data[1, 3, 14, 9, 2]
+v2 = data[1, 2, 14, 9, 2]
 
 # Negative indices count from the end of each axis
 data[-1, -1, -1, -1, -1]
@@ -41,12 +41,12 @@ data[-1, -1, -1, -1, -1]
 #%% 2. Slicing | Start and Stop
 
 # ':' means ALL elements along that axis
-ts = data[1, :, 0, 9, 2]  # (3,) Patient, all time, sub0, Cz, alpha
+ts = data[1, :, :, 9, 2]  # (3,) Patient, all time, sub0, Cz, alpha
 
 first_half = data[1, 0, 0, :C//2, 2]   # first half channels
-secnd_half = data[1, 0:, 0, C//2:, 2]   # last  half channels
+secnd_half = data[1, 0, 0, C//2:, 2]   # last  half channels
 
-epoch = data[0, 0, :, :, 2]    # (30, 30, 32) Controls, Baseline, all S, all C, alpha
+epoch = data[0, 0:2, :, :, 2]    # (30, 30, 32) Controls, Baseline, all S, all C, alpha
 
 #%% 3. Multi axis slicing
 
@@ -65,7 +65,7 @@ fro_alpha = data[:, :, :,  2:7,  2].mean()
 
 #%% 4. Step wise slicing
 # Take every alternate subject
-ds4 = data[:, :, ::2, :, :]
+ds4 = data[:, :, 0::2, :, :]
 
 ds4_odd = data[:, :, 1::2, :, :]
 
@@ -137,7 +137,7 @@ print(  "     Basic slicing    → VIEW   (shares memory  ⟹  mutations propaga
 print(  "     Fancy indexing   → COPY  (independent  ⟹  safe to mutate)")
 print(  "     Boolean indexing → COPY")
 
-view        = data[0, :50, :, :, :]
+view        = data[0, :2, :, :, :]
 fancy_copy  = data[[0, 1], :, :, :, :]
 bool_copy   = data[data > 0.5]
 transpose_v = data.transpose(4, 0, 1, 2, 3)
