@@ -22,13 +22,14 @@
             z-index: 1;
         }
 
-        /* UI Panel — TOP RIGHT */
         #ui-panel {
             position: absolute;
             top: 22px;
             right: 22px;
             left: auto;
-            width: 360px;
+            width: 380px;
+            max-height: calc(100vh - 44px);
+            overflow-y: auto;
             background: rgba(7, 10, 16, 0.72);
             backdrop-filter: blur(32px) saturate(1.2);
             -webkit-backdrop-filter: blur(32px) saturate(1.2);
@@ -39,6 +40,9 @@
             box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5);
             transition: opacity 0.3s;
         }
+        #ui-panel::-webkit-scrollbar { width: 4px; }
+        #ui-panel::-webkit-scrollbar-track { background: transparent; }
+        #ui-panel::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
 
         h1 {
             font-size: 1.25rem;
@@ -56,9 +60,7 @@
             line-height: 1.5;
         }
 
-        .control-group {
-            margin-bottom: 18px;
-        }
+        .control-group { margin-bottom: 18px; }
 
         .control-label {
             display: flex;
@@ -128,9 +130,43 @@
             border-color: rgba(255, 255, 255, 0.1);
         }
 
-        .btn:active {
-            transform: translateY(0);
+        .btn:active { transform: translateY(0); }
+
+        #formula-panel {
+            background: rgba(0, 0, 0, 0.28);
+            border-radius: 14px;
+            padding: 18px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            margin-bottom: 18px;
         }
+        .formula-title {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            color: #5EEAD4;
+            letter-spacing: 2px;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+        .formula-main {
+            font-family: 'SF Mono', 'Courier New', monospace;
+            font-size: 0.95rem;
+            color: #fff;
+            text-align: center;
+            margin-bottom: 10px;
+            padding: 10px;
+            background: rgba(99, 102, 241, 0.10);
+            border-radius: 10px;
+            border: 1px solid rgba(165, 180, 252, 0.15);
+        }
+        .formula-params {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            font-size: 0.78rem;
+            color: #94a3b8;
+            font-family: 'SF Mono', 'Courier New', monospace;
+        }
+        .formula-params span { color: #A5B4FC; font-weight: 600; }
 
         #cluster-panel {
             background: rgba(0, 0, 0, 0.22);
@@ -151,12 +187,11 @@
         .cluster-item {
             background: rgba(255, 255, 255, 0.03);
             border-radius: 10px;
-            padding: 12px 14px;
-            margin-bottom: 8px;
+            padding: 14px;
+            margin-bottom: 10px;
             border-left: 3px solid;
             transition: all 0.3s ease;
         }
-
         .cluster-item:last-child { margin-bottom: 0; }
 
         .cluster-header {
@@ -165,20 +200,61 @@
             align-items: center;
             font-size: 0.82rem;
             font-weight: 500;
-            margin-bottom: 6px;
+            margin-bottom: 8px;
         }
 
         .cluster-nodes {
             font-family: 'SF Mono', 'Courier New', monospace;
             font-size: 0.75rem;
             color: #64748b;
+            margin-bottom: 8px;
         }
+
+        .cluster-math {
+            font-size: 0.78rem;
+            color: #94a3b8;
+            line-height: 1.6;
+            font-family: 'SF Mono', 'Courier New', monospace;
+        }
+        .cluster-math .math-term { color: #A5B4FC; font-weight: 600; }
+        .cluster-math .math-result { color: #5EEAD4; font-weight: 700; }
 
         .cluster-mass {
             font-size: 0.75rem;
             color: #94a3b8;
-            margin-top: 4px;
+            margin-top: 6px;
             font-weight: 500;
+            padding-top: 6px;
+            border-top: 1px solid rgba(255,255,255,0.04);
+        }
+
+        #total-score {
+            margin-top: 14px;
+            padding: 14px;
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.20), rgba(20, 184, 166, 0.15));
+            border-radius: 12px;
+            border: 1px solid rgba(165, 180, 252, 0.30);
+            text-align: center;
+        }
+        #total-score .score-label {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            color: #5EEAD4;
+            letter-spacing: 2px;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+        #total-score .score-value {
+            font-family: 'SF Mono', 'Courier New', monospace;
+            font-size: 1.3rem;
+            color: #fff;
+            font-weight: 600;
+            text-shadow: 0 0 16px rgba(45, 212, 191, 0.5);
+        }
+        #total-score .score-note {
+            font-size: 0.72rem;
+            color: #64748b;
+            margin-top: 4px;
         }
 
         #instructions {
@@ -199,7 +275,6 @@
             letter-spacing: 0.2px;
         }
 
-        /* Node labels */
         .node-label {
             position: absolute;
             font-family: 'Inter', sans-serif;
@@ -210,7 +285,6 @@
             text-align: center;
             transition: opacity 0.4s ease, filter 0.4s ease;
         }
-
         .node-label .id {
             font-weight: 600;
             font-size: 12px;
@@ -218,7 +292,6 @@
             letter-spacing: 0.5px;
             color: #fff;
         }
-
         .node-label .val {
             font-family: 'SF Mono', 'Courier New', monospace;
             font-size: 10px;
@@ -231,19 +304,12 @@
             border: 1px solid rgba(255,255,255,0.06);
             color: #cbd5e1;
         }
-
         .node-label.submerged {
             opacity: 0.35;
             filter: grayscale(0.8);
         }
-
-        .node-label.flat {
-            opacity: 0.45;
-        }
-
-        .node-label.active {
-            opacity: 1;
-        }
+        .node-label.flat { opacity: 0.45; }
+        .node-label.active { opacity: 1; }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
@@ -251,12 +317,12 @@
 <body>
 
     <div id="canvas-container"></div>
-    <div id="instructions">Drag to orbit · Scroll to zoom · Right-click to pan</div>
+    <div id="instructions">Drag to orbit &middot; Scroll to zoom &middot; Right-click to pan</div>
 
     <div id="ui-panel">
         <h1>Terrain Network Analysis</h1>
         <p class="subtitle" id="desc-text">
-            Realistic geospatial clustering. Raise the flood level to observe how the terrain network fragments into isolated peaks.
+            Realistic geospatial clustering. Raise the flood level past <strong>h = 1.5</strong> to break the Fz bridge and watch the frontal network split into two isolated peaks.
         </p>
 
         <button class="btn" id="toggleUniverseBtn">Switch to Negative Topology</button>
@@ -269,14 +335,30 @@
             <input type="range" id="waterSlider" min="0" max="3" step="0.05" value="0">
         </div>
 
+        <div id="formula-panel">
+            <div class="formula-title">&#x2726; TFCE Formula</div>
+            <div class="formula-main">
+                Mass = e<sup style="font-size:0.6em;">E</sup> &middot; h<sup style="font-size:0.6em;">H</sup> &middot; &Delta;h
+            </div>
+            <div class="formula-params">
+                <span>E = 0.5</span>
+                <span>H = 2.0</span>
+                <span>&rArr; &radic;e &middot; h&sup2; &middot; &Delta;h</span>
+            </div>
+        </div>
+
         <div id="cluster-panel">
             <div class="panel-title">Active Clusters</div>
             <div id="cluster-list"></div>
+            <div id="total-score" style="display:none;">
+                <div class="score-label">Cumulative TFCE Score</div>
+                <div class="score-value" id="score-value">0.00</div>
+                <div class="score-note">Sum of slice masses from 0 to current h</div>
+            </div>
         </div>
     </div>
 
     <script>
-        // ==================== DATA (exactly as in original V1) ====================
         let currentUniverse = 'positive';
 
         const nodes = [
@@ -304,6 +386,8 @@
         };
 
         const palette = [0xe07a5f, 0x3d405b, 0x81b29a, 0xf2cc8f];
+        const E = 0.5;
+        const H = 2.0;
 
         function getMappedT(rawT) {
             if (currentUniverse === 'positive') return rawT > 0 ? rawT : 0;
@@ -314,7 +398,6 @@
             return '#' + hex.toString(16).padStart(6, '0');
         }
 
-        // ==================== SCENE SETUP ====================
         const container = document.getElementById('canvas-container');
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x070a10);
@@ -341,7 +424,6 @@
         controls.maxDistance = 50;
         controls.target.set(0, 1, 0);
 
-        // ==================== LIGHTING ====================
         const ambientLight = new THREE.HemisphereLight(0x87ceeb, 0x3d5a3d, 0.5);
         scene.add(ambientLight);
 
@@ -363,7 +445,6 @@
         fillLight.position.set(-8, 10, 8);
         scene.add(fillLight);
 
-        // ==================== TERRAIN ====================
         const planeSize = 40;
         const resolution = 180;
         const terrainGeo = new THREE.PlaneGeometry(planeSize, planeSize, resolution, resolution);
@@ -379,6 +460,9 @@
         terrain.receiveShadow = true;
         terrain.castShadow = true;
         scene.add(terrain);
+
+        // Narrower spread so peaks are visually distinct when bridge nodes submerge
+        const GAUSSIAN_SPREAD = 3.5;
 
         function terrainNoise(x, z) {
             return Math.sin(x * 0.8) * Math.cos(z * 0.8) * 0.08 +
@@ -396,7 +480,6 @@
 
         function getTerrainColor(height, waterLevel) {
             const color = new THREE.Color();
-
             if (height < waterLevel - 0.3) {
                 color.copy(COLOR_DEEP_WATER);
             } else if (height < waterLevel) {
@@ -431,7 +514,7 @@
                 nodes.forEach(n => {
                     const mappedT = getMappedT(n.t);
                     const distSq = (vx - n.x) ** 2 + (vz - n.z) ** 2;
-                    elevation += mappedT * Math.exp(-distSq / 5.5);
+                    elevation += mappedT * Math.exp(-distSq / GAUSSIAN_SPREAD);
                 });
 
                 positions[i + 1] = Math.max(elevation, -1.5);
@@ -444,7 +527,6 @@
             terrainGeo.computeVertexNormals();
         }
 
-        // ==================== GROUND NET ====================
         const groundNetGroup = new THREE.Group();
         const drawnLines = new Set();
 
@@ -482,7 +564,6 @@
         });
         scene.add(groundNetGroup);
 
-        // ==================== DYNAMIC BRIDGES ====================
         const bridgeGroup = new THREE.Group();
         scene.add(bridgeGroup);
 
@@ -528,7 +609,6 @@
             });
         }
 
-        // ==================== NODE MARKERS ====================
         const markers = {};
         const markerGroup = new THREE.Group();
         scene.add(markerGroup);
@@ -598,7 +678,6 @@
             });
         }
 
-        // ==================== REALISTIC WATER ====================
         const waterGeo = new THREE.PlaneGeometry(planeSize, planeSize, 64, 64);
         waterGeo.rotateX(-Math.PI / 2);
 
@@ -634,7 +713,6 @@
             waterGeo.computeVertexNormals();
         }
 
-        // ==================== HTML LABELS ====================
         const labels = [];
         nodes.forEach(n => {
             const div = document.createElement('div');
@@ -643,7 +721,6 @@
             labels.push({ element: div, pos: new THREE.Vector3(n.x, 0, n.z), data: n });
         });
 
-        // ==================== CLUSTERING ====================
         function getClusters(threshold) {
             const activeNodes = nodes.filter(n => getMappedT(n.t) >= threshold).map(n => n.id);
             const visited = new Set();
@@ -671,19 +748,32 @@
             return clusters;
         }
 
-        // ==================== UI & INTERACTION ====================
+        function getSlices() {
+            const mapped = nodes.map(n => ({ id: n.id, t: getMappedT(n.t) })).filter(n => n.t > 0);
+            const uniqueHeights = [...new Set(mapped.map(n => n.t))].sort((a, b) => a - b);
+            const slices = [];
+            let prevH = 0;
+            for (const h of uniqueHeights) {
+                slices.push({ h: h, dh: h - prevH });
+                prevH = h;
+            }
+            return slices;
+        }
+
         const slider = document.getElementById('waterSlider');
         const hDisplay = document.getElementById('h-display');
         const toggleBtn = document.getElementById('toggleUniverseBtn');
         const descText = document.getElementById('desc-text');
         const clusterList = document.getElementById('cluster-list');
+        const totalScoreEl = document.getElementById('total-score');
+        const scoreValueEl = document.getElementById('score-value');
 
         toggleBtn.addEventListener('click', () => {
             currentUniverse = currentUniverse === 'positive' ? 'negative' : 'positive';
 
             if (currentUniverse === 'positive') {
                 toggleBtn.innerText = 'Switch to Negative Topology';
-                descText.innerHTML = 'Realistic geospatial clustering. Raise the flood level to observe how the frontal terrain network fragments into isolated peaks.';
+                descText.innerHTML = 'Realistic geospatial clustering. Raise the flood level past <strong>h = 1.5</strong> to break the Fz bridge and watch the frontal network split into two isolated peaks.';
             } else {
                 toggleBtn.innerText = 'Switch to Positive Topology';
                 descText.innerHTML = 'Negative topology view. The parietal peaks dominate. Raise the flood level past <strong>h = 1.8</strong> to break the Pz bridge.';
@@ -695,6 +785,11 @@
             updateSimulation(0);
         });
 
+        function computeSliceMass(cluster, h, dh) {
+            const e = cluster.length;
+            return Math.pow(e, E) * Math.pow(h, H) * dh;
+        }
+
         function updateSimulation(h) {
             water.position.y = h;
             hDisplay.innerText = h.toFixed(2);
@@ -704,9 +799,24 @@
 
             if (activeClusters.length === 0) {
                 clusterList.innerHTML = '<div style="color:#475569; font-style:italic; font-size:0.82rem;">No active peaks above water level.</div>';
+                totalScoreEl.style.display = 'none';
             }
 
             const nodeColorMap = {};
+            let cumulativeMass = 0;
+
+            // Compute cumulative TFCE by integrating all slices up to current h
+            const allSlices = getSlices();
+            const processedSlices = allSlices.filter(s => s.h <= h);
+
+            processedSlices.forEach(slice => {
+                const sliceClusters = getClusters(slice.h);
+                const sliceH = slice.h;
+                const sliceDh = slice.dh;
+                sliceClusters.forEach(cluster => {
+                    cumulativeMass += computeSliceMass(cluster, sliceH, sliceDh);
+                });
+            });
 
             activeClusters.forEach((cluster, idx) => {
                 const extent = cluster.length;
@@ -715,6 +825,10 @@
                 const webColor = hexToWebColor(hexColor);
 
                 cluster.forEach(nodeId => { nodeColorMap[nodeId] = hexColor; });
+
+                // Slice mass at current h for display (conceptual, using a small dh for illustration)
+                const displayDh = 0.1;
+                const sliceMass = computeSliceMass(cluster, h, displayDh);
 
                 const el = document.createElement('div');
                 el.className = 'cluster-item';
@@ -726,10 +840,25 @@
                         <span style="color: #94a3b8; font-size: 0.75rem;">${extent} node${extent > 1 ? 's' : ''}</span>
                     </div>
                     <div class="cluster-nodes">{ ${cluster.join(', ')} }</div>
-                    <div class="cluster-mass">Mass multiplier: <span style="color:${webColor}; font-weight:600;">×${massMultiplier}</span></div>
+                    <div class="cluster-math">
+                        <span class="math-term">&radic;${extent}</span> = <span class="math-result">${massMultiplier}</span>
+                        &nbsp;&middot;&nbsp;
+                        <span class="math-term">h&sup2;</span> = <span class="math-result">${(h*h).toFixed(2)}</span>
+                        &nbsp;&middot;&nbsp;
+                        <span class="math-term">&Delta;h</span>
+                    </div>
+                    <div class="cluster-mass">
+                        Mass multiplier: <span style="color:${webColor}; font-weight:600;">&times;${massMultiplier}</span>
+                        &nbsp;|&nbsp; Extent: <span style="color:${webColor}; font-weight:600;">${extent}</span>
+                    </div>
                 `;
                 clusterList.appendChild(el);
             });
+
+            if (activeClusters.length > 0) {
+                totalScoreEl.style.display = 'block';
+                scoreValueEl.innerText = cumulativeMass.toFixed(2);
+            }
 
             drawBridges(activeClusters, nodeColorMap);
 
@@ -774,7 +903,6 @@
             updateSimulation(parseFloat(e.target.value));
         });
 
-        // ==================== RENDER LOOP ====================
         const clock = new THREE.Clock();
 
         function animate() {
@@ -820,7 +948,6 @@
             renderer.setSize(window.innerWidth, window.innerHeight);
         });
 
-        // ==================== INIT ====================
         rebuildTerrain();
         updateMarkers();
         updateSimulation(0);
