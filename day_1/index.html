@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Day 1: NumPy Indexing, Slicing &amp; Dicing — EEG Analysis Odyssey</title>
     <meta name="description"
-        content="Day 1 of the 20-Day EEG Analysis Odyssey: A hands-on walkthrough of NumPy indexing, slicing and dicing for EEG data — integer access, range slices, multi-axis slicing, step strides, boolean masks, np.where &amp; np.take, reshape &amp; ravel, transpose, and views vs copies. Nine sections matching the teaching script." />
+        content="Day 1 of the 20-Day EEG Analysis Odyssey: A hands-on walkthrough of NumPy indexing, slicing and dicing for EEG data — integer access, range slices, multi-axis slicing, step strides, boolean masks, np.where &amp; np.take, reshape &amp; ravel, and views vs copies. Eight sections matching the teaching script." />
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap"
         rel="stylesheet">
@@ -585,7 +585,7 @@
             <span class="highlight-teal">&amp; Dicing Neural Data</span>
         </h1>
         <p class="hero-subtitle">
-            Master the nine essential NumPy operations for navigating a 5-dimensional EEG dataset &mdash;
+            Master the eight essential NumPy operations for navigating a 5-dimensional EEG dataset &mdash;
             from a single integer index to the critical memory difference between a view and a copy.
         </p>
         <div class="badges">
@@ -671,8 +671,8 @@
                 <pre><span class="c-comment"># First element on every axis &rarr; scalar</span>
 v = data[0, 0, 0, 0, 0]
 
-<span class="c-comment"># Patient(1) &middot; timepoint 3 &middot; subject 14 &middot; channel 9 &middot; alpha(2)</span>
-v2 = data[1, 3, 14, 9, 2]
+<span class="c-comment"># Patient(1) &middot; timepoint 2 &middot; subject 14 &middot; channel 9 &middot; alpha(2)</span>
+v2 = data[1, 2, 14, 9, 2]
 
 <span class="c-comment"># Negative indices count from the end</span>
 data[-1, -1, -1, -1, -1]   <span class="c-comment"># last Treatment &middot; last time &middot; last subject &middot; Oz &middot; gamma</span></pre>
@@ -708,16 +708,16 @@ data[-1, -1, -1, -1, -1]   <span class="c-comment"># last Treatment &middot; las
             <div class="code-block">
                 <span class="code-tag">Python</span>
                 <pre><span class="c-comment"># ':' means ALL elements along that axis</span>
-ts = data[1, :, 0, 9, 2]       <span class="c-comment"># shape (3,) &mdash; Patient, all time, sub0, Cz, alpha</span>
+ts = data[1, :, :, 9, 2]       <span class="c-comment"># shape (3, 30) &mdash; Patient, all time, all subjects, Cz, alpha</span>
 
 <span class="c-comment"># First half of channels</span>
 first_half = data[1, 0, 0, :C//2, 2]   <span class="c-comment"># shape (16,)</span>
 
-<span class="c-comment"># Last half of channels  ('0:' == ':')</span>
-secnd_half = data[1, 0:, 0, C//2:, 2]  <span class="c-comment"># shape (3, 16)</span>
+<span class="c-comment"># Last half of channels</span>
+secnd_half = data[1, 0, 0, C//2:, 2]  <span class="c-comment"># shape (16,)</span>
 
 <span class="c-comment"># Controls &middot; Baseline &middot; all subjects &middot; all channels &middot; alpha</span>
-epoch = data[0, 0, :, :, 2]            <span class="c-comment"># shape (30, 32)</span></pre>
+epoch = data[0, 0:2, :, :, 2]            <span class="c-comment"># shape (2, 30, 32)</span></pre>
             </div>
 
             <div class="insight-box">
@@ -749,8 +749,11 @@ epoch = data[0, 0, :, :, 2]            <span class="c-comment"># shape (30, 32)<
 
             <div class="code-block">
                 <span class="code-tag">Python</span>
-                <pre><span class="c-comment"># Patient &middot; Baseline &middot; all subjects &middot; frontal channels (idx 2&ndash;6) &middot; alpha</span>
-fron_alpha = data[1, 0, :, 2:7, 2]     <span class="c-comment"># shape (30, 5)</span>
+                <pre>fron = regions["frontal"]
+
+<span class="c-comment"># Patient &middot; Baseline &middot; all subjects &middot; frontal channels only &middot; alpha</span>
+fron_alpha_incorrect = data[1, 0, :, fron, 2]
+fron_alpha_correct = data[1, 0, :, 2:7, 2]     <span class="c-comment"># shape (30, 5)</span>
 
 <span class="c-comment"># All groups &middot; patient+treatment windows &middot; first 10 subjects &middot; all ch &middot; theta+alpha</span>
 combo = data[:, 1:3, :10, :, 1:3]      <span class="c-comment"># shape (3, 2, 10, 32, 2)</span>
@@ -789,8 +792,8 @@ fro_alpha = data[:, :, :,  2:7,  2].mean()   <span class="c-comment"># scalar</s
 
             <div class="code-block">
                 <span class="code-tag">Python</span>
-                <pre><span class="c-comment"># Every alternate (even-indexed) subject</span>
-ds4_even = data[:, :, ::2, :, :]      <span class="c-comment"># shape (3, 3, 15, 32, 6)</span>
+                <pre><span class="c-comment"># Take every alternate subject</span>
+ds4 = data[:, :, 0::2, :, :]          <span class="c-comment"># shape (3, 3, 15, 32, 6)</span>
 
 <span class="c-comment"># Every alternate (odd-indexed) subject</span>
 ds4_odd  = data[:, :, 1::2, :, :]    <span class="c-comment"># shape (3, 3, 15, 32, 6)</span>
@@ -847,7 +850,7 @@ rev = data[0, ::-1, 0, 0, :]         <span class="c-comment"># shape (3, 6)  &md
 
             <div class="code-block">
                 <span class="code-tag">Python</span>
-                <pre><span class="c-comment"># What fraction of values are likely artifacts (&gt; 1.0)?</span>
+                <pre><span class="c-comment"># What fraction of values could be artifacts (&gt; 1.0)?</span>
 art_mask = data &gt; 1.0
 art_mask.sum()                            <span class="c-comment"># total artifact cells</span>
 
@@ -857,15 +860,17 @@ subj_mean  = ctrl_alpha.mean(axis=(0,2))  <span class="c-comment"># collapse tim
 threshold  = subj_mean.mean() + subj_mean.std()
 high_alpha = np.where(subj_mean &gt; threshold)[0]  <span class="c-comment"># high-alpha subject indices</span>
 
-<span class="c-comment"># Broadband spike detection in Patient group</span>
+<span class="c-comment"># Find timepoints where Patient broadband spikes above mean + 2&sigma;</span>
 pat_bb  = data[1, :, :, :, 5].mean(axis=(1,2))   <span class="c-comment"># (3,)</span>
 thr2    = pat_bb.mean() + 2 * pat_bb.std()
 spike_t = np.where(pat_bb &gt; thr2)[0]             <span class="c-comment"># spike timepoint indices</span>
+print(f"  Broadband spikes (Patient)  : {len(spike_t)} timepoints, first few={spike_t[:5]}")
 
-<span class="c-comment"># Compound mask: high alpha AND high beta simultaneously</span>
+<span class="c-comment"># Compound condition: high alpha AND high beta simultaneously</span>
 hi_a = data[1,:,:,:,2] &gt; data[1,:,:,:,2].mean() + data[1,:,:,:,2].std()
 hi_b = data[1,:,:,:,3] &gt; data[1,:,:,:,3].mean() + data[1,:,:,:,3].std()
-overlap = (hi_a &amp; hi_b).mean()    <span class="c-comment"># fraction of co-elevated cells</span></pre>
+print(f"  High-alpha &amp; high-beta (Patient): {(hi_a &amp; hi_b).sum():,} cells  "
+      f"({100*(hi_a &amp; hi_b).mean():.2f}%)")</pre>
             </div>
 
             <div class="insight-box">
@@ -907,14 +912,15 @@ overlap = (hi_a &amp; hi_b).mean()    <span class="c-comment"># fraction of co-e
                 <pre><span class="c-comment"># np.where(cond, true_val, false_val) &mdash; zero out artifacts</span>
 clean = np.where(data &gt; 1.0, 0.0, data)   <span class="c-comment"># clean.max() &le; 1.0</span>
 
-<span class="c-comment"># np.where(cond) &mdash; return indices (like MATLAB find)</span>
+<span class="c-comment"># np.clip &mdash; related utility for clamping (not indexing but often paired)</span>
+clamped = np.clip(data, 0, 1.0)
+
+<span class="c-comment"># np.where with one arg returns indices (like find())</span>
 idxs = np.where(subj_mean &gt; threshold)    <span class="c-comment"># tuple of arrays, one per dim</span>
+print(f"  np.where(condition) &rarr; indices: {idxs[0]}")
 
-<span class="c-comment"># np.take &mdash; gather theta(1) &middot; alpha(2) &middot; beta(3) along axis 4</span>
-tba = np.take(data, indices=[1, 2, 3], axis=4)  <span class="c-comment"># shape (3, 3, 30, 32, 3)</span>
-
-<span class="c-comment"># np.clip &mdash; clamp every value to [0, 1.0]</span>
-clamped = np.clip(data, 0, 1.0)            <span class="c-comment"># all artifacts capped at 1.0</span></pre>
+<span class="c-comment"># np.take &mdash; gather along one axis with an index array</span>
+tba = np.take(data, indices=[1, 2, 3], axis=4)</pre>
             </div>
 
             <div class="two-col">
@@ -958,21 +964,23 @@ clamped = np.clip(data, 0, 1.0)            <span class="c-comment"># all artifac
 
             <div class="code-block">
                 <span class="code-tag">Python</span>
-                <pre><span class="c-comment"># Classic ML: design matrix  (rows = observations, cols = features)</span>
-<span class="c-comment"># Step 1: bring subjects adjacent to groups &rarr; (G, S, T, C, F)</span>
+                <pre><span class="c-comment"># Some analysis pipelines want the data in specific order</span>
+<span class="c-comment"># Bring subjects axis next to groups &rarr; (G, S, T, C, F)</span>
 d_swap = data.transpose(0, 2, 1, 3, 4)
 
-<span class="c-comment"># Step 2: collapse G&times;S into rows, T&times;C&times;F into columns</span>
-X = d_swap.reshape(G * S, T * C * F)   <span class="c-comment"># shape (90, 576)  &larr; sklearn-ready</span>
+<span class="c-comment"># Move features axis first: (G,T,S,C,F) &rarr; (F,G,T,S,C)</span>
+feat_first = data.transpose(4, 0, 1, 2, 3)
 
-<span class="c-comment"># Flatten to 1-D</span>
-flat = data.ravel()                     <span class="c-comment"># shape (51_840,)</span>
+<span class="c-comment"># Step 2: flatten groups &times; subjects into rows, rest into columns</span>
+X = d_swap.reshape(G * S, T * C * F)
+print(f"  Design matrix (G*S, T*C*F)  : {X.shape}  &mdash; ready for PCA / sklearn")
 
-<span class="c-comment"># Add a batch axis at front (deep-learning frameworks)</span>
-batched = data[np.newaxis]              <span class="c-comment"># shape (1, 3, 3, 30, 32, 6)</span>
+<span class="c-comment"># Flatten completely to 1-D</span>
+flat = data.ravel()
 
-<span class="c-comment"># Merge subjects &times; channels (connectivity analyses)</span>
-merged = data.reshape(G, T, S * C, F)  <span class="c-comment"># shape (3, 3, 960, 6)</span></pre>
+<span class="c-comment"># Merge subjects &amp; channels into one axis (common for connectivity analyses)</span>
+merged = data.reshape(G, T, S * C, F)
+print(f"  Merge S&times;C                    : {merged.shape}")</pre>
             </div>
 
             <div class="result-callout">
@@ -999,77 +1007,10 @@ merged = data.reshape(G, T, S * C, F)  <span class="c-comment"># shape (3, 3, 96
 
         <hr class="section-divider">
 
-        <!-- ═══ �8 Transpose ═══ -->
+        <!-- ═══ �8 Views vs Copies ═══ -->
         <div class="section-block">
             <div class="phase-header">
                 <div class="phase-number">8</div>
-                <h2>Reordering axes</h2>
-            </div>
-
-            <div class="glass-card">
-                <p>
-                    <code>transpose(*axes)</code> reorders the dimensions of an array, returning a
-                    <strong>view</strong> &mdash; no data is copied, only the strides are rearranged.
-                    The <code>.T</code> shorthand is equivalent to <code>transpose(1, 0)</code> and
-                    works on 2-D arrays.
-                </p>
-            </div>
-
-            <div class="code-block">
-                <span class="code-tag">Python</span>
-                <pre><span class="c-comment"># (G,T,S,C,F) &rarr; (F,G,T,S,C)  features-first layout</span>
-feat_first = data.transpose(4, 0, 1, 2, 3)    <span class="c-comment"># shape (6, 3, 3, 30, 32)</span>
-
-<span class="c-comment"># (G,T,S,C,F) &rarr; (G,T,S,F,C)  swap channels &harr; features</span>
-ch_feat_swap = data.transpose(0, 1, 2, 4, 3)  <span class="c-comment"># shape (3, 3, 30, 6, 32)</span>
-
-<span class="c-comment"># 2-D shorthand  &rarr;  (3,30) becomes (30,3)</span>
-mat2d = data[0, :, :, 0, 0]   <span class="c-comment"># shape (3, 30)</span>
-mat2d.T                        <span class="c-comment"># shape (30, 3)</span></pre>
-            </div>
-
-            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:20px 0;">
-                <div
-                    style="border-radius:12px;padding:16px;text-align:center;background:rgba(99,102,241,0.12);border:1px solid rgba(165,180,252,0.30);">
-                    <p
-                        style="font-family:'JetBrains Mono',monospace;font-size:0.78rem;color:#A5B4FC;margin-bottom:6px;">
-                        Original</p>
-                    <p style="font-family:'JetBrains Mono',monospace;font-size:0.82rem;color:#fff;">(G,T,S,C,F)</p>
-                    <p style="font-size:0.72rem;color:var(--text-muted);margin-top:4px;">axes [0,1,2,3,4]</p>
-                </div>
-                <div
-                    style="border-radius:12px;padding:16px;text-align:center;background:rgba(20,184,166,0.12);border:1px solid rgba(45,212,191,0.30);">
-                    <p
-                        style="font-family:'JetBrains Mono',monospace;font-size:0.78rem;color:#2DD4BF;margin-bottom:6px;">
-                        Features-first</p>
-                    <p style="font-family:'JetBrains Mono',monospace;font-size:0.82rem;color:#fff;">(F,G,T,S,C)</p>
-                    <p style="font-size:0.72rem;color:var(--text-muted);margin-top:4px;">transpose(4,0,1,2,3)</p>
-                </div>
-                <div
-                    style="border-radius:12px;padding:16px;text-align:center;background:rgba(167,139,250,0.12);border:1px solid rgba(196,181,253,0.30);">
-                    <p
-                        style="font-family:'JetBrains Mono',monospace;font-size:0.78rem;color:#C4B5FD;margin-bottom:6px;">
-                        Ch &harr; Feat</p>
-                    <p style="font-family:'JetBrains Mono',monospace;font-size:0.82rem;color:#fff;">(G,T,S,F,C)</p>
-                    <p style="font-size:0.72rem;color:var(--text-muted);margin-top:4px;">transpose(0,1,2,4,3)</p>
-                </div>
-            </div>
-
-            <div class="insight-box">
-                <p>
-                    <strong>Transpose is a view.</strong> <code>np.shares_memory(data, data.transpose(...))</code>
-                    returns <code>True</code>. Mutations through the transposed array propagate back to
-                    the original &mdash; use <code>.copy()</code> if you need independence.
-                </p>
-            </div>
-        </div>
-
-        <hr class="section-divider">
-
-        <!-- ═══ �9 Views vs Copies ═══ -->
-        <div class="section-block">
-            <div class="phase-header">
-                <div class="phase-number">9</div>
                 <h2>The critical memory gotcha</h2>
             </div>
 
@@ -1279,20 +1220,9 @@ safe *= 99                             <span class="c-comment"># data is untouch
                         <td style="padding:12px 20px;color:var(--text-muted);">N-D array</td>
                         <td style="padding:12px 20px;color:#86efac;">View (usually)</td>
                     </tr>
-                    <tr style="border-bottom:1px solid rgba(165,180,252,0.12);transition:background 0.2s;"
-                        onmouseover="this.style.background='rgba(99,102,241,0.08)'"
-                        onmouseout="this.style.background=''">
-                        <td style="padding:12px 20px;color:#fff;font-weight:600;">8 Transpose</td>
-                        <td
-                            style="padding:12px 20px;font-family:'JetBrains Mono',monospace;color:#A5B4FC;font-size:0.82rem;">
-                            <code>data.transpose(4,0,1,2,3)</code>
-                        </td>
-                        <td style="padding:12px 20px;color:var(--text-muted);">N-D array</td>
-                        <td style="padding:12px 20px;color:#86efac;">View</td>
-                    </tr>
                     <tr style="transition:background 0.2s;" onmouseover="this.style.background='rgba(99,102,241,0.08)'"
                         onmouseout="this.style.background=''">
-                        <td style="padding:12px 20px;color:#fff;font-weight:600;">9 Views vs copies</td>
+                        <td style="padding:12px 20px;color:#fff;font-weight:600;">8 Views vs copies</td>
                         <td
                             style="padding:12px 20px;font-family:'JetBrains Mono',monospace;color:#A5B4FC;font-size:0.82rem;">
                             <code>np.shares_memory(a, b)</code>
