@@ -1,11 +1,8 @@
 """
-================================================================================
-DAY 2 STUDY GUIDE  |  Python Basics: Plotting for Insights
-"Turning arrays of raw numbers into a visual story."
-================================================================================
+Python Basics: Plotting for Insights
+Turning arrays of raw numbers into a visual story
 
-Plots produced (saved to plots/)
-----------------------------------
+
   s01_single_timeseries.png       Line plot basics
   s02_multigroup_timeseries.png   Multiple lines on one axes
   s03_confidence_bands.png        fill_between for ±SEM bands
@@ -15,17 +12,14 @@ Plots produced (saved to plots/)
   s07_correlation_matrix.png      Annotated correlation matrix
   s08_publication_figure.png      Publication figure with MNE Delta Topomap
 
-Uses shared dataset from: ../day_1/data/
-Run : python 02_day2_study_guide.py
-================================================================================
 """
-
+# Load libraries
 import numpy as np
 import pickle, os
 import matplotlib
 matplotlib.use("Agg")               # non-interactive: saves files, no pop-up windows
 import matplotlib.pyplot as plt
-from matplotlib.colors import LinearSegmentedColormap, ListedColormap
+from matplotlib.colors import LinearSegmentedColormap
 import scipy.stats as stats
 import mne
 
@@ -44,23 +38,20 @@ EHINGER_COLORS = [
 cmap_becp = LinearSegmentedColormap.from_list("becp", EHINGER_COLORS, N=256)
 
 # Load data directly from day_1 shared data directory
-data_dir = os.path.join("..", "day_1", "data") if os.path.exists(os.path.join("..", "day_1", "data")) else "data"
-data = np.load(os.path.join(data_dir, "neural_data.npy"))
-with open(os.path.join(data_dir, "metadata.pkl"), "rb") as fh:
+data = np.load("neural_data.npy")
+with open("metadata.pkl", "rb") as fh:
     meta = pickle.load(fh)
 
 G, T, S, C, F = data.shape
 gnames  = meta["group_names"]
 fnames  = meta["feature_names"]
 chnames = meta["channel_names"]
-hz      = meta.get("sampling_hz", 250)
 
-t_axis  = np.arange(T) / hz        # time in seconds
 COLORS  = ["#2196F3", "#F44336", "#4CAF50"]   # blue · red · green
-DIV     = "─" * 60
+t_axis  = np.arange(T) 
 RNG     = np.random.default_rng(2026)
 
-# ── GLOBAL FIGURE CONFIGURATION DEFAULTS ─────────────────────────────────────
+# Style your plot theme
 def setup_publication_style():
     """
     Applies clean, publication-quality defaults across Matplotlib figures.
@@ -87,7 +78,7 @@ def setup_publication_style():
         "figure.titlesize"     : 14,                     # Main figure super-title font size
         "figure.titleweight"   : "bold",                 # Bold font weight for super-title
         "figure.dpi"           : 150,                    # Interactive display resolution (dots per inch)
-        "savefig.dpi"          : 150,                    # High-resolution export DPI for publication
+        "savefig.dpi"          : 300,                    # High-resolution export DPI for publication
         "savefig.bbox"         : "tight",                # Automatically strip white padding around figure
     })
 
@@ -100,15 +91,15 @@ def _mean_sem(g, fi):
     return mu, sem
 
 
-# ── SINGLE TIME-SERIES PLOTTING ───────────────────────────────────────────────
+# Single time series, weird x axis
 print("Single time-series  →  plots/s01_single_timeseries.png")
 
 fig, ax = plt.subplots(figsize=(10, 3.5))
 
 ts = data[0, :, 0, 9, 2]          # Control, subject 0, Cz, alpha
-ax.plot(t_axis, ts, color=COLORS[0], lw=1.5, label="Control · sub0 · Cz · alpha")
+ax.plot(ts, color=COLORS[0], lw=1.5, label="Control · sub0 · Cz · alpha")
 
-ax.set_xlabel("Time (s)", fontsize=11)
+ax.set_xlabel("Time ", fontsize=11)
 ax.set_ylabel("Power (μV²/Hz)", fontsize=11)
 ax.set_title("Alpha Power — Control Group, Subject 0, Channel Cz", fontsize=12)
 ax.legend()
@@ -116,8 +107,6 @@ ax.grid(True, alpha=0.3)
 fig.tight_layout()
 fig.savefig("plots/s01_single_timeseries.png", dpi=120)
 plt.close(fig)
-print("  Done.")
-
 
 # ── MULTI-GROUP TIME-SERIES OVERLAY ───────────────────────────────────────────
 print("Multi-group time-series  →  plots/s02_multigroup_timeseries.png")
@@ -125,7 +114,7 @@ print("Multi-group time-series  →  plots/s02_multigroup_timeseries.png")
 fig, ax = plt.subplots(figsize=(11, 4))
 for g in range(G):
     ts_g = data[g, :, :, :, 2].mean(axis=(1, 2))   # (T,)
-    ax.plot(t_axis, ts_g, color=COLORS[g], lw=2, label=gnames[g])
+    ax.plot(ts_g, color=COLORS[g], lw=2, label=gnames[g])
 
 ax.set_xlabel("Time (s)"); ax.set_ylabel("Mean Alpha Power")
 ax.set_title("Alpha Power Over Time — All Groups")
@@ -133,8 +122,6 @@ ax.legend(); ax.grid(True, alpha=0.3)
 fig.tight_layout()
 fig.savefig("plots/s02_multigroup_timeseries.png", dpi=120)
 plt.close(fig)
-print("  Done.")
-
 
 # ── CONFIDENCE BANDS (fill_between ±SEM) ─────────────────────────────────────
 print("Confidence bands  →  plots/s03_confidence_bands.png")
@@ -142,10 +129,9 @@ print("Confidence bands  →  plots/s03_confidence_bands.png")
 fig, ax = plt.subplots(figsize=(11, 4))
 for g in range(G):
     mu, sem = _mean_sem(g, fi=2)   # alpha feature
-    ax.plot(t_axis, mu, color=COLORS[g], lw=2, label=gnames[g])
+    ax.plot( mu, color=COLORS[g], lw=2, label=gnames[g])
     ax.fill_between(t_axis, mu - sem, mu + sem, color=COLORS[g], alpha=0.20)
 
-ax.axvline(x=T / (2*hz), ls="--", color="k", alpha=0.45, label="mid-session")
 ax.set_xlabel("Time (s)"); ax.set_ylabel("Alpha Power ± SEM")
 ax.set_title("Mean Alpha Power with Standard Error Bands")
 
@@ -155,8 +141,6 @@ ax.grid(True, alpha=0.3)
 fig.tight_layout()
 fig.savefig("plots/s03_confidence_bands.png", dpi=120, bbox_inches="tight")
 plt.close(fig)
-print("  Done.")
-
 
 # ── SUBPLOTS GRID ─────────────────────────────────────────────────────────────
 print("Subplots grid  →  plots/s04_subplots_2x3.png")
@@ -185,14 +169,12 @@ fig.suptitle("Feature Comparison: Control vs Patient", fontsize=13, fontweight="
 fig.tight_layout()
 fig.savefig("plots/s04_subplots_2x3.png", dpi=120, bbox_inches="tight")
 plt.close(fig)
-print("  Done.")
-
 
 # ── MNE SCALP TOPOGRAPHY ─────────────────────────────────────────────────────
 print("MNE Topoplot  →  plots/s05_mne_topoplot.png")
 
 # Construct MNE Info object with standard 10-20 montage
-info = mne.create_info(ch_names=chnames, sfreq=hz, ch_types="eeg")
+info = mne.create_info(ch_names=chnames, sfreq=125, ch_types="eeg")
 montage = mne.channels.make_standard_montage("standard_1020")
 info.set_montage(montage)
 
@@ -213,8 +195,6 @@ fig.suptitle("MNE Scalp Topography: Alpha Power Across Cohorts", fontsize=13, fo
 fig.tight_layout()
 fig.savefig("plots/s05_mne_topoplot.png", dpi=120, bbox_inches="tight")
 plt.close(fig)
-print("  Done.")
-
 
 # ── RAINCLOUD PLOTS ───────────────────────────────────────────────────────────
 print("Raincloud plots  →  plots/s06_raincloud_plots.png")
@@ -260,8 +240,6 @@ fig.suptitle("Raincloud Plots: Subject Distributions Across Frequency Bands",
 fig.tight_layout()
 fig.savefig("plots/s06_raincloud_plots.png", dpi=120, bbox_inches="tight")
 plt.close(fig)
-print("  Done.")
-
 
 # ── ANNOTATED CORRELATION MATRIX ─────────────────────────────────────────────
 print("Correlation matrix  →  plots/s07_correlation_matrix.png")
@@ -287,8 +265,6 @@ fig.suptitle("Feature Correlation Matrices — All Groups",
 fig.tight_layout()
 fig.savefig("plots/s07_correlation_matrix.png", dpi=120, bbox_inches="tight")
 plt.close(fig)
-print("  Done.")
-
 
 # ── JOURNAL-READY FIGURE WITH MNE DELTA TOPOMAP ───────────────────────────────
 print("Publication figure  →  plots/s08_publication_figure.png")
@@ -325,10 +301,3 @@ fig.tight_layout()
 fig.savefig("plots/s08_publication_figure.png", dpi=150, bbox_inches="tight")
 plt.close(fig)
 plt.rcParams.update(plt.rcParamsDefault)
-print("  Done.")
-
-print(f"\n{DIV}")
-print("  DAY 2 STUDY GUIDE  COMPLETE  ✓")
-print(f"  8 plots saved to  plots/")
-print(f"{DIV}")
-print("  Next → run  03_homework_10_problems.py")
