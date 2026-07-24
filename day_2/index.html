@@ -1,1 +1,1148 @@
-<html><body><h1>Welcome to Day 2</h1></body></html>
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Day 2: Plotting for Insights — EEG Analysis Odyssey</title>
+    <meta name="description"
+        content="Day 2 of the 20-Day EEG Analysis Odyssey: Python Basics for EEG Data Visualization — figure configuration defaults (rcParams), single time-series, multi-group overlays, SEM confidence bands, subplots, MNE scalp topoplots (mne.viz.plot_topomap), raincloud plots, correlation matrices, and publication-ready figures with delta topomaps." />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+    <style>
+        /* ── Design Tokens ─────────────────────────────────────────────── */
+        :root {
+            --bg-deep: #05091a;
+            --text-main: #F0F4FF;
+            --text-muted: #B8C4E0;
+            --accent-solid: #A5B4FC;
+            --accent-teal-solid: #2DD4BF;
+            --glass-bg: rgba(99, 102, 241, 0.10);
+            --glass-border: rgba(165, 180, 252, 0.35);
+            --code-bg: rgba(15, 15, 58, 0.85);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            background-color: var(--bg-deep);
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            line-height: 1.75;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        h1,
+        h2,
+        h3,
+        h4 {
+            font-family: 'Playfair Display', serif;
+            font-weight: 400;
+        }
+
+        p {
+            text-align: justify;
+        }
+
+        /* ── Animated background ───────────────────────────────────────── */
+        .ambient-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background:
+                radial-gradient(ellipse at 15% 55%, rgba(99, 102, 241, 0.55), transparent 45%),
+                radial-gradient(ellipse at 85% 15%, rgba(20, 184, 166, 0.50), transparent 45%),
+                radial-gradient(ellipse at 50% 95%, rgba(167, 139, 250, 0.30), transparent 50%);
+            filter: blur(60px);
+            z-index: -2;
+            animation: breathe 12s infinite alternate ease-in-out;
+        }
+
+        @keyframes breathe {
+            0% {
+                transform: scale(1);
+                opacity: 0.85;
+            }
+
+            100% {
+                transform: scale(1.08);
+                opacity: 1;
+            }
+        }
+
+        canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        /* ── Nav ───────────────────────────────────────────────────────── */
+        .top-nav {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 5%;
+            background: rgba(5, 9, 26, 0.80);
+            backdrop-filter: blur(18px);
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .back-link {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--accent-solid);
+            text-decoration: none;
+            font-size: 0.85rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            transition: color 0.2s, gap 0.2s;
+        }
+
+        .back-link:hover {
+            color: #fff;
+            gap: 12px;
+        }
+
+        .nav-day-label {
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: var(--accent-teal-solid);
+            text-shadow: 0 0 12px rgba(45, 212, 191, 0.7);
+        }
+
+        /* ── Hero ──────────────────────────────────────────────────────── */
+        .hero {
+            padding: 80px 5% 60px;
+            max-width: 1000px;
+            margin: 0 auto;
+            text-align: center;
+            position: relative;
+            z-index: 2;
+        }
+
+        .day-pill {
+            display: inline-block;
+            padding: 6px 20px;
+            border-radius: 999px;
+            background: rgba(99, 102, 241, 0.20);
+            border: 1px solid rgba(165, 180, 252, 0.6);
+            font-size: 0.75rem;
+            font-weight: 800;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            color: #5EEAD4;
+            margin-bottom: 20px;
+            text-shadow: 0 0 14px rgba(45, 212, 191, 0.8);
+            backdrop-filter: blur(12px);
+        }
+
+        .hero h1 {
+            font-size: clamp(2.2rem, 5vw, 3.8rem);
+            line-height: 1.1;
+            letter-spacing: -0.02em;
+            color: #fff;
+            text-shadow: 0 0 40px rgba(165, 180, 252, 0.9), 0 0 80px rgba(99, 102, 241, 0.5);
+            margin-bottom: 16px;
+        }
+
+        .hero-subtitle {
+            font-size: clamp(1rem, 2vw, 1.2rem);
+            color: #C8D5F0;
+            max-width: 750px;
+            margin: 0 auto 28px;
+            font-family: 'Inter', sans-serif;
+            text-align: center;
+        }
+
+        .highlight {
+            color: #C4B5FD;
+            text-shadow: 0 0 30px rgba(165, 180, 252, 1), 0 0 60px rgba(99, 102, 241, 0.6);
+        }
+
+        .highlight-teal {
+            color: #5EEAD4;
+            text-shadow: 0 0 25px rgba(45, 212, 191, 0.9);
+        }
+
+        .badges {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .badge {
+            padding: 6px 16px;
+            border-radius: 999px;
+            background: rgba(99, 102, 241, 0.15);
+            border: 1px solid rgba(165, 180, 252, 0.5);
+            font-size: 0.78rem;
+            font-weight: 500;
+            color: #E0E7FF;
+            backdrop-filter: blur(8px);
+        }
+
+        /* ── Article ───────────────────────────────────────────────────── */
+        article {
+            max-width: 860px;
+            margin: 0 auto;
+            padding: 0 5% 80px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .section-block {
+            margin-bottom: 56px;
+        }
+
+        .phase-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .phase-number {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            background: linear-gradient(135deg, #6366F1, #8B5CF6);
+            border: 2px solid rgba(165, 180, 252, 0.5);
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Playfair Display', serif;
+            font-size: 1.3rem;
+            color: #fff;
+        }
+
+        .phase-header h2 {
+            font-size: clamp(1.4rem, 3vw, 1.9rem);
+            color: #fff;
+            text-shadow: 0 0 20px rgba(165, 180, 252, 0.4);
+            border: none;
+            padding: 0;
+            margin: 0;
+            display: block;
+        }
+
+        /* ── Glass card ────────────────────────────────────────────────── */
+        .glass-card {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 28px 32px;
+            backdrop-filter: blur(12px);
+            margin: 20px 0;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+
+        .glass-card:hover {
+            border-color: rgba(165, 180, 252, 0.55);
+            box-shadow: 0 8px 40px rgba(99, 102, 241, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        }
+
+        .glass-card p+p {
+            margin-top: 10px;
+        }
+
+        /* ── Image Showcase Card ────────────────────────────────────────── */
+        .plot-card {
+            background: rgba(10, 15, 40, 0.75);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 16px;
+            margin: 24px 0;
+            text-align: center;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+            transition: transform 0.3s ease, border-color 0.3s ease;
+        }
+
+        .plot-card:hover {
+            transform: translateY(-2px);
+            border-color: var(--accent-solid);
+        }
+
+        .plot-card img {
+            width: 100%;
+            height: auto;
+            border-radius: 10px;
+            display: block;
+            background: #fff;
+        }
+
+        .plot-caption {
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            margin-top: 12px;
+            font-family: 'Inter', sans-serif;
+            text-align: center;
+        }
+
+        .plot-caption strong {
+            color: var(--accent-solid);
+        }
+
+        /* ── Code block ────────────────────────────────────────────────── */
+        .code-block {
+            background: var(--code-bg);
+            border: 1px solid rgba(165, 180, 252, 0.20);
+            border-radius: 12px;
+            padding: 20px 24px;
+            margin: 16px 0;
+            overflow-x: auto;
+            position: relative;
+        }
+
+        .code-block pre {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.84rem;
+            color: #E0E7FF;
+            line-height: 1.7;
+            white-space: pre;
+        }
+
+        .c-comment {
+            color: #6B7DB3;
+            font-style: italic;
+        }
+
+        .c-keyword {
+            color: #C4B5FD;
+            font-weight: 500;
+        }
+
+        .c-func {
+            color: #5EEAD4;
+        }
+
+        .c-string {
+            color: #86efac;
+        }
+
+        .c-number {
+            color: #FCA5A5;
+        }
+
+        .code-tag {
+            position: absolute;
+            top: 12px;
+            right: 16px;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.62rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: rgba(165, 180, 252, 0.5);
+        }
+
+        /* ── Takeaway box ─────────────────────────────────────────────────── */
+        .takeaway-box {
+            border-left: 3px solid var(--accent-teal-solid);
+            padding: 18px 24px;
+            margin: 24px 0;
+            background: rgba(20, 184, 166, 0.07);
+            border-radius: 0 12px 12px 0;
+        }
+
+        .takeaway-box p {
+            color: #C8D5F0;
+            text-align: left;
+        }
+
+        .takeaway-box strong {
+            color: var(--accent-teal-solid);
+        }
+
+        .takeaway-box.purple {
+            border-left-color: #A5B4FC;
+            background: rgba(99, 102, 241, 0.07);
+        }
+
+        .takeaway-box.purple strong {
+            color: #A5B4FC;
+        }
+
+        /* ── Section divider ────────────────────────────────────────────── */
+        .section-divider {
+            border: none;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--glass-border), transparent);
+            margin: 48px 0;
+        }
+
+        /* ── Two-col grid ────────────────────────────────────────────────── */
+        .two-col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin: 20px 0;
+        }
+
+        /* ── Extra section ───────────────────────────────────────────────── */
+        section.extra {
+            max-width: 860px;
+            margin: 0 auto;
+            padding: 0 5% 80px;
+            position: relative;
+            z-index: 2;
+        }
+
+        /* ── Footer ─────────────────────────────────────────────────────── */
+        footer {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            border-top: 1px solid var(--glass-border);
+            position: relative;
+            z-index: 2;
+        }
+
+        footer a {
+            color: var(--accent-solid);
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+
+        /* ── Scrollbar ───────────────────────────────────────────────────── */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #050814;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(129, 140, 248, 0.4);
+            border-radius: 3px;
+        }
+
+        /* ── Inline code ─────────────────────────────────────────────────── */
+        code {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.86em;
+            background: var(--code-bg);
+            padding: 2px 7px;
+            border-radius: 5px;
+            color: #A5B4FC;
+            border: 1px solid rgba(165, 180, 252, 0.15);
+        }
+
+        /* ── Responsive ──────────────────────────────────────────────────── */
+        @media (max-width: 640px) {
+
+            .two-col {
+                grid-template-columns: 1fr;
+            }
+
+            .glass-card {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="ambient-background"></div>
+    <canvas id="neural-canvas"></canvas>
+
+    <!-- ── Navigation ── -->
+    <nav class="top-nav">
+        <a href="../index.html" class="back-link">&#x2190; Back to Odyssey</a>
+        <span class="nav-day-label">Day 2 of 20</span>
+    </nav>
+
+    <!-- ── Hero ── -->
+    <header class="hero">
+        <div class="day-pill">&#x2726; Day 2 &middot; Matplotlib &amp; MNE Foundations</div>
+        <h1>
+            <span class="highlight">Plotting for Insights</span><br>
+            <span class="highlight-teal">Turning Arrays into Visual Stories</span>
+        </h1>
+        <p class="hero-subtitle">
+            Master essential visualization patterns for EEG signal analysis &mdash;
+            from global figure configuration and time-series overlays to MNE scalp topoplots, raincloud distributions, and publication figures with delta topomaps.
+        </p>
+        <div class="badges">
+            <span class="badge">&#x2699;&#xFE0F; Figure rcParams Defaults</span>
+            <span class="badge">&#x1F4C8; Time-Series &amp; SEM</span>
+            <span class="badge">&#x1F9E0; MNE Scalp Topomaps</span>
+            <span class="badge">&#x1F327;&#xFE0F; Raincloud Distributions</span>
+            <span class="badge">&#x1F3A8; Matplotlib &amp; MNE-Python</span>
+        </div>
+    </header>
+
+    <!-- ── Article ── -->
+    <article>
+
+        <!-- ═══ Overview ═══ -->
+        <div class="section-block">
+            <div class="glass-card">
+                <p>
+                    Data visualization bridges high-dimensional numerical arrays and physiological understanding.
+                    This guide operates directly on the shared 5D dataset loaded from <code>../day_1/data/neural_data.npy</code> (shape <code>3×3×30×32×6</code>),
+                    delivering precise takeaways for every plot configuration.
+                </p>
+            </div>
+        </div>
+
+        <hr class="section-divider">
+
+        <!-- ═══ Figure Configuration Defaults ═══ -->
+        <div class="section-block">
+            <div class="phase-header">
+                <div class="phase-number">1</div>
+                <h2>Figure Configuration Defaults (rcParams)</h2>
+            </div>
+
+            <div class="glass-card">
+                <p>
+                    Publication-grade graphics begin with consistent global defaults. Rather than manually tweaking fonts, tick widths, and margins on every figure, establish a reusable configuration helper that applies system-wide <code>rcParams</code>.
+                </p>
+            </div>
+
+            <div class="code-block">
+                <span class="code-tag">Python</span>
+                <pre><span class="c-keyword">def</span> <span class="c-func">setup_publication_style</span>():
+    <span class="c-string">"""Configures global Matplotlib defaults for publication figures."""</span>
+    plt.rcParams.update({
+        <span class="c-string">"font.family"</span>          : <span class="c-string">"sans-serif"</span>,            <span class="c-comment"># Primary font family category</span>
+        <span class="c-string">"font.sans-serif"</span>     : [<span class="c-string">"Inter"</span>, <span class="c-string">"Helvetica"</span>, <span class="c-string">"Arial"</span>],  <span class="c-comment"># Font fallback stack</span>
+        <span class="c-string">"axes.spines.top"</span>      : False,                  <span class="c-comment"># Hide top spine boundary</span>
+        <span class="c-string">"axes.spines.right"</span>    : False,                  <span class="c-comment"># Hide right spine boundary</span>
+        <span class="c-string">"axes.linewidth"</span>       : 1.2,                    <span class="c-comment"># Line thickness for left/bottom spines</span>
+        <span class="c-string">"axes.edgecolor"</span>       : <span class="c-string">"#2E3654"</span>,              <span class="c-comment"># Dark slate border color</span>
+        <span class="c-string">"axes.labelcolor"</span>      : <span class="c-string">"#1E293B"</span>,              <span class="c-comment"># Axis label text color</span>
+        <span class="c-string">"axes.titlesize"</span>       : 12,                     <span class="c-comment"># Subplot title font size</span>
+        <span class="c-string">"axes.titleweight"</span>     : <span class="c-string">"bold"</span>,                 <span class="c-comment"># Subplot title font weight</span>
+        <span class="c-string">"axes.labelsize"</span>       : 11,                     <span class="c-comment"># X/Y axis label font size</span>
+        <span class="c-string">"axes.labelweight"</span>     : <span class="c-string">"medium"</span>,               <span class="c-comment"># Axis label font weight</span>
+        <span class="c-string">"xtick.major.width"</span>    : 1.2,                    <span class="c-comment"># X-axis tick line thickness</span>
+        <span class="c-string">"ytick.major.width"</span>    : 1.2,                    <span class="c-comment"># Y-axis tick line thickness</span>
+        <span class="c-string">"xtick.labelsize"      : 9,                      <span class="c-comment"># X-axis tick label font size</span>
+        <span class="c-string">"ytick.labelsize"      : 9,                      <span class="c-comment"># Y-axis tick label font size</span>
+        <span class="c-string">"figure.titlesize"</span>     : 14,                     <span class="c-comment"># Main super-title font size</span>
+        <span class="c-string">"figure.titleweight"</span>   : <span class="c-string">"bold"</span>,                 <span class="c-comment"># Main super-title font weight</span>
+        <span class="c-string">"figure.dpi"</span>           : 150,                    <span class="c-comment"># On-screen render DPI</span>
+        <span class="c-string">"savefig.dpi"</span>          : 150,                    <span class="c-comment"># High-resolution export DPI</span>
+        <span class="c-string">"savefig.bbox"</span>         : <span class="c-string">"tight"</span>,   <span class="c-comment"># Strip redundant outer whitespace</span>
+    })</pre>
+            </div>
+
+            <div class="takeaway-box">
+                <p>
+                    <strong>Takeaway:</strong> Set <code>axes.spines.top = False</code> and <code>axes.spines.right = False</code> globally to eliminate non-data ink. Use <code>savefig.bbox = "tight"</code> to prevent title clipping on export.
+                </p>
+            </div>
+        </div>
+
+        <hr class="section-divider">
+
+        <!-- ═══ Single Time-Series ═══ -->
+        <div class="section-block">
+            <div class="phase-header">
+                <div class="phase-number">2</div>
+                <h2>Single Time-Series Plotting</h2>
+            </div>
+
+            <div class="glass-card">
+                <p>
+                    Visualizing an individual electrode channel trajectory. Extracting channel <strong>Cz</strong> (index 9) alpha power for Control Subject 0 across time points.
+                </p>
+            </div>
+
+            <div class="code-block">
+                <span class="code-tag">Python</span>
+                <pre>ts = data[0, :, 0, 9, 2]  <span class="c-comment"># Control · sub0 · Cz · alpha</span>
+
+fig, ax = plt.subplots(figsize=(10, 3.5))
+ax.plot(t_axis, ts, color=COLORS[0], lw=1.5, label=<span class="c-string">"Control · sub0 · Cz · alpha"</span>)
+ax.set_xlabel(<span class="c-string">"Time (s)"</span>); ax.set_ylabel(<span class="c-string">"Power (μV²/Hz)"</span>)
+ax.set_title(<span class="c-string">"Alpha Power — Control Group, Subject 0, Channel Cz"</span>)
+ax.legend(); ax.grid(True, alpha=0.3)</pre>
+            </div>
+
+            <div class="plot-card">
+                <img src="plots/s01_single_timeseries.png" alt="Single Time-Series Plot">
+                <div class="plot-caption">
+                    <strong>Figure 1:</strong> Cz channel alpha power trajectory for Control Subject 0.
+                </div>
+            </div>
+
+            <div class="takeaway-box purple">
+                <p>
+                    <strong>Takeaway:</strong> Convert sample frame indices into physical time units (<code>t_axis = np.arange(T) / sampling_hz</code>). Prefer object-oriented axes (<code>ax.plot</code>) over procedural module calls.
+                </p>
+            </div>
+        </div>
+
+        <hr class="section-divider">
+
+        <!-- ═══ Multi-Group Time-Series ═══ -->
+        <div class="section-block">
+            <div class="phase-header">
+                <div class="phase-number">3</div>
+                <h2>Multi-Group Time-Series Overlay</h2>
+            </div>
+
+            <div class="glass-card">
+                <p>
+                    Overlaying grand-average cohort signals (Control, Patient, Treatment) to evaluate group-level temporal differences.
+                </p>
+            </div>
+
+            <div class="code-block">
+                <span class="code-tag">Python</span>
+                <pre>fig, ax = plt.subplots(figsize=(11, 4))
+for g in range(G):
+    ts_g = data[g, :, :, :, 2].mean(axis=(1, 2))   <span class="c-comment"># Mean over subjects &amp; channels</span>
+    ax.plot(t_axis, ts_g, color=COLORS[g], lw=2, label=gnames[g])
+
+ax.set_xlabel(<span class="c-string">"Time (s)"</span>); ax.set_ylabel(<span class="c-string">"Mean Alpha Power"</span>)
+ax.set_title(<span class="c-string">"Alpha Power Over Time — All Groups"</span>)
+ax.legend(); ax.grid(True, alpha=0.3)</pre>
+            </div>
+
+            <div class="plot-card">
+                <img src="plots/s02_multigroup_timeseries.png" alt="Multi-Group Time-Series">
+                <div class="plot-caption">
+                    <strong>Figure 2:</strong> Mean alpha power trajectory comparison across Control, Patient, and Treatment cohorts.
+                </div>
+            </div>
+
+            <div class="takeaway-box">
+                <p>
+                    <strong>Takeaway:</strong> Store an explicit color palette array (e.g. <code>COLORS = ["#2196F3", "#F44336", "#4CAF50"]</code>) to enforce fixed cohort colors across all figures in your study.
+                </p>
+            </div>
+        </div>
+
+        <hr class="section-divider">
+
+        <!-- ═══ Confidence Bands ═══ -->
+        <div class="section-block">
+            <div class="phase-header">
+                <div class="phase-number">4</div>
+                <h2>Confidence Bands (fill_between ±SEM)</h2>
+            </div>
+
+            <div class="glass-card">
+                <p>
+                    Communicating statistical variance. Shading standard error of the mean (SEM across subjects) reveals whether cohort trajectories are reliably separated.
+                </p>
+            </div>
+
+            <div class="code-block">
+                <span class="code-tag">Python</span>
+                <pre>for g in range(G):
+    mu, sem = _mean_sem(g, fi=2)
+    ax.plot(t_axis, mu, color=COLORS[g], lw=2, label=gnames[g])
+    ax.fill_between(t_axis, mu - sem, mu + sem, color=COLORS[g], alpha=0.20)
+
+ax.axvline(x=T / (2*hz), ls=<span class="c-string">"--"</span>, color=<span class="c-string">"k"</span>, alpha=0.45, label=<span class="c-string">"mid-session"</span>)
+
+<span class="c-comment"># Place legend at the bottom below the plot frame</span>
+ax.legend(loc=<span class="c-string">"upper center"</span>, bbox_to_anchor=(0.5, -0.22), ncol=4, frameon=False)</pre>
+            </div>
+
+            <div class="plot-card">
+                <img src="plots/s03_confidence_bands.png" alt="Confidence Bands Plot">
+                <div class="plot-caption">
+                    <strong>Figure 3:</strong> Mean alpha power with ±1 SEM shaded confidence bands and vertical reference mark.
+                </div>
+            </div>
+
+            <div class="takeaway-box purple">
+                <p>
+                    <strong>Takeaway:</strong> Position legends at the bottom below the plot frame (<code>bbox_to_anchor=(0.5, -0.22)</code>) so labels never obscure signal trajectories or shaded SEM confidence ribbons.
+                </p>
+            </div>
+        </div>
+
+        <hr class="section-divider">
+
+        <!-- ═══ Subplots Grid ═══ -->
+        <div class="section-block">
+            <div class="phase-header">
+                <div class="phase-number">5</div>
+                <h2>Subplots Grid Layout</h2>
+            </div>
+
+            <div class="glass-card">
+                <p>
+                    Organizing multi-feature matrices across groups into a synchronized subfigure grid using <code>plt.subplots(2, 3, sharex=True)</code>.
+                </p>
+            </div>
+
+            <div class="code-block">
+                <span class="code-tag">Python</span>
+                <pre>fig, axes = plt.subplots(2, 3, figsize=(15, 6), sharex=True)
+feat_cols = [(<span class="c-string">"Alpha"</span>, 2), (<span class="c-string">"Beta"</span>, 3), (<span class="c-string">"Gamma"</span>, 4)]
+
+for row, g in enumerate([0, 1]):
+    for col, (fname, fi) in enumerate(feat_cols):
+        ax = axes[row, col]
+        mu, sem = _mean_sem(g, fi)
+        ax.plot(t_axis, mu, color=COLORS[g], lw=1.8, label=gnames[g])
+        ax.fill_between(t_axis, mu - sem, mu + sem, color=COLORS[g], alpha=0.20)
+        ax.set_title(f<span class="c-string">"{fname} Band"</span>, fontsize=10, fontweight=<span class="c-string">"bold"</span>)
+        
+        <span class="c-comment"># Position legend outside plot area to avoid obscuring signal curves</span>
+        if col == 2:
+            ax.legend(loc=<span class="c-string">"center left"</span>, bbox_to_anchor=(1.04, 0.5), frameon=False)</pre>
+            </div>
+
+            <div class="plot-card">
+                <img src="plots/s04_subplots_2x3.png" alt="Subplots Grid">
+                <div class="plot-caption">
+                    <strong>Figure 4:</strong> 2×3 matrix comparing alpha, beta, and gamma frequency power between Control and Patient cohorts.
+                </div>
+            </div>
+
+            <div class="takeaway-box">
+                <p>
+                    <strong>Takeaway:</strong> Always place legend boxes outside the plot area (using <code>bbox_to_anchor=(1.04, 0.5)</code>) so labels never obscure signal trajectories or confidence ribbons.
+                </p>
+            </div>
+        </div>
+
+        <hr class="section-divider">
+
+        <!-- ═══ MNE Scalp Topography ═══ -->
+        <div class="section-block">
+            <div class="phase-header">
+                <div class="phase-number">6</div>
+                <h2>MNE Scalp Topography (mne.viz.plot_topomap)</h2>
+            </div>
+
+            <div class="glass-card">
+                <p>
+                    Projecting 32-channel electrode power onto anatomically accurate 2D scalp topomaps using <strong>MNE-Python</strong> and standard 10-20 sensor montages.
+                </p>
+            </div>
+
+            <div class="code-block">
+                <span class="code-tag">Python</span>
+                <pre><span class="c-keyword">import</span> mne
+<span class="c-keyword">from</span> matplotlib.colors <span class="c-keyword">import</span> LinearSegmentedColormap
+
+<span class="c-comment"># Benedikt Ehinger's EEG Topographic Colormap (becp)</span>
+colors = [(0.2706, 0.4588, 0.7059), (0.5686, 0.7490, 0.8588),
+          (0.8784, 0.9529, 0.9725), (1.0000, 1.0000, 0.7490),
+          (0.9961, 0.8784, 0.5647), (0.9882, 0.5529, 0.3490),
+          (0.8431, 0.1882, 0.1529)]
+cmap_becp = LinearSegmentedColormap.from_list(<span class="c-string">"becp"</span>, colors, N=256)
+
+<span class="c-comment"># Create MNE Info with standard 10-20 montage</span>
+info = mne.create_info(ch_names=chnames, sfreq=hz, ch_types=<span class="c-string">"eeg"</span>)
+info.set_montage(mne.channels.make_standard_montage(<span class="c-string">"standard_1020"</span>))
+
+fig, axes = plt.subplots(1, 3, figsize=(14, 4))
+vmax = max(data[g, :, :, :, 2].mean(axis=(0, 1)).max() for g in range(G))
+vmin = min(data[g, :, :, :, 2].mean(axis=(0, 1)).min() for g in range(G))
+
+<span class="c-keyword">for</span> g <span class="c-keyword">in</span> range(G):
+    alpha_power = data[g, :, :, :, 2].mean(axis=(0, 1))  <span class="c-comment"># (32,) channel mean</span>
+    im, _ = mne.viz.plot_topomap(
+        alpha_power, info, axes=axes[g], show=False, cmap=cmap_becp, vlim=(vmin, vmax)
+    )
+    axes[g].set_title(f<span class="c-string">"{gnames[g]} — Alpha Topography"</span>)
+    fig.colorbar(im, ax=axes[g], shrink=0.75, pad=0.04)</pre>
+            </div>
+
+            <div class="plot-card">
+                <img src="plots/s05_mne_topoplot.png" alt="MNE Scalp Topomap">
+                <div class="plot-caption">
+                    <strong>Figure 5:</strong> MNE scalp topography rendering 32-channel alpha power across Control, Patient, and Treatment cohorts.
+                </div>
+            </div>
+
+            <div class="takeaway-box purple">
+                <p>
+                    <strong>Takeaway:</strong> Prefer MNE topomaps over rectangular heatmaps for spatial channel data &mdash; polar 2D head geometry provides true anatomical spatial interpolation.
+                </p>
+            </div>
+        </div>
+
+        <hr class="section-divider">
+
+        <!-- ═══ Raincloud Distributions ═══ -->
+        <div class="section-block">
+            <div class="phase-header">
+                <div class="phase-number">7</div>
+                <h2>Raincloud Distributions (Cloud + Box + Rain)</h2>
+            </div>
+
+            <div class="glass-card">
+                <p>
+                    Replacing bar graphs with <strong>Raincloud Plots</strong>. Combining half-KDE density shapes, narrow boxplots, and raw data scatter points delivers complete distribution transparency.
+                </p>
+            </div>
+
+            <div class="code-block">
+                <span class="code-tag">Python</span>
+                <pre><span class="c-keyword">import</span> scipy.stats <span class="c-keyword">as</span> stats
+
+<span class="c-keyword">for</span> g <span class="c-keyword">in</span> range(G):
+    sub_vals = data[g, :, :, :, fi].mean(axis=(0, 2))  <span class="c-comment"># per-subject mean</span>
+    color = COLORS[g]
+    
+    <span class="c-comment"># 1. Cloud: Half-KDE density plot</span>
+    kde = stats.gaussian_kde(sub_vals)
+    y_grid = np.linspace(sub_vals.min() - 0.04, sub_vals.max() + 0.04, 100)
+    density = (kde(y_grid) / kde(y_grid).max()) * 0.28
+    ax.fill_betweenx(y_grid, g + 0.06, g + 0.06 + density, color=color, alpha=0.45)
+    
+    <span class="c-comment"># 2. Umbrella: Narrow box plot</span>
+    ax.boxplot(sub_vals, positions=[g], widths=0.08, patch_artist=True,
+               boxprops=dict(facecolor=color, alpha=0.8),
+               medianprops=dict(color=<span class="c-string">"white"</span>, lw=1.8))
+    
+    <span class="c-comment"># 3. Rain: Jittered raw subject scatter points</span>
+    jitter = RNG.uniform(-0.06, 0.06, size=len(sub_vals))
+    ax.scatter(g - 0.18 + jitter, sub_vals, color=color, alpha=0.65, s=28)</pre>
+            </div>
+
+            <div class="plot-card">
+                <img src="plots/s06_raincloud_plots.png" alt="Raincloud Plots">
+                <div class="plot-caption">
+                    <strong>Figure 6:</strong> Raincloud plots displaying individual subject power distributions across Alpha, Beta, and Gamma frequency bands.
+                </div>
+            </div>
+
+            <div class="takeaway-box">
+                <p>
+                    <strong>Takeaway:</strong> Bar charts hide multimodal shapes and subject sample sizes. Rainclouds reveal true raw subject data points alongside summary statistics.
+                </p>
+            </div>
+        </div>
+
+        <hr class="section-divider">
+
+        <!-- ═══ Annotated Correlation Matrix ═══ -->
+        <div class="section-block">
+            <div class="phase-header">
+                <div class="phase-number">8</div>
+                <h2>Annotated Correlation Matrix</h2>
+            </div>
+
+            <div class="glass-card">
+                <p>
+                    Evaluating feature co-activation by computing Pearson correlation matrices (<code>np.corrcoef</code>) across frequency bands with dynamic contrast text annotations.
+                </p>
+            </div>
+
+            <div class="code-block">
+                <span class="code-tag">Python</span>
+                <pre>for g in range(G):
+    mat  = data[g].reshape(-1, F)
+    corr = np.corrcoef(mat.T)
+    im   = axes[g].imshow(corr, cmap=<span class="c-string">"RdBu_r"</span>, vmin=-1, vmax=1)
+    
+    <span class="c-comment"># Overlay annotated text with dynamic contrast</span>
+    for i in range(F):
+        for j in range(F):
+            col = <span class="c-string">"w"</span> if abs(corr[i, j]) > 0.60 else <span class="c-string">"k"</span>
+            axes[g].text(j, i, f<span class="c-string">"{corr[i,j]:.2f}"</span>, ha=<span class="c-string">"center"</span>, va=<span class="c-string">"center"</span>, color=col)</pre>
+            </div>
+
+            <div class="plot-card">
+                <img src="plots/s07_correlation_matrix.png" alt="Correlation Matrix">
+                <div class="plot-caption">
+                    <strong>Figure 7:</strong> Feature-to-feature correlation matrices for Control, Patient, and Treatment cohorts.
+                </div>
+            </div>
+
+            <div class="takeaway-box purple">
+                <p>
+                    <strong>Takeaway:</strong> Always center diverging colormaps (e.g. <code>RdBu_r</code>) at zero with <code>vmin=-1, vmax=1</code> for correlation matrices, and switch text color dynamically for contrast.
+                </p>
+            </div>
+        </div>
+
+        <hr class="section-divider">
+
+        <!-- ═══ Journal-Ready Figure with MNE Delta Topomap ═══ -->
+        <div class="section-block">
+            <div class="phase-header">
+                <div class="phase-number">9</div>
+                <h2>Journal-Ready Figure &amp; MNE Delta Topomap</h2>
+            </div>
+
+            <div class="glass-card">
+                <p>
+                    Assembling a two-panel publication figure combining subject-level scatter relationships in Panel A with an MNE <code>Patient − Control</code> delta scalp topomap in Panel B.
+                </p>
+            </div>
+
+            <div class="code-block">
+                <span class="code-tag">Python</span>
+                <pre>setup_publication_style()
+
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 5))
+
+<span class="c-comment"># Panel A: Alpha vs Beta scatter per subject</span>
+for g in [0, 1]:
+    sub_alpha = data[g, :, :, :, 2].mean(axis=(0, 2))
+    sub_beta  = data[g, :, :, :, 3].mean(axis=(0, 2))
+    ax1.scatter(sub_alpha, sub_beta, c=COLORS[g], alpha=0.72, s=65, label=gnames[g])
+
+<span class="c-comment"># Panel B: Patient - Control Delta Topomap (Benedikt Ehinger becp colormap)</span>
+diff_alpha = data[1, :, :, :, 2].mean(axis=(0, 1)) - data[0, :, :, :, 2].mean(axis=(0, 1))
+vlim = np.abs(diff_alpha).max()
+
+im, _ = mne.viz.plot_topomap(
+    diff_alpha, info, axes=ax2, show=False, cmap=cmap_becp, vlim=(-vlim, vlim)
+)
+ax2.set_title(<span class="c-string">"(B) Patient − Control Δ Alpha Topography"</span>)
+fig.colorbar(im, ax=ax2, shrink=0.75, pad=0.04, label=<span class="c-string">"Δ Alpha Power"</span>)</pre>
+            </div>
+
+            <div class="plot-card">
+                <img src="plots/s08_publication_figure.png" alt="Journal-Ready Figure with Delta Topomap">
+                <div class="plot-caption">
+                    <strong>Figure 8:</strong> Journal-ready two-panel figure combining subject scatter relationships with MNE Patient − Control delta scalp topography.
+                </div>
+            </div>
+
+            <div class="takeaway-box">
+                <p>
+                    <strong>Takeaway:</strong> On difference topomaps (<code>Patient - Control</code>), set symmetric limits <code>vlim=(-vlim, vlim)</code> with a zero-centered diverging colormap so blue indicates power reduction and red indicates power enhancement.
+                </p>
+            </div>
+        </div>
+
+    </article>
+
+    <!-- ── Summary cheat-sheet section ── -->
+    <section class="extra">
+        <hr style="border:none;height:1px;background:linear-gradient(90deg,transparent,rgba(165,180,252,0.35),transparent);margin-bottom:48px;">
+
+        <div class="phase-header" style="margin-bottom:24px;">
+            <div class="phase-number">&#x2605;</div>
+            <h2>Day 2 Cheat-Sheet</h2>
+        </div>
+
+        <div style="overflow-x:auto;border-radius:14px;border:1px solid var(--glass-border);box-shadow:0 4px 30px rgba(0,0,0,0.4);">
+            <table style="width:100%;border-collapse:collapse;font-size:0.88rem;">
+                <thead style="background:linear-gradient(135deg,rgba(99,102,241,0.30),rgba(20,184,166,0.18));">
+                    <tr>
+                        <th style="padding:14px 20px;text-align:left;font-family:'Inter',sans-serif;font-weight:700;font-size:0.73rem;letter-spacing:2px;text-transform:uppercase;color:var(--accent-solid);border-bottom:1px solid var(--glass-border);">Visualization Technique</th>
+                        <th style="padding:14px 20px;text-align:left;font-family:'Inter',sans-serif;font-weight:700;font-size:0.73rem;letter-spacing:2px;text-transform:uppercase;color:var(--accent-solid);border-bottom:1px solid var(--glass-border);">Primary API Call</th>
+                        <th style="padding:14px 20px;text-align:left;font-family:'Inter',sans-serif;font-weight:700;font-size:0.73rem;letter-spacing:2px;text-transform:uppercase;color:var(--accent-solid);border-bottom:1px solid var(--glass-border);">EEG Use Case</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr style="border-bottom:1px solid rgba(165,180,252,0.12);">
+                        <td style="padding:12px 20px;color:#fff;font-weight:600;">Figure Defaults</td>
+                        <td style="padding:12px 20px;font-family:'JetBrains Mono',monospace;color:#A5B4FC;font-size:0.82rem;"><code>plt.rcParams.update({...})</code></td>
+                        <td style="padding:12px 20px;color:var(--text-muted);">Global typography &amp; spine cleanup</td>
+                    </tr>
+                    <tr style="border-bottom:1px solid rgba(165,180,252,0.12);">
+                        <td style="padding:12px 20px;color:#fff;font-weight:600;">Single Line</td>
+                        <td style="padding:12px 20px;font-family:'JetBrains Mono',monospace;color:#A5B4FC;font-size:0.82rem;"><code>ax.plot(t, signal)</code></td>
+                        <td style="padding:12px 20px;color:var(--text-muted);">Raw time series &amp; ERP traces</td>
+                    </tr>
+                    <tr style="border-bottom:1px solid rgba(165,180,252,0.12);">
+                        <td style="padding:12px 20px;color:#fff;font-weight:600;">Group Overlay</td>
+                        <td style="padding:12px 20px;font-family:'JetBrains Mono',monospace;color:#A5B4FC;font-size:0.82rem;"><code>for g in G: ax.plot(...)</code></td>
+                        <td style="padding:12px 20px;color:var(--text-muted);">Cohort signal trajectory comparison</td>
+                    </tr>
+                    <tr style="border-bottom:1px solid rgba(165,180,252,0.12);">
+                        <td style="padding:12px 20px;color:#fff;font-weight:600;">Confidence Ribbon</td>
+                        <td style="padding:12px 20px;font-family:'JetBrains Mono',monospace;color:#A5B4FC;font-size:0.82rem;"><code>ax.fill_between(t, mu-sem, mu+sem)</code></td>
+                        <td style="padding:12px 20px;color:var(--text-muted);">Group mean ± SEM variance representation</td>
+                    </tr>
+                    <tr style="border-bottom:1px solid rgba(165,180,252,0.12);">
+                        <td style="padding:12px 20px;color:#fff;font-weight:600;">Subplot Grid</td>
+                        <td style="padding:12px 20px;font-family:'JetBrains Mono',monospace;color:#A5B4FC;font-size:0.82rem;"><code>plt.subplots(r, c, sharex=True)</code></td>
+                        <td style="padding:12px 20px;color:var(--text-muted);">Multi-channel / multi-band comparison matrix</td>
+                    </tr>
+                    <tr style="border-bottom:1px solid rgba(165,180,252,0.12);">
+                        <td style="padding:12px 20px;color:#fff;font-weight:600;">MNE Scalp Topomap</td>
+                        <td style="padding:12px 20px;font-family:'JetBrains Mono',monospace;color:#A5B4FC;font-size:0.82rem;"><code>mne.viz.plot_topomap(data, info)</code></td>
+                        <td style="padding:12px 20px;color:var(--text-muted);">Anatomical 2D head scalp spatial topography</td>
+                    </tr>
+                    <tr style="border-bottom:1px solid rgba(165,180,252,0.12);">
+                        <td style="padding:12px 20px;color:#fff;font-weight:600;">Raincloud Plot</td>
+                        <td style="padding:12px 20px;font-family:'JetBrains Mono',monospace;color:#A5B4FC;font-size:0.82rem;"><code>KDE + Boxplot + Jitter Scatter</code></td>
+                        <td style="padding:12px 20px;color:var(--text-muted);">Complete subject-level distribution summary</td>
+                    </tr>
+                    <tr style="border-bottom:1px solid rgba(165,180,252,0.12);">
+                        <td style="padding:12px 20px;color:#fff;font-weight:600;">Correlation Matrix</td>
+                        <td style="padding:12px 20px;font-family:'JetBrains Mono',monospace;color:#A5B4FC;font-size:0.82rem;"><code>np.corrcoef() + ax.text()</code></td>
+                        <td style="padding:12px 20px;color:var(--text-muted);">Feature co-activation &amp; functional coupling</td>
+                    </tr>
+                    <tr>
+                        <td style="padding:12px 20px;color:#fff;font-weight:600;">Journal Figure</td>
+                        <td style="padding:12px 20px;font-family:'JetBrains Mono',monospace;color:#A5B4FC;font-size:0.82rem;"><code>Scatter + MNE Δ Topomap</code></td>
+                        <td style="padding:12px 20px;color:var(--text-muted);">Clean publication graphics &amp; delta maps</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- ── Further Reading Section ── -->
+    <section style="max-width:860px;margin:0 auto;padding:0 5% 100px;position:relative;z-index:2;">
+        <div style="display:flex;align-items:center;gap:16px;margin-bottom:32px;">
+            <div style="width:48px;height:48px;border-radius:50%;flex-shrink:0;
+                background:linear-gradient(135deg,#0f172a,#1e293b);
+                border:2px solid rgba(94,234,212,0.5);
+                box-shadow:0 0 20px rgba(20,184,166,0.4);
+                display:flex;align-items:center;justify-content:center;font-size:1.3rem;">
+                &#x1F4DA;
+            </div>
+            <h2 style="font-size:clamp(1.3rem,2.8vw,1.75rem);color:#fff;
+                text-shadow:0 0 20px rgba(94,234,212,0.3);
+                border:none;padding:0;margin:0;display:block;
+                font-family:'Playfair Display',serif;font-weight:400;">
+                Further reading
+            </h2>
+        </div>
+        <ol style="color:rgba(165,180,252,0.8);font-family:'Inter',sans-serif;line-height:1.6;padding-left:1.5rem;display:flex;flex-direction:column;gap:20px;">
+            <li style="padding-left:8px;color:#A5B4FC;font-family:'JetBrains Mono',monospace;font-weight:700;">
+                <div style="font-family:'Inter',sans-serif;">
+                    <a href="https://matplotlib.org/stable/users/explain/customizing.html" target="_blank" rel="noopener"
+                        style="color:#fff;text-decoration:underline;text-decoration-color:rgba(165,180,252,0.4);font-weight:600;font-size:0.95rem;">Customizing Matplotlib with Style Sheets and rcParams</a>
+                    <span style="font-size:0.9rem;margin-left:6px;">&#x1F4D6;</span><br>
+                    <span style="color:var(--text-muted);font-size:0.85rem;font-weight:400;">Official Matplotlib guide on setting up global figure defaults, font families, spine removal, and custom style files.</span>
+                </div>
+            </li>
+            <li style="padding-left:8px;color:#C4B5FD;font-family:'JetBrains Mono',monospace;font-weight:700;">
+                <div style="font-family:'Inter',sans-serif;">
+                    <a href="https://mne.tools/stable/auto_tutorials/intro/10_overview.html" target="_blank" rel="noopener"
+                        style="color:#fff;text-decoration:underline;text-decoration-color:rgba(196,181,253,0.4);font-weight:600;font-size:0.95rem;">MNE-Python Official Overview &amp; Topomap Guide</a>
+                    <span style="font-size:0.9rem;margin-left:6px;">&#x1F4D6;</span><br>
+                    <span style="color:var(--text-muted);font-size:0.85rem;font-weight:400;">Comprehensive tutorials on MNE Info structures, sensor montages, and 2D scalp topographic plotting.</span>
+                </div>
+            </li>
+            <li style="padding-left:8px;color:#5EEAD4;font-family:'JetBrains Mono',monospace;font-weight:700;">
+                <div style="font-family:'Inter',sans-serif;">
+                    <a href="https://github.com/rahulvenugopal/topo_color_maps_matplotlib" target="_blank" rel="noopener"
+                        style="color:#fff;text-decoration:underline;text-decoration-color:rgba(94,234,212,0.4);font-weight:600;font-size:0.95rem;">EEG Topographic Colormaps in Matplotlib</a>
+                    <span style="font-size:0.9rem;margin-left:6px;">&#x1F4D6;</span><br>
+                    <span style="color:var(--text-muted);font-size:0.85rem;font-weight:400;">Rahul Venugopal's repository demonstrating custom topographic colormaps and scalp projection techniques in Python.</span>
+                </div>
+            </li>
+            <li style="padding-left:8px;color:#FCA5A5;font-family:'JetBrains Mono',monospace;font-weight:700;">
+                <div style="font-family:'Inter',sans-serif;">
+                    <a href="https://benediktehinger.de/blog/science/" target="_blank" rel="noopener"
+                        style="color:#fff;text-decoration:underline;text-decoration-color:rgba(252,165,165,0.4);font-weight:600;font-size:0.95rem;">Prof. Dr. Benedikt Ehinger's Science Blog &amp; EEG Resources</a>
+                    <span style="font-size:0.9rem;margin-left:6px;">&#x1F4D6;</span><br>
+                    <span style="color:var(--text-muted);font-size:0.85rem;font-weight:400;">Personal science blog featuring EEG analysis guides, linear modeling tutorials, and custom colormaps.</span>
+                </div>
+            </li>
+            <li style="padding-left:8px;color:#fca5a5;font-family:'JetBrains Mono',monospace;font-weight:700;">
+                <div style="font-family:'Inter',sans-serif;">
+                    <a href="https://wellcomeopenresearch.org/articles/4-63" target="_blank" rel="noopener"
+                        style="color:#fff;text-decoration:underline;text-decoration-color:rgba(252,165,165,0.4);font-weight:600;font-size:0.95rem;">Raincloud Plots: A Multi-Platform Tool for Robust Visualization</a>
+                    <span style="font-size:0.9rem;margin-left:6px;">&#x1F4D6;</span><br>
+                    <span style="color:var(--text-muted);font-size:0.85rem;font-weight:400;">The landmark Allen et al. (2019) paper introducing raincloud plots for transparent scientific data presentation.</span>
+                </div>
+            </li>
+            <li style="padding-left:8px;color:#C4B5FD;font-family:'JetBrains Mono',monospace;font-weight:700;">
+                <div style="font-family:'Inter',sans-serif;">
+                    <a href="https://github.com/rougier/scientific-visualization-book" target="_blank" rel="noopener"
+                        style="color:#fff;text-decoration:underline;text-decoration-color:rgba(196,181,253,0.4);font-weight:600;font-size:0.95rem;">Scientific Visualization: Python + Matplotlib by Nicolas P. Rougier</a>
+                    <span style="font-size:0.9rem;margin-left:6px;">&#x1F4D6;</span><br>
+                    <span style="color:var(--text-muted);font-size:0.85rem;font-weight:400;">An open-access masterclass on crafting elegant, publication-grade figures.</span>
+                </div>
+            </li>
+        </ol>
+    </section>
+
+    <!-- ── Neural particle canvas ── -->
+    <script>
+        const canvas = document.getElementById('neural-canvas');
+        const ctx = canvas.getContext('2d');
+        let W, H, particles;
+        function resize() { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
+        function initParticles() {
+            particles = Array.from({ length: 120 }, () => ({
+                x: Math.random() * W, y: Math.random() * H,
+                vx: (Math.random() - 0.5) * 0.45, vy: (Math.random() - 0.5) * 0.45,
+                r: Math.random() * 2.2 + 0.8
+            }));
+        }
+        function draw() {
+            ctx.clearRect(0, 0, W, H);
+            for (let i = 0; i < particles.length; i++) {
+                for (let j = i + 1; j < particles.length; j++) {
+                    const dx = particles[i].x - particles[j].x;
+                    const dy = particles[i].y - particles[j].y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < 140) {
+                        ctx.beginPath();
+                        ctx.strokeStyle = `rgba(165,180,252,${0.28 * (1 - dist / 140)})`;
+                        ctx.lineWidth = 0.8;
+                        ctx.moveTo(particles[i].x, particles[i].y);
+                        ctx.lineTo(particles[j].x, particles[j].y);
+                        ctx.stroke();
+                    }
+                }
+            }
+            particles.forEach(p => {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(165,180,252,0.72)';
+                ctx.fill();
+                p.x += p.vx; p.y += p.vy;
+                if (p.x < 0 || p.x > W) p.vx *= -1;
+                if (p.y < 0 || p.y > H) p.vy *= -1;
+            });
+            requestAnimationFrame(draw);
+        }
+        window.addEventListener('resize', () => { resize(); initParticles(); });
+        resize(); initParticles(); draw();
+    </script>
+
+    <!-- ── Footer ── -->
+    <footer>
+        <p>
+            Day 2 &mdash; <a href="../index.html">EEG Analysis Odyssey</a> &nbsp;&bull;&nbsp;
+            Python Basics: Plotting for Insights
+        </p>
+        <p style="margin-top: 10px;">
+            Dataset: <a href="https://github.com/rahulvenugopal/EEGOdyssey/tree/main/day_1/data"
+                target="_blank"
+                style="color:var(--accent-solid);text-decoration:underline;"><code>neural_data.npy</code></a>
+            &nbsp;&bull;&nbsp;
+            Script: <a
+                href="https://github.com/rahulvenugopal/EEGOdyssey/blob/main/day_2/02_day2_study_guide.py"
+                target="_blank"
+                style="color:var(--accent-solid);text-decoration:underline;"><code>02_day2_study_guide.py</code></a>
+        </p>
+    </footer>
+
+</body>
+
+</html>

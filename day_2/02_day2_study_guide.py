@@ -4,21 +4,19 @@ DAY 2 STUDY GUIDE  |  Python Basics: Plotting for Insights
 "Turning arrays of raw numbers into a visual story."
 ================================================================================
 
-Plots produced (saved to  plots/)
+Plots produced (saved to plots/)
 ----------------------------------
-  s01_single_timeseries.png       §1   Line plot basics
-  s02_multigroup_timeseries.png   §2   Multiple lines on one axes
-  s03_confidence_bands.png        §3   fill_between for ±SEM bands
-  s04_subplots_2x3.png            §4   subplots() grid
-  s05_channel_heatmap.png         §5   imshow heatmap
-  s06_barchart_with_errors.png    §6   Bar chart + error bars
-  s07_correlation_matrix.png      §7   Annotated correlation heatmap
-  s08_gridspec_dashboard.png      §8   GridSpec multi-panel layout
-  s09_histograms.png              §9   Overlapping histograms
-  s10_publication_figure.png      §10  Publication-quality styling
+  s01_single_timeseries.png       Line plot basics
+  s02_multigroup_timeseries.png   Multiple lines on one axes
+  s03_confidence_bands.png        fill_between for ±SEM bands
+  s04_subplots_2x3.png            subplots() grid
+  s05_mne_topoplot.png            MNE Topographic scalp map (plot_topomap)
+  s06_raincloud_plots.png         Raincloud plots (KDE cloud + boxplot + rain scatter)
+  s07_correlation_matrix.png      Annotated correlation matrix
+  s08_publication_figure.png      Publication figure with MNE Delta Topomap
 
-Prerequisite: run  00_generate_dataset.py  first.
-Run         : python 02_day2_study_guide.py
+Uses shared dataset from: ../day_1/data/
+Run : python 02_day2_study_guide.py
 ================================================================================
 """
 
@@ -27,23 +25,71 @@ import pickle, os
 import matplotlib
 matplotlib.use("Agg")               # non-interactive: saves files, no pop-up windows
 import matplotlib.pyplot as plt
-import matplotlib.gridspec as gridspec
+from matplotlib.colors import LinearSegmentedColormap, ListedColormap
+import scipy.stats as stats
+import mne
 
 os.makedirs("plots", exist_ok=True)
 
-data = np.load("data/neural_data.npy")
-with open("data/metadata.pkl", "rb") as fh:
+# Benedikt Ehinger's EEG Topographic Colormap (becp)
+EHINGER_COLORS = [
+    (0.2706, 0.4588, 0.7059),  # Deep Blue
+    (0.5686, 0.7490, 0.8588),  # Soft Blue
+    (0.8784, 0.9529, 0.9725),  # Ice Blue
+    (1.0000, 1.0000, 0.7490),  # Neutral Yellow
+    (0.9961, 0.8784, 0.5647),  # Warm Sand
+    (0.9882, 0.5529, 0.3490),  # Coral Orange
+    (0.8431, 0.1882, 0.1529)   # Deep Crimson
+]
+cmap_becp = LinearSegmentedColormap.from_list("becp", EHINGER_COLORS, N=256)
+
+# Load data directly from day_1 shared data directory
+data_dir = os.path.join("..", "day_1", "data") if os.path.exists(os.path.join("..", "day_1", "data")) else "data"
+data = np.load(os.path.join(data_dir, "neural_data.npy"))
+with open(os.path.join(data_dir, "metadata.pkl"), "rb") as fh:
     meta = pickle.load(fh)
 
 G, T, S, C, F = data.shape
 gnames  = meta["group_names"]
 fnames  = meta["feature_names"]
 chnames = meta["channel_names"]
-hz      = meta["sampling_hz"]
+hz      = meta.get("sampling_hz", 250)
 
 t_axis  = np.arange(T) / hz        # time in seconds
 COLORS  = ["#2196F3", "#F44336", "#4CAF50"]   # blue · red · green
 DIV     = "─" * 60
+RNG     = np.random.default_rng(2026)
+
+# ── GLOBAL FIGURE CONFIGURATION DEFAULTS ─────────────────────────────────────
+def setup_publication_style():
+    """
+    Applies clean, publication-quality defaults across Matplotlib figures.
+    - Removes top/right clutter spines
+    - Establishes crisp typography hierarchy
+    - Ensures high-DPI vector rendering defaults
+    """
+    plt.rcParams.update({
+        "font.family"          : "sans-serif",            # Primary font family category
+        "font.sans-serif"     : ["Inter", "DejaVu Sans", "Helvetica", "Arial"],  # Preferred font fallback hierarchy
+        "axes.spines.top"      : False,                  # Hide top spine boundary to reduce clutter
+        "axes.spines.right"    : False,                  # Hide right spine boundary to reduce clutter
+        "axes.linewidth"       : 1.2,                    # Line thickness for remaining left/bottom spines
+        "axes.edgecolor"       : "#2E3654",              # Dark slate color for spine borders
+        "axes.labelcolor"      : "#1E293B",              # High-contrast color for X/Y axis labels
+        "axes.titlesize"       : 12,                     # Subplot title font size in points
+        "axes.titleweight"     : "bold",                 # Bold font weight for subplot titles
+        "axes.labelsize"       : 11,                     # Font size for X/Y axis labels
+        "axes.labelweight"     : "medium",               # Medium font weight for axis labels
+        "xtick.major.width"    : 1.2,                    # Line thickness of X-axis major tick marks
+        "ytick.major.width"    : 1.2,                    # Line thickness of Y-axis major tick marks
+        "xtick.labelsize"      : 9,                      # Font size for X-axis numeric tick labels
+        "ytick.labelsize"      : 9,                      # Font size for Y-axis numeric tick labels
+        "figure.titlesize"     : 14,                     # Main figure super-title font size
+        "figure.titleweight"   : "bold",                 # Bold font weight for super-title
+        "figure.dpi"           : 150,                    # Interactive display resolution (dots per inch)
+        "savefig.dpi"          : 150,                    # High-resolution export DPI for publication
+        "savefig.bbox"         : "tight",                # Automatically strip white padding around figure
+    })
 
 # Helper: mean ± SEM for one group's feature over time
 def _mean_sem(g, fi):
@@ -54,8 +100,8 @@ def _mean_sem(g, fi):
     return mu, sem
 
 
-# ── §1  SINGLE TIME-SERIES ────────────────────────────────────────────────────
-print("§1  Single time-series  →  plots/s01_single_timeseries.png")
+# ── SINGLE TIME-SERIES PLOTTING ───────────────────────────────────────────────
+print("Single time-series  →  plots/s01_single_timeseries.png")
 
 fig, ax = plt.subplots(figsize=(10, 3.5))
 
@@ -73,8 +119,8 @@ plt.close(fig)
 print("  Done.")
 
 
-# ── §2  MULTIPLE LINES ────────────────────────────────────────────────────────
-print("§2  Multi-group time-series  →  plots/s02_multigroup_timeseries.png")
+# ── MULTI-GROUP TIME-SERIES OVERLAY ───────────────────────────────────────────
+print("Multi-group time-series  →  plots/s02_multigroup_timeseries.png")
 
 fig, ax = plt.subplots(figsize=(11, 4))
 for g in range(G):
@@ -90,8 +136,8 @@ plt.close(fig)
 print("  Done.")
 
 
-# ── §3  CONFIDENCE BANDS ─────────────────────────────────────────────────────
-print("§3  Confidence bands  →  plots/s03_confidence_bands.png")
+# ── CONFIDENCE BANDS (fill_between ±SEM) ─────────────────────────────────────
+print("Confidence bands  →  plots/s03_confidence_bands.png")
 
 fig, ax = plt.subplots(figsize=(11, 4))
 for g in range(G):
@@ -99,98 +145,126 @@ for g in range(G):
     ax.plot(t_axis, mu, color=COLORS[g], lw=2, label=gnames[g])
     ax.fill_between(t_axis, mu - sem, mu + sem, color=COLORS[g], alpha=0.20)
 
-# Vertical reference line
 ax.axvline(x=T / (2*hz), ls="--", color="k", alpha=0.45, label="mid-session")
 ax.set_xlabel("Time (s)"); ax.set_ylabel("Alpha Power ± SEM")
 ax.set_title("Mean Alpha Power with Standard Error Bands")
-ax.legend(ncol=2); ax.grid(True, alpha=0.3)
+
+# Position legend at the bottom below the plot area so it never obscures confidence bands
+ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.22), ncol=4, frameon=False, fontsize=9)
+ax.grid(True, alpha=0.3)
 fig.tight_layout()
-fig.savefig("plots/s03_confidence_bands.png", dpi=120)
+fig.savefig("plots/s03_confidence_bands.png", dpi=120, bbox_inches="tight")
 plt.close(fig)
 print("  Done.")
 
 
-# ── §4  SUBPLOTS GRID ─────────────────────────────────────────────────────────
-print("§4  Subplots grid  →  plots/s04_subplots_2x3.png")
+# ── SUBPLOTS GRID ─────────────────────────────────────────────────────────────
+print("Subplots grid  →  plots/s04_subplots_2x3.png")
 
 fig, axes = plt.subplots(2, 3, figsize=(15, 6), sharex=True)
-feat_cols = [("alpha", 2), ("beta", 3), ("gamma", 4)]
+feat_cols = [("Alpha", 2), ("Beta", 3), ("Gamma", 4)]
 
 for row, g in enumerate([0, 1]):
     for col, (fname, fi) in enumerate(feat_cols):
         ax  = axes[row, col]
         mu, sem = _mean_sem(g, fi)
-        ax.plot(t_axis, mu, color=COLORS[g], lw=1.5)
+        ax.plot(t_axis, mu, color=COLORS[g], lw=1.8, label=gnames[g])
         ax.fill_between(t_axis, mu - sem, mu + sem, color=COLORS[g], alpha=0.20)
-        ax.set_title(f"{gnames[g]} — {fname}", fontsize=9)
-        if col == 0: ax.set_ylabel("Mean Power", fontsize=8)
-        if row == 1: ax.set_xlabel("Time (s)", fontsize=8)
+        ax.set_title(f"{fname} Band", fontsize=10, fontweight="bold", pad=8)
+        if col == 0:
+            ax.set_ylabel(f"{gnames[g]}\nMean Power (μV²/Hz)", fontsize=9, fontweight="bold")
+        if row == 1:
+            ax.set_xlabel("Time (s)", fontsize=9)
         ax.grid(True, alpha=0.3)
 
-fig.suptitle("Feature Comparison: Control vs Patient", fontsize=12, fontweight="bold")
+        # Place label legend outside the plot frame so it never obscures signal traces
+        if col == 2:
+            ax.legend(loc="center left", bbox_to_anchor=(1.04, 0.5), frameon=False, fontsize=9)
+
+fig.suptitle("Feature Comparison: Control vs Patient", fontsize=13, fontweight="bold")
 fig.tight_layout()
-fig.savefig("plots/s04_subplots_2x3.png", dpi=120)
+fig.savefig("plots/s04_subplots_2x3.png", dpi=120, bbox_inches="tight")
 plt.close(fig)
 print("  Done.")
 
 
-# ── §5  CHANNEL HEATMAP ───────────────────────────────────────────────────────
-print("§5  Channel heatmap  →  plots/s05_channel_heatmap.png")
+# ── MNE SCALP TOPOGRAPHY ─────────────────────────────────────────────────────
+print("MNE Topoplot  →  plots/s05_mne_topoplot.png")
 
-grp_ch_feat = data.mean(axis=(1, 2))    # (G, C, F)  mean over T & S
-vmin = grp_ch_feat.min(); vmax = grp_ch_feat.max()
+# Construct MNE Info object with standard 10-20 montage
+info = mne.create_info(ch_names=chnames, sfreq=hz, ch_types="eeg")
+montage = mne.channels.make_standard_montage("standard_1020")
+info.set_montage(montage)
 
-fig, axes = plt.subplots(1, 3, figsize=(16, 8))
+fig, axes = plt.subplots(1, 3, figsize=(14, 4))
+vmax = max(data[g, :, :, :, 2].mean(axis=(0, 1)).max() for g in range(G))
+vmin = min(data[g, :, :, :, 2].mean(axis=(0, 1)).min() for g in range(G))
+
 for g in range(G):
-    ax = axes[g]
-    im = ax.imshow(grp_ch_feat[g], aspect="auto",
-                   cmap="hot", vmin=vmin, vmax=vmax)
-    ax.set_title(gnames[g], fontsize=12, fontweight="bold")
-    ax.set_xticks(range(F))
-    ax.set_xticklabels(fnames, rotation=35, ha="right", fontsize=8)
-    ax.set_yticks(range(C))
-    ax.set_yticklabels(chnames, fontsize=5)
-    ax.set_xlabel("Feature")
-    if g == 0: ax.set_ylabel("Channel")
+    # Mean alpha power per channel across time and subjects
+    alpha_power = data[g, :, :, :, 2].mean(axis=(0, 1))   # shape (32,)
+    im, _ = mne.viz.plot_topomap(
+        alpha_power, info, axes=axes[g], show=False, cmap=cmap_becp, vlim=(vmin, vmax)
+    )
+    axes[g].set_title(f"{gnames[g]} — Alpha Topography", fontsize=11, fontweight="bold")
+    fig.colorbar(im, ax=axes[g], shrink=0.75, pad=0.04)
 
-fig.colorbar(im, ax=axes.tolist(), shrink=0.55, label="Mean Power")
-fig.suptitle("Channel × Feature Power Heatmaps — All Groups",
-             fontsize=12, fontweight="bold")
-fig.savefig("plots/s05_channel_heatmap.png", dpi=120, bbox_inches="tight")
-plt.close(fig)
-print("  Done.")
-
-
-# ── §6  BAR CHART WITH ERROR BARS ────────────────────────────────────────────
-print("§6  Bar chart  →  plots/s06_barchart_with_errors.png")
-
-# Per-group, per-feature mean and SEM (SEM across subjects)
-grp_mean = data.mean(axis=(1, 2, 3))    # (G, F)   mean over T, S, C
-grp_sem  = np.zeros((G, F))
-for g in range(G):
-    # data[g] shape (T, S, C, F); mean over T=0 and C=2 → (S, F)
-    per_subj       = data[g].mean(axis=(0, 2))
-    grp_sem[g]     = per_subj.std(axis=0) / np.sqrt(S)
-
-x, w = np.arange(F), 0.25
-fig, ax = plt.subplots(figsize=(12, 5))
-for g in range(G):
-    ax.bar(x + g*w, grp_mean[g], w,
-           yerr=grp_sem[g], capsize=4,
-           color=COLORS[g], alpha=0.82, label=gnames[g])
-
-ax.set_xticks(x + w); ax.set_xticklabels(fnames)
-ax.set_ylabel("Mean Power"); ax.set_xlabel("Feature Band")
-ax.set_title("Mean Feature Power by Group  (±SEM across subjects)")
-ax.legend(); ax.grid(True, axis="y", alpha=0.3)
+fig.suptitle("MNE Scalp Topography: Alpha Power Across Cohorts", fontsize=13, fontweight="bold")
 fig.tight_layout()
-fig.savefig("plots/s06_barchart_with_errors.png", dpi=120)
+fig.savefig("plots/s05_mne_topoplot.png", dpi=120, bbox_inches="tight")
 plt.close(fig)
 print("  Done.")
 
 
-# ── §7  CORRELATION MATRIX ────────────────────────────────────────────────────
-print("§7  Correlation matrix  →  plots/s07_correlation_matrix.png")
+# ── RAINCLOUD PLOTS ───────────────────────────────────────────────────────────
+print("Raincloud plots  →  plots/s06_raincloud_plots.png")
+
+fig, axes = plt.subplots(1, 3, figsize=(15, 5), sharey=True)
+target_feats = [("Alpha", 2), ("Beta", 3), ("Gamma", 4)]
+
+for col_idx, (fname, fi) in enumerate(target_feats):
+    ax = axes[col_idx]
+    for g in range(G):
+        sub_vals = data[g, :, :, :, fi].mean(axis=(0, 2))  # per-subject mean
+        color = COLORS[g]
+        
+        # 1. Cloud: Half-KDE density plot
+        kde = stats.gaussian_kde(sub_vals)
+        y_grid = np.linspace(sub_vals.min() - 0.04, sub_vals.max() + 0.04, 100)
+        density = (kde(y_grid) / kde(y_grid).max()) * 0.28
+        ax.fill_betweenx(y_grid, g + 0.06, g + 0.06 + density, color=color, alpha=0.45)
+        ax.plot(g + 0.06 + density, y_grid, color=color, lw=1.5)
+        
+        # 2. Umbrella: Narrow box plot
+        ax.boxplot(sub_vals, positions=[g], widths=0.08, patch_artist=True,
+                   boxprops=dict(facecolor=color, alpha=0.8, edgecolor="white"),
+                   medianprops=dict(color="white", lw=1.8),
+                   whiskerprops=dict(color=color, lw=1.2),
+                   capprops=dict(color=color, lw=1.2),
+                   flierprops=dict(marker=""))
+        
+        # 3. Rain: Jittered raw subject data points
+        jitter = RNG.uniform(-0.06, 0.06, size=len(sub_vals))
+        ax.scatter(g - 0.18 + jitter, sub_vals, color=color,
+                   alpha=0.65, s=28, edgecolors="white", linewidths=0.5)
+
+    ax.set_xticks(range(G))
+    ax.set_xticklabels(gnames, fontweight="bold")
+    ax.set_title(f"{fname} Power Distribution", fontsize=11, fontweight="bold")
+    ax.grid(True, axis="y", alpha=0.3)
+    if col_idx == 0:
+        ax.set_ylabel("Mean Power (μV²/Hz)", fontsize=10)
+
+fig.suptitle("Raincloud Plots: Subject Distributions Across Frequency Bands",
+             fontsize=13, fontweight="bold")
+fig.tight_layout()
+fig.savefig("plots/s06_raincloud_plots.png", dpi=120, bbox_inches="tight")
+plt.close(fig)
+print("  Done.")
+
+
+# ── ANNOTATED CORRELATION MATRIX ─────────────────────────────────────────────
+print("Correlation matrix  →  plots/s07_correlation_matrix.png")
 
 fig, axes = plt.subplots(1, 3, figsize=(15, 5))
 for g in range(G):
@@ -216,92 +290,10 @@ plt.close(fig)
 print("  Done.")
 
 
-# ── §8  GridSpec DASHBOARD ────────────────────────────────────────────────────
-print("§8  GridSpec dashboard  →  plots/s08_gridspec_dashboard.png")
+# ── JOURNAL-READY FIGURE WITH MNE DELTA TOPOMAP ───────────────────────────────
+print("Publication figure  →  plots/s08_publication_figure.png")
 
-fig = plt.figure(figsize=(17, 10))
-gs  = gridspec.GridSpec(3, 3, figure=fig,
-                        hspace=0.50, wspace=0.35,
-                        left=0.07, right=0.97, top=0.90, bottom=0.07)
-PK  = dict(fontsize=12, fontweight="bold", va="top", ha="left")
-
-# Row 0 — alpha time-courses (full width)
-ax_A = fig.add_subplot(gs[0, :])
-for g in range(G):
-    mu, sem = _mean_sem(g, fi=2)
-    ax_A.plot(t_axis, mu, color=COLORS[g], lw=2, label=gnames[g])
-    ax_A.fill_between(t_axis, mu-sem, mu+sem, color=COLORS[g], alpha=0.15)
-ax_A.axvline(1.0, ls="--", color="k", alpha=0.4)
-ax_A.set_title("(A) Alpha Power Time-Course ± SEM", fontweight="bold")
-ax_A.legend(ncol=3, fontsize=9, frameon=False); ax_A.grid(alpha=0.3)
-ax_A.set_xlabel("Time (s)"); ax_A.set_ylabel("Alpha Power")
-ax_A.text(0.01, 0.97, "A", transform=ax_A.transAxes, **PK)
-
-# Row 1 — per-group channel heatmaps
-for g in range(G):
-    ax = fig.add_subplot(gs[1, g])
-    im = ax.imshow(grp_ch_feat[g], aspect="auto", cmap="inferno")
-    ax.set_title(f"(B) {gnames[g]}", fontsize=9, fontweight="bold")
-    ax.set_xticks(range(F)); ax.set_xticklabels(fnames, rotation=45, ha="right", fontsize=6)
-    ax.set_yticks([]); ax.set_ylabel("Channels" if g == 0 else "")
-    fig.colorbar(im, ax=ax, shrink=0.80, pad=0.02)
-    if g == 0: ax.text(0.01, 0.99, "B", transform=ax.transAxes, **PK)
-
-# Row 2 — bar chart (full width)
-ax_C = fig.add_subplot(gs[2, :])
-for g in range(G):
-    ax_C.bar(x + g*w, grp_mean[g], w,
-             yerr=grp_sem[g], capsize=3,
-             color=COLORS[g], alpha=0.83, label=gnames[g])
-ax_C.set_xticks(x + w); ax_C.set_xticklabels(fnames)
-ax_C.set_title("(C) Feature Power Comparison (±SEM)", fontweight="bold")
-ax_C.legend(ncol=3, fontsize=9, frameon=False); ax_C.grid(axis="y", alpha=0.3)
-ax_C.text(0.01, 0.97, "C", transform=ax_C.transAxes, **PK)
-
-fig.suptitle("Neural Signal Analysis Dashboard",
-             fontsize=15, fontweight="bold", y=0.95)
-fig.savefig("plots/s08_gridspec_dashboard.png", dpi=120, bbox_inches="tight")
-plt.close(fig)
-print("  Done.")
-
-
-# ── §9  HISTOGRAMS ────────────────────────────────────────────────────────────
-print("§9  Histograms  →  plots/s09_histograms.png")
-
-fig, axes = plt.subplots(2, 3, figsize=(14, 7))
-for fi, fname in enumerate(fnames):
-    ax = axes[fi // 3, fi % 3]
-    for g in range(G):
-        vals = data[g, :, :, :, fi].ravel()
-        ax.hist(vals, bins=60, density=True, alpha=0.50,
-                color=COLORS[g], label=gnames[g] if fi == 0 else "")
-    ax.set_title(f"{fname} power distribution", fontsize=9)
-    ax.set_xlabel("Power"); ax.set_ylabel("Density")
-    ax.grid(True, alpha=0.3)
-
-axes[0, 0].legend(fontsize=8, frameon=False)
-fig.suptitle("Feature Power Distributions — All Groups",
-             fontsize=12, fontweight="bold")
-fig.tight_layout()
-fig.savefig("plots/s09_histograms.png", dpi=120)
-plt.close(fig)
-print("  Done.")
-
-
-# ── §10  PUBLICATION-QUALITY STYLING ─────────────────────────────────────────
-print("§10  Publication figure  →  plots/s10_publication_figure.png")
-
-plt.rcParams.update({
-    "font.family"          : "sans-serif",
-    "axes.spines.top"      : False,
-    "axes.spines.right"    : False,
-    "axes.linewidth"       : 1.2,
-    "xtick.major.width"    : 1.2,
-    "ytick.major.width"    : 1.2,
-    "axes.labelsize"       : 11,
-    "xtick.labelsize"      : 9,
-    "ytick.labelsize"      : 9,
-})
+setup_publication_style()
 
 fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 5))
 
@@ -312,31 +304,31 @@ for g in [0, 1]:
     ax1.scatter(sub_alpha, sub_beta, c=COLORS[g], alpha=0.72,
                 s=65, label=gnames[g], edgecolors="white", linewidths=0.6)
 
-ax1.set_xlabel("Mean Alpha Power"); ax1.set_ylabel("Mean Beta Power")
-ax1.set_title("Alpha vs Beta (per subject)", fontweight="bold")
+ax1.set_xlabel("Mean Alpha Power")
+ax1.set_ylabel("Mean Beta Power")
+ax1.set_title("(A) Alpha vs Beta Scatter (per subject)")
 ax1.legend(frameon=False)
 
-# Panel B: Patient − Control difference heatmap
-diff = (data[1].mean(axis=(0, 1))        # (C, F)   Patient mean
-      - data[0].mean(axis=(0, 1)))       # (C, F)   Control mean
-vm   = np.abs(diff).max()
-im   = ax2.imshow(diff, cmap="RdBu_r", vmin=-vm, vmax=vm, aspect="auto")
-ax2.set_xticks(range(F)); ax2.set_xticklabels(fnames, rotation=40, ha="right")
-ax2.set_yticks(range(0, C, 4))
-ax2.set_yticklabels([chnames[i] for i in range(0, C, 4)])
-ax2.set_title("Patient − Control  (channel × feature)", fontweight="bold")
-fig.colorbar(im, ax=ax2, label="Δ Power", shrink=0.85)
+# Panel B: Patient − Control Delta Topomap (MNE topoplot)
+diff_alpha = (data[1, :, :, :, 2].mean(axis=(0, 1))        # Patient mean alpha per channel
+            - data[0, :, :, :, 2].mean(axis=(0, 1)))       # Control mean alpha per channel
+vlim = np.abs(diff_alpha).max()
 
-fig.suptitle("Neural Biomarkers: Patient vs Control",
-             fontsize=13, fontweight="bold")
+im, _ = mne.viz.plot_topomap(
+    diff_alpha, info, axes=ax2, show=False, cmap=cmap_becp, vlim=(-vlim, vlim)
+)
+ax2.set_title("(B) Patient − Control Δ Alpha Topography")
+fig.colorbar(im, ax=ax2, shrink=0.75, pad=0.04, label="Δ Alpha Power")
+
+fig.suptitle("Neural Biomarkers: Patient vs Control Analysis", y=0.98)
 fig.tight_layout()
-fig.savefig("plots/s10_publication_figure.png", dpi=150, bbox_inches="tight")
+fig.savefig("plots/s08_publication_figure.png", dpi=150, bbox_inches="tight")
 plt.close(fig)
 plt.rcParams.update(plt.rcParamsDefault)
 print("  Done.")
 
 print(f"\n{DIV}")
 print("  DAY 2 STUDY GUIDE  COMPLETE  ✓")
-print(f"  10 plots saved to  plots/")
+print(f"  8 plots saved to  plots/")
 print(f"{DIV}")
 print("  Next → run  03_homework_10_problems.py")
