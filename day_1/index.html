@@ -1007,92 +1007,88 @@ print(f"  Merge S&times;C                    : {merged.shape}")</pre>
 
         <hr class="section-divider">
 
-        <!-- ═══ �8 Views vs Copies ═══ -->
+        <!-- ═══ 8 Assigning Data & Memory Gotchas ═══ -->
         <div class="section-block">
             <div class="phase-header">
                 <div class="phase-number">8</div>
-                <h2>The critical memory gotcha</h2>
+                <h2>Assigning data to a variable &amp; memory issues</h2>
             </div>
 
             <div class="glass-card">
                 <p>
-                    This is the most important concept in NumPy memory management.
-                    Some operations share memory with the original array (<em>views</em>);
-                    others produce independent data (<em>copies</em>). Mutating a view propagates
-                    the change back to the source &mdash; silently, with no warning.
+                    When assigning array slices to a variable, understanding the distinction between a <strong>VIEW</strong> and a <strong>COPY</strong> is critical to prevent accidental data mutation.
+                </p>
+                <p>
+                    <strong>Shared Google Doc (VIEW):</strong> Basic slicing (e.g. <code>grades[0:2]</code>) creates a view. Both variables share the same physical memory space. Modifying the view changes the original array too, just like two people editing a shared Google Doc online.
+                </p>
+                <p>
+                    <strong>Downloaded Word Doc (COPY):</strong> Fancy indexing (e.g. <code>grades[[0, 1]]</code>) or explicit <code>.copy()</code> creates an independent copy in memory. Like downloading a Google Doc to your local machine as a Word document, you can modify it without altering the original.
                 </p>
             </div>
 
             <div class="compare-grid">
                 <div class="compare-card view-card">
-                    <div class="card-label">&#x1F441; Views (shared memory)</div>
+                    <div class="card-label">&#x1F441; Basic Slicing = "Shared Google Doc" (VIEW)</div>
                     <ul
                         style="text-align:left;list-style:none;display:flex;flex-direction:column;gap:8px;font-size:0.88rem;">
                         <li style="display:flex;align-items:center;gap:8px;"><span
-                                style="color:#A5B4FC;font-weight:700;">&#x2713;</span><span>Basic slicing
-                                <code>data[0, :50, &hellip;]</code></span></li>
+                                style="color:#A5B4FC;font-weight:700;">&#x2713;</span><span>Basic slice:
+                                <code>top_two = grades[0:2]</code></span></li>
                         <li style="display:flex;align-items:center;gap:8px;"><span
-                                style="color:#A5B4FC;font-weight:700;">&#x2713;</span><span><code>data.transpose(&hellip;)</code></span>
+                                style="color:#A5B4FC;font-weight:700;">&#x2713;</span><span>Shares same physical memory</span>
                         </li>
                         <li style="display:flex;align-items:center;gap:8px;"><span
-                                style="color:#A5B4FC;font-weight:700;">&#x2713;</span><span><code>data.reshape(&hellip;)</code>
-                                (usually)</span></li>
-                        <li style="display:flex;align-items:center;gap:8px;"><span
-                                style="color:#A5B4FC;font-weight:700;">&#x2713;</span><span>Step slices
-                                <code>data[::2, &hellip;]</code></span></li>
+                                style="color:#FCA5A5;font-weight:700;">&#x26A0;</span><span>Mutating slice mutates original! 🚨</span></li>
                     </ul>
                 </div>
                 <div class="compare-card copy-card">
-                    <div class="card-label">&#x1F4CB; Copies (independent)</div>
+                    <div class="card-label">&#x1F4CB; Fancy Indexing = "Downloaded Doc" (COPY)</div>
                     <ul
                         style="text-align:left;list-style:none;display:flex;flex-direction:column;gap:8px;font-size:0.88rem;">
                         <li style="display:flex;align-items:center;gap:8px;"><span
-                                style="color:#2DD4BF;font-weight:700;">&#x2713;</span><span>Fancy indexing
-                                <code>data[[0,1],&hellip;]</code></span></li>
+                                style="color:#2DD4BF;font-weight:700;">&#x2713;</span><span>Fancy index:
+                                <code>first_two = grades[[0, 1]]</code></span></li>
                         <li style="display:flex;align-items:center;gap:8px;"><span
-                                style="color:#2DD4BF;font-weight:700;">&#x2713;</span><span>Boolean indexing
-                                <code>data[mask]</code></span></li>
+                                style="color:#2DD4BF;font-weight:700;">&#x2713;</span><span>Explicit copy:
+                                <code>grades[0:2].copy()</code></span></li>
                         <li style="display:flex;align-items:center;gap:8px;"><span
-                                style="color:#2DD4BF;font-weight:700;">&#x2713;</span><span><code>np.where</code> &amp;
-                                <code>np.take</code> results</span></li>
-                        <li style="display:flex;align-items:center;gap:8px;"><span
-                                style="color:#2DD4BF;font-weight:700;">&#x2713;</span><span>Explicit
-                                <code>.copy()</code> call</span></li>
+                                style="color:#2DD4BF;font-weight:700;">&#x2713;</span><span>Independent memory &mdash; original SAFE! ✅</span></li>
                     </ul>
                 </div>
             </div>
 
             <div class="code-block">
                 <span class="code-tag">Python</span>
-                <pre><span class="c-comment"># Create candidates</span>
-view        = data[0, :50, :, :, :]           <span class="c-comment"># basic slice</span>
-fancy_copy  = data[[0, 1], :, :, :, :]        <span class="c-comment"># fancy index</span>
-bool_copy   = data[data &gt; 0.5]               <span class="c-comment"># boolean index</span>
-transpose_v = data.transpose(4, 0, 1, 2, 3)  <span class="c-comment"># transpose</span>
+                <pre><span class="c-comment"># A simple 1D array of student grades</span>
+grades = np.<span class="c-func">array</span>([<span class="c-number">85</span>, <span class="c-number">90</span>, <span class="c-number">75</span>, <span class="c-number">100</span>, <span class="c-number">95</span>])
+<span class="c-func">print</span>(<span class="c-string">f"Original Grades: {grades}\n"</span>)
 
-<span class="c-comment"># Verify with np.shares_memory</span>
-np.shares_memory(view,       data)   <span class="c-comment"># &rarr; True   (view!)</span>
-np.shares_memory(fancy_copy, data)   <span class="c-comment"># &rarr; False  (copy)</span>
-np.shares_memory(bool_copy,  data)   <span class="c-comment"># &rarr; False  (copy)</span>
-np.shares_memory(transpose_v,data)   <span class="c-comment"># &rarr; True   (view!)</span>
+<span class="c-comment"># BASIC SLICING = "Shared Google Doc" (VIEW)</span>
+<span class="c-comment"># Slicing creates a VIEW. They share the same memory.</span>
+top_two = grades[<span class="c-number">0</span>:<span class="c-number">2</span>]
 
-<span class="c-comment"># Danger: mutating a view changes the original</span>
-backup = data[0, 0, 0, 0, 0]
-view[0, 0, 0, 0] = 999.0              <span class="c-comment"># writes through to data</span>
-data[0, 0, 0, 0, 0]                   <span class="c-comment"># &rarr; 999.0  &larr; original changed!</span>
-data[0, 0, 0, 0, 0] = backup          <span class="c-comment"># restore</span>
+top_two[<span class="c-number">0</span>] = <span class="c-number">10</span>  <span class="c-comment"># Oh no, the teacher made a typo!</span>
+<span class="c-func">print</span>(<span class="c-string">f"The View changed to:    {top_two}"</span>)
+<span class="c-func">print</span>(<span class="c-string">f"The Original array is:  {grades}  &lt;-- MUTATED! 🚨\n"</span>)
 
-<span class="c-comment"># Safe pattern: always copy before in-place ops</span>
-safe = data[0].copy()
-safe *= 99                             <span class="c-comment"># data is untouched</span></pre>
+<span class="c-comment"># Reset grades array for second scenario</span>
+grades = np.<span class="c-func">array</span>([<span class="c-number">85</span>, <span class="c-number">90</span>, <span class="c-number">75</span>, <span class="c-number">100</span>, <span class="c-number">95</span>])
+
+<span class="c-comment"># FANCY INDEXING = "Downloaded Doc" (COPY)</span>
+<span class="c-comment"># Passing a list of indices creates a COPY. Independent memory.</span>
+first_two = grades[[<span class="c-number">0</span>, <span class="c-number">1</span>]]
+
+first_two[<span class="c-number">0</span>] = <span class="c-number">10</span>
+<span class="c-func">print</span>(<span class="c-string">f"The Copy changed to:    {first_two}"</span>)
+<span class="c-func">print</span>(<span class="c-string">f"The Original array is:  {grades}  &lt;-- SAFE! ✅\n"</span>)
+
+<span class="c-comment"># Best practice: explicitly demand a copy</span>
+first_two_grades = grades[<span class="c-number">0</span>:<span class="c-number">2</span>].<span class="c-func">copy</span>()  <span class="c-comment"># Explicit copy</span></pre>
             </div>
 
             <div class="warn-box">
                 <p>
-                    <strong>The silent-mutation bug:</strong> If you pass a slice to a function and that
-                    function modifies it in-place, your original <code>data</code> is permanently altered
-                    &mdash; no warning, no error. Always call <code>.copy()</code> on any slice you hand
-                    to code you don't fully control.
+                    <strong>The silent-mutation bug:</strong> Basic slicing works like a Shared Google Doc. If you pass a slice to a function and that function modifies it in-place, your original array is permanently altered &mdash; with no warning or error. Always call <code>.copy()</code> to create an independent copy when modifying data.
                 </p>
             </div>
 
@@ -1101,8 +1097,8 @@ safe *= 99                             <span class="c-comment"># data is untouch
                 <div class="result-body">
                     <h4>The Golden Rule</h4>
                     <div class="result-value" style="font-size:1rem;line-height:1.8;">
-                        Basic slicing &amp; transpose &rarr; <span style="color:#A5B4FC;">VIEW</span><br>
-                        Fancy &amp; boolean indexing &rarr; <span style="color:#2DD4BF;">COPY</span>
+                        Basic slicing <code>grades[0:2]</code> &rarr; <span style="color:#A5B4FC;">VIEW (Shared Doc)</span><br>
+                        Fancy indexing <code>grades[[0,1]]</code> or <code>.copy()</code> &rarr; <span style="color:#2DD4BF;">COPY (Downloaded Doc)</span>
                     </div>
                     <p style="color:var(--text-muted);font-size:0.85rem;margin-top:8px;">
                         When in doubt: <code>arr.base is not None</code> indicates <em>arr</em> is a view.
@@ -1222,13 +1218,13 @@ safe *= 99                             <span class="c-comment"># data is untouch
                     </tr>
                     <tr style="transition:background 0.2s;" onmouseover="this.style.background='rgba(99,102,241,0.08)'"
                         onmouseout="this.style.background=''">
-                        <td style="padding:12px 20px;color:#fff;font-weight:600;">8 Views vs copies</td>
+                        <td style="padding:12px 20px;color:#fff;font-weight:600;">8 Variable assignment</td>
                         <td
                             style="padding:12px 20px;font-family:'JetBrains Mono',monospace;color:#A5B4FC;font-size:0.82rem;">
-                            <code>np.shares_memory(a, b)</code>
+                            <code>grades[0:2]</code> vs <code>grades[[0,1]]</code>
                         </td>
-                        <td style="padding:12px 20px;color:var(--text-muted);">bool</td>
-                        <td style="padding:12px 20px;color:#fca5a5;">Diagnostic</td>
+                        <td style="padding:12px 20px;color:var(--text-muted);">View / Copy</td>
+                        <td style="padding:12px 20px;color:#fca5a5;">Memory gotcha</td>
                     </tr>
                 </tbody>
             </table>

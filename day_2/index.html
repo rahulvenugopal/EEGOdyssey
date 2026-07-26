@@ -584,8 +584,10 @@
                 <pre>ts = data[0, :, 0, 9, 2]  <span class="c-comment"># Control · sub0 · Cz · alpha</span>
 
 fig, ax = plt.subplots(figsize=(10, 3.5))
-ax.plot(t_axis, ts, color=COLORS[0], lw=1.5, label=<span class="c-string">"Control · sub0 · Cz · alpha"</span>)
-ax.set_xlabel(<span class="c-string">"Time (s)"</span>); ax.set_ylabel(<span class="c-string">"Power (μV²/Hz)"</span>)
+ax.plot(t_axis, ts, color=COLORS[0], lw=1.5, marker=<span class="c-string">"o"</span>, label=<span class="c-string">"Control · sub0 · Cz · alpha"</span>)
+ax.set_xticks(t_axis)
+ax.set_xticklabels([<span class="c-string">"Baseline"</span>, <span class="c-string">"Task"</span>, <span class="c-string">"Rest"</span>])
+ax.set_xlabel(<span class="c-string">"Timepoint"</span>); ax.set_ylabel(<span class="c-string">"Power (μV²/Hz)"</span>)
 ax.set_title(<span class="c-string">"Alpha Power — Control Group, Subject 0, Channel Cz"</span>)
 ax.legend(); ax.grid(True, alpha=0.3)</pre>
             </div>
@@ -599,7 +601,7 @@ ax.legend(); ax.grid(True, alpha=0.3)</pre>
 
             <div class="takeaway-box purple">
                 <p>
-                    <strong>Takeaway:</strong> Convert sample frame indices into physical time units (<code>t_axis = np.arange(T) / sampling_hz</code>). Prefer object-oriented axes (<code>ax.plot</code>) over procedural module calls.
+                    <strong>Takeaway:</strong> Set explicit categorical tick labels (<code>ax.set_xticks([0, 1, 2]); ax.set_xticklabels(["Baseline", "Task", "Rest"])</code>) for discrete experimental timepoints. Prefer object-oriented axes (<code>ax.plot</code>) over procedural module calls.
                 </p>
             </div>
         </div>
@@ -624,9 +626,11 @@ ax.legend(); ax.grid(True, alpha=0.3)</pre>
                 <pre>fig, ax = plt.subplots(figsize=(11, 4))
 for g in range(G):
     ts_g = data[g, :, :, :, 2].mean(axis=(1, 2))   <span class="c-comment"># Mean over subjects &amp; channels</span>
-    ax.plot(t_axis, ts_g, color=COLORS[g], lw=2, label=gnames[g])
+    ax.plot(t_axis, ts_g, color=COLORS[g], lw=2, marker=<span class="c-string">"o"</span>, label=gnames[g])
 
-ax.set_xlabel(<span class="c-string">"Time (s)"</span>); ax.set_ylabel(<span class="c-string">"Mean Alpha Power"</span>)
+ax.set_xticks(t_axis)
+ax.set_xticklabels([<span class="c-string">"Baseline"</span>, <span class="c-string">"Task"</span>, <span class="c-string">"Rest"</span>])
+ax.set_xlabel(<span class="c-string">"Timepoint"</span>); ax.set_ylabel(<span class="c-string">"Mean Alpha Power"</span>)
 ax.set_title(<span class="c-string">"Alpha Power Over Time — All Groups"</span>)
 ax.legend(); ax.grid(True, alpha=0.3)</pre>
             </div>
@@ -664,10 +668,12 @@ ax.legend(); ax.grid(True, alpha=0.3)</pre>
                 <span class="code-tag">Python</span>
                 <pre>for g in range(G):
     mu, sem = _mean_sem(g, fi=2)
-    ax.plot(t_axis, mu, color=COLORS[g], lw=2, label=gnames[g])
+    ax.plot(t_axis, mu, color=COLORS[g], lw=2, marker=<span class="c-string">"o"</span>, label=gnames[g])
     ax.fill_between(t_axis, mu - sem, mu + sem, color=COLORS[g], alpha=0.20)
 
-ax.axvline(x=T / (2*hz), ls=<span class="c-string">"--"</span>, color=<span class="c-string">"k"</span>, alpha=0.45, label=<span class="c-string">"mid-session"</span>)
+ax.set_xticks(t_axis)
+ax.set_xticklabels([<span class="c-string">"Baseline"</span>, <span class="c-string">"Task"</span>, <span class="c-string">"Rest"</span>])
+ax.set_xlabel(<span class="c-string">"Timepoint"</span>); ax.set_ylabel(<span class="c-string">"Alpha Power ± SEM"</span>)
 
 <span class="c-comment"># Place legend at the bottom below the plot frame</span>
 ax.legend(loc=<span class="c-string">"upper center"</span>, bbox_to_anchor=(0.5, -0.22), ncol=4, frameon=False)</pre>
@@ -711,9 +717,13 @@ for row, g in enumerate([0, 1]):
     for col, (fname, fi) in enumerate(feat_cols):
         ax = axes[row, col]
         mu, sem = _mean_sem(g, fi)
-        ax.plot(t_axis, mu, color=COLORS[g], lw=1.8, label=gnames[g])
+        ax.plot(t_axis, mu, color=COLORS[g], lw=1.8, marker=<span class="c-string">"o"</span>, label=gnames[g])
         ax.fill_between(t_axis, mu - sem, mu + sem, color=COLORS[g], alpha=0.20)
         ax.set_title(f<span class="c-string">"{fname} Band"</span>, fontsize=10, fontweight=<span class="c-string">"bold"</span>)
+        ax.set_xticks(t_axis)
+        ax.set_xticklabels([<span class="c-string">"Baseline"</span>, <span class="c-string">"Task"</span>, <span class="c-string">"Rest"</span>])
+        if row == 1:
+            ax.set_xlabel(<span class="c-string">"Timepoint"</span>, fontsize=9)
         
         <span class="c-comment"># Position legend outside plot area to avoid obscuring signal curves</span>
         if col == 2:
@@ -766,11 +776,10 @@ info = mne.create_info(ch_names=chnames, sfreq=hz, ch_types=<span class="c-strin
 info.set_montage(mne.channels.make_standard_montage(<span class="c-string">"standard_1020"</span>))
 
 fig, axes = plt.subplots(1, 3, figsize=(14, 4))
-vmax = max(data[g, :, :, :, 2].mean(axis=(0, 1)).max() for g in range(G))
-vmin = min(data[g, :, :, :, 2].mean(axis=(0, 1)).min() for g in range(G))
 
 <span class="c-keyword">for</span> g <span class="c-keyword">in</span> range(G):
     alpha_power = data[g, :, :, :, 2].mean(axis=(0, 1))  <span class="c-comment"># (32,) channel mean</span>
+    vmin, vmax = alpha_power.min(), alpha_power.max()
     im, _ = mne.viz.plot_topomap(
         alpha_power, info, axes=axes[g], show=False, cmap=cmap_becp, vlim=(vmin, vmax)
     )
@@ -856,13 +865,17 @@ vmin = min(data[g, :, :, :, 2].mean(axis=(0, 1)).min() for g in range(G))
 
             <div class="glass-card">
                 <p>
-                    Evaluating feature co-activation by computing Pearson correlation matrices (<code>np.corrcoef</code>) across frequency bands with dynamic contrast text annotations.
+                    Evaluating feature co-activation across frequency bands by computing Pearson correlation matrices (<code>np.corrcoef</code>).
+                </p>
+                <p>
+                    <strong>Data Pooling:</strong> By reshaping <code>data[g]</code> from <code>(T=3, S=30, C=32, F=6)</code> into <code>(T*S*C, F)</code> &rarr; <code>(2880, 6)</code>, we pool subjects across <strong>all timepoints</strong> (Baseline, Task, Rest) and <strong>all 32 electrode channels</strong> into $2{,}880$ total observations to estimate robust cross-frequency coupling for each cohort.
                 </p>
             </div>
 
             <div class="code-block">
                 <span class="code-tag">Python</span>
                 <pre>for g in range(G):
+    <span class="c-comment"># Flatten cohort into (T*S*C, F) = (2880, 6) -> pools subjects across all timepoints &amp; channels</span>
     mat  = data[g].reshape(-1, F)
     corr = np.corrcoef(mat.T)
     im   = axes[g].imshow(corr, cmap=<span class="c-string">"RdBu_r"</span>, vmin=-1, vmax=1)
@@ -877,7 +890,7 @@ vmin = min(data[g, :, :, :, 2].mean(axis=(0, 1)).min() for g in range(G))
             <div class="plot-card">
                 <img src="plots/s07_correlation_matrix.png" alt="Correlation Matrix">
                 <div class="plot-caption">
-                    <strong>Figure 7:</strong> Feature-to-feature correlation matrices for Control, Patient, and Treatment cohorts.
+                    <strong>Figure 7:</strong> Feature-to-feature correlation matrices for Control, Patient, and Treatment cohorts (pooling subjects across all timepoints and channels).
                 </div>
             </div>
 
@@ -937,6 +950,39 @@ fig.colorbar(im, ax=ax2, shrink=0.75, pad=0.04, label=<span class="c-string">"Δ
                 <p>
                     <strong>Takeaway:</strong> On difference topomaps (<code>Patient - Control</code>), set symmetric limits <code>vlim=(-vlim, vlim)</code> with a zero-centered diverging colormap so blue indicates power reduction and red indicates power enhancement.
                 </p>
+            </div>
+        </div>
+
+        <hr class="section-divider">
+
+        <!-- ═══ Homework Challenge: High Alpha Electrode Topography ═══ -->
+        <div class="section-block">
+            <div class="phase-header">
+                <div class="phase-number" style="background: linear-gradient(135deg, #10B981, #059669); border-color: #34D399;">&#x270F;</div>
+                <h2>Homework Challenge: High Alpha Electrode Topography</h2>
+            </div>
+
+            <div class="glass-card" style="border-color: rgba(52, 211, 153, 0.4);">
+                <p style="font-size:1.05rem;color:#5EEAD4;font-weight:600;margin-bottom:10px;">
+                    &#x1F3AF; Objective: Recreate the Highlighted Scalp Topography Below
+                </p>
+                <p>
+                    Your task is to write a Python script using <code>mne.viz.plot_topomap</code> that reproduces this target figure. You need to identify channels with high alpha power during baseline rest in healthy controls and visually highlight them with white indicator markers.
+                </p>
+                <ul style="margin:14px 0 0 24px;color:var(--text-muted);line-height:2;">
+                    <li><strong>Cohort &amp; Condition:</strong> Select the <strong>Control group</strong> (<code>g=0</code>), <strong>Baseline timepoint</strong> (<code>t=0</code>), and <strong>Alpha power feature</strong> (<code>fi=2</code>).</li>
+                    <li><strong>Channel Mean:</strong> Compute the average alpha power across all 30 subjects for each of the 32 electrode channels (result shape: <code>(32,)</code>).</li>
+                    <li><strong>Thresholding:</strong> Identify channels where alpha power exceeds the <strong>75th percentile</strong> threshold (hint: <code>np.percentile(alpha_base, 75)</code>).</li>
+                    <li><strong>MNE Visualization &amp; Limits:</strong> Render the 2D scalp topography with the Ehinger (<code>becp</code>) colormap. Explicitly set <code>vmin</code> and <code>vmax</code> to the exact minimum and maximum values of the data array being plotted (e.g. <code>vmin = alpha_base.min()</code> and <code>vmax = alpha_base.max()</code>, passed via <code>vlim=(vmin, vmax)</code>) so the colormap spans the full data range.</li>
+                    <li><strong>Electrode Highlighting:</strong> Pass a boolean <code>mask</code> and custom <code>mask_params</code> to <code>plot_topomap</code> so that channels exceeding the threshold are overlaid with prominent <strong>white dots</strong> with a crisp border.</li>
+                </ul>
+            </div>
+
+            <div class="plot-card" style="max-width: 600px; margin: 28px auto;">
+                <img src="plots/s09_homework_topoplot.png" alt="Homework High Alpha Electrode Topography">
+                <div class="plot-caption">
+                    <strong>Homework Target Figure:</strong> Control cohort baseline alpha power topography with high-power electrodes (&gt; 75th percentile) highlighted using white sensor markers.
+                </div>
             </div>
         </div>
 
@@ -1001,10 +1047,15 @@ fig.colorbar(im, ax=ax2, shrink=0.75, pad=0.04, label=<span class="c-string">"Δ
                         <td style="padding:12px 20px;font-family:'JetBrains Mono',monospace;color:#A5B4FC;font-size:0.82rem;"><code>np.corrcoef() + ax.text()</code></td>
                         <td style="padding:12px 20px;color:var(--text-muted);">Feature co-activation &amp; functional coupling</td>
                     </tr>
-                    <tr>
+                    <tr style="border-bottom:1px solid rgba(165,180,252,0.12);">
                         <td style="padding:12px 20px;color:#fff;font-weight:600;">Journal Figure</td>
                         <td style="padding:12px 20px;font-family:'JetBrains Mono',monospace;color:#A5B4FC;font-size:0.82rem;"><code>Scatter + MNE Δ Topomap</code></td>
                         <td style="padding:12px 20px;color:var(--text-muted);">Clean publication graphics &amp; delta maps</td>
+                    </tr>
+                    <tr>
+                        <td style="padding:12px 20px;color:#34D399;font-weight:600;">Homework Topo</td>
+                        <td style="padding:12px 20px;font-family:'JetBrains Mono',monospace;color:#A5B4FC;font-size:0.82rem;"><code>plot_topomap(..., mask=mask)</code></td>
+                        <td style="padding:12px 20px;color:var(--text-muted);">Highlighting thresholded electrode channels</td>
                     </tr>
                 </tbody>
             </table>

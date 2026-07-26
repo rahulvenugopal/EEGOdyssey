@@ -11,9 +11,9 @@ Sections
   4   Step / stride slicing   — downsampling, reversal
   5   Boolean (mask) indexing — filter by value condition
   6   np.where & np.take      — conditional / gather utilities
-  7   Reshape & ravel         — changing array shape
-  8   Transpose               — reordering axes
-  9  Views vs copies         — the critical memory gotcha
+  6.1   Reshape & ravel         — changing array shape
+  7   Transpose               — reordering axes
+  8  Views vs copies         — the critical memory gotcha
 
 """
 
@@ -131,28 +131,42 @@ flat = data.ravel()
 merged = data.reshape(G, T, S * C, F)
 print(f"  Merge S×C                    : {merged.shape}")
 
-#%% 8.  VIEWS vs COPIES
+#%% 8.  Assigning data to a variable and the associated issues
 
-print(  "     Basic slicing    → VIEW   (shares memory  ⟹  mutations propagate)")
-print(  "     Fancy indexing   → COPY  (independent  ⟹  safe to mutate)")
-print(  "     Boolean indexing → COPY")
+# When we share an editable Google Doc. If someone edits the document,
+# your screen updates too because you are both looking at the same
+# physical file even though it seems like there are two files sitting
+# in each person's computer
 
-view        = data[0, :2, :, :, :]
-fancy_copy  = data[[0, 1], :, :, :, :]
-bool_copy   = data[data > 0.5]
-transpose_v = data.transpose(4, 0, 1, 2, 3)
+# Other way is like downloading the Google doc as a word doc.
+# You can edit all the downloaded doc and the original Google Doc 
+# remains completely untouched.
 
-print(f"\n  Slice is a view? {np.shares_memory(view,       data)}")   # True
-print(f"  Fancy index is a copy?   {not np.shares_memory(fancy_copy,  data)}")  # True
-print(f"  Boolean index is a copy?   {not np.shares_memory(bool_copy,   data)}")  # True
-print(f"  Transpose is a view?   {np.shares_memory(transpose_v, data)}")  # True
+# A simple 1D array of student grades
+grades = np.array([85, 90, 75, 100, 95])
+print(f"Original Grades: {grades}\n")
 
-# Proof: mutation through a slice changes the original
-backup = data[0, 0, 0, 0, 0]
-view[0, 0, 0, 0] = 999.0          # writing into the view
-print(f"\n  After view[0,0,0,0]=999 the original data[0,0,0,0,0]={data[0,0,0,0,0]:.1f}  ← changed!")
-data[0, 0, 0, 0, 0] = backup       # restore
+# BASIC SLICING = "Shared Google Doc" (VIEW)
+# Slicing creates a VIEW. They share the same memory.
+top_two = grades[0:2]
 
-# Safe pattern: .copy() to protect the original
-safe  = data[0].copy()
-safe *= 99
+top_two[0] = 10  # Oh no, the teacher made a typo!
+print(f"The View changed to:    {top_two}")
+print(f"The Original array is:  {grades}  <-- MUTATED! 🚨\n")
+
+# Let us look another situation from scratc
+grades = np.array([85, 90, 75, 100, 95])
+
+# FANCY INDEXING = "Downloaded Doc" (COPY)
+# Doing slicing in another way creates a copy than shared memory
+# Shared memory is technically called VIEW
+
+# Passing a list of indices creates a COPY. Independent memory.
+first_two = grades[[0, 1]]
+
+first_two[0] = 10
+print(f"The Copy changed to:    {first_two}")
+print(f"The Original array is:  {grades}  <-- SAFE! ✅\n")
+
+# Best practice is do copy operation
+first_two_grades = grades[0:2].copy()  # Explicitly demand a copy
