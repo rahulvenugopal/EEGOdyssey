@@ -4,7 +4,7 @@ Neural data generator
 Shape : (G=3, T=3, S=30, C=32, F=6)
 
   axis 0  groups      3   Control | Patient | Treatment
-  axis 1  timepoints  3   baseline | 90 days | 180 days
+  axis 1  timepoints  3   Baseline | Task | Rest
   axis 2  subjects    30  30 participants per group
   axis 3  channels    32  EEG electrode positions (standard 10–20)
   axis 4  features    6   delta | theta | alpha | beta | gamma | broadband

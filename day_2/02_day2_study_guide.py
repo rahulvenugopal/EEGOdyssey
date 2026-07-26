@@ -39,8 +39,24 @@ EHINGER_COLORS = [
 cmap_becp = LinearSegmentedColormap.from_list("becp", EHINGER_COLORS, N=256)
 
 # Load data directly from day_1 shared data directory or local fallback
-data_path = "neural_data.npy" if os.path.exists("neural_data.npy") else "../day_1/data/neural_data.npy"
-meta_path = "metadata.pkl" if os.path.exists("metadata.pkl") else "../day_1/data/metadata.pkl"
+script_dir = os.path.dirname(os.path.abspath(__file__))
+workspace_dir = os.path.dirname(script_dir)
+
+data_candidates = [
+    os.path.join(workspace_dir, "day_1", "data", "neural_data.npy"),
+    os.path.join(script_dir, "..", "day_1", "data", "neural_data.npy"),
+    "day_1/data/neural_data.npy",
+    "neural_data.npy",
+]
+meta_candidates = [
+    os.path.join(workspace_dir, "day_1", "data", "metadata.pkl"),
+    os.path.join(script_dir, "..", "day_1", "data", "metadata.pkl"),
+    "day_1/data/metadata.pkl",
+    "metadata.pkl",
+]
+
+data_path = next((p for p in data_candidates if os.path.exists(p)), "day_1/data/neural_data.npy")
+meta_path = next((p for p in meta_candidates if os.path.exists(p)), "day_1/data/metadata.pkl")
 
 data = np.load(data_path)
 with open(meta_path, "rb") as fh:

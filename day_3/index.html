@@ -1,1 +1,868 @@
-<html><body><h1>Welcome to Day 3</h1></body></html>
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Day 3: Tabular CSV to Array Conversion &amp; Relational Merging — EEG Analysis Odyssey</title>
+    <meta name="description"
+        content="Day 3 of the 20-Day EEG Analysis Odyssey: Real-world data merging, composite key lookups, Pandas sanity checks, and converting tabular datasets into 2D ML matrices and 5D NumPy Signal Tensors." />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+    <style>
+        /* ── Design Tokens ─────────────────────────────────────────────── */
+        :root {
+            --bg-deep: #05091a;
+            --text-main: #F0F4FF;
+            --text-muted: #B8C4E0;
+            --accent-solid: #A5B4FC;
+            --accent-teal-solid: #2DD4BF;
+            --glass-bg: rgba(99, 102, 241, 0.10);
+            --glass-border: rgba(165, 180, 252, 0.35);
+            --code-bg: rgba(15, 15, 58, 0.85);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            background-color: var(--bg-deep);
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            line-height: 1.75;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        h1,
+        h2,
+        h3,
+        h4 {
+            font-family: 'Playfair Display', serif;
+            font-weight: 400;
+        }
+
+        p {
+            text-align: justify;
+        }
+
+        /* ── Animated background ───────────────────────────────────────── */
+        .ambient-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background:
+                radial-gradient(ellipse at 15% 55%, rgba(99, 102, 241, 0.55), transparent 45%),
+                radial-gradient(ellipse at 85% 15%, rgba(20, 184, 166, 0.50), transparent 45%),
+                radial-gradient(ellipse at 50% 95%, rgba(167, 139, 250, 0.30), transparent 50%);
+            filter: blur(60px);
+            z-index: -2;
+            animation: breathe 12s infinite alternate ease-in-out;
+        }
+
+        @keyframes breathe {
+            0% {
+                transform: scale(1);
+                opacity: 0.85;
+            }
+
+            100% {
+                transform: scale(1.08);
+                opacity: 1;
+            }
+        }
+
+        canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        /* ── Nav ───────────────────────────────────────────────────────── */
+        .top-nav {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 5%;
+            background: rgba(5, 9, 26, 0.80);
+            backdrop-filter: blur(18px);
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .back-link {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--accent-solid);
+            text-decoration: none;
+            font-size: 0.85rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            transition: color 0.2s, gap 0.2s;
+        }
+
+        .back-link:hover {
+            color: #fff;
+            gap: 12px;
+        }
+
+        .nav-day-label {
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: var(--accent-teal-solid);
+            text-shadow: 0 0 12px rgba(45, 212, 191, 0.7);
+        }
+
+        /* ── Hero ──────────────────────────────────────────────────────── */
+        .hero {
+            padding: 80px 5% 60px;
+            max-width: 1000px;
+            margin: 0 auto;
+            text-align: center;
+            position: relative;
+            z-index: 2;
+        }
+
+        .day-pill {
+            display: inline-block;
+            padding: 6px 20px;
+            border-radius: 999px;
+            background: rgba(99, 102, 241, 0.20);
+            border: 1px solid rgba(165, 180, 252, 0.6);
+            font-size: 0.75rem;
+            font-weight: 800;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            color: #5EEAD4;
+            margin-bottom: 20px;
+            text-shadow: 0 0 14px rgba(45, 212, 191, 0.8);
+            backdrop-filter: blur(12px);
+        }
+
+        .hero h1 {
+            font-size: clamp(2.2rem, 5vw, 3.8rem);
+            line-height: 1.1;
+            letter-spacing: -0.02em;
+            color: #fff;
+            text-shadow: 0 0 40px rgba(165, 180, 252, 0.9), 0 0 80px rgba(99, 102, 241, 0.5);
+            margin-bottom: 16px;
+        }
+
+        .hero-subtitle {
+            font-size: clamp(1rem, 2vw, 1.2rem);
+            color: #C8D5F0;
+            max-width: 760px;
+            margin: 0 auto 28px;
+            font-family: 'Inter', sans-serif;
+            text-align: center;
+            line-height: 1.7;
+        }
+
+        .highlight {
+            color: #C4B5FD;
+            text-shadow: 0 0 30px rgba(165, 180, 252, 1), 0 0 60px rgba(99, 102, 241, 0.6);
+        }
+
+        .highlight-teal {
+            color: #5EEAD4;
+            text-shadow: 0 0 25px rgba(45, 212, 191, 0.9);
+        }
+
+        .badges {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .badge {
+            padding: 6px 16px;
+            border-radius: 999px;
+            background: rgba(99, 102, 241, 0.15);
+            border: 1px solid rgba(165, 180, 252, 0.5);
+            font-size: 0.78rem;
+            font-weight: 500;
+            color: #E0E7FF;
+            backdrop-filter: blur(8px);
+        }
+
+        /* ── Article ───────────────────────────────────────────────────── */
+        article {
+            max-width: 860px;
+            margin: 0 auto;
+            padding: 0 5% 80px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .section-block {
+            margin-bottom: 56px;
+        }
+
+        .phase-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .phase-number {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            background: linear-gradient(135deg, #6366F1, #8B5CF6);
+            border: 2px solid rgba(165, 180, 252, 0.5);
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Playfair Display', serif;
+            font-size: 1.3rem;
+            color: #fff;
+        }
+
+        .phase-header h2 {
+            font-size: clamp(1.4rem, 3vw, 1.9rem);
+            color: #fff;
+            text-shadow: 0 0 20px rgba(165, 180, 252, 0.4);
+            border: none;
+            padding: 0;
+            margin: 0;
+            display: block;
+        }
+
+        .phase-header h2 small {
+            display: block;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: #5EEAD4;
+            margin-bottom: 4px;
+        }
+
+        /* ── Glass card ────────────────────────────────────────────────── */
+        .glass-card {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 28px 32px;
+            backdrop-filter: blur(12px);
+            margin: 20px 0;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+
+        .glass-card:hover {
+            border-color: rgba(165, 180, 252, 0.55);
+            box-shadow: 0 8px 40px rgba(99, 102, 241, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        }
+
+        .glass-card p+p {
+            margin-top: 10px;
+        }
+
+        /* ── Code block ────────────────────────────────────────────────── */
+        .code-block {
+            background: var(--code-bg);
+            border: 1px solid rgba(165, 180, 252, 0.20);
+            border-radius: 12px;
+            padding: 20px 24px;
+            margin: 16px 0;
+            overflow-x: auto;
+            position: relative;
+        }
+
+        .code-block pre {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.84rem;
+            color: #E0E7FF;
+            line-height: 1.7;
+            white-space: pre;
+        }
+
+        .c-comment { color: #6B7DB3; font-style: italic; }
+        .c-keyword { color: #C4B5FD; font-weight: 500; }
+        .c-func    { color: #5EEAD4; }
+        .c-string  { color: #86efac; }
+        .c-number  { color: #FCA5A5; }
+        .c-var     { color: #A5B4FC; }
+
+        .code-tag {
+            position: absolute;
+            top: 12px;
+            right: 16px;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.62rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: rgba(165, 180, 252, 0.5);
+        }
+
+        /* ── Insight box ─────────────────────────────────────────────────── */
+        .insight-box {
+            border-left: 3px solid var(--accent-teal-solid);
+            padding: 18px 24px;
+            margin: 24px 0;
+            background: rgba(20, 184, 166, 0.07);
+            border-radius: 0 12px 12px 0;
+        }
+
+        .insight-box p {
+            color: #C8D5F0;
+            text-align: left;
+        }
+
+        .insight-box strong {
+            color: var(--accent-teal-solid);
+        }
+
+        .insight-box.purple {
+            border-left-color: #A5B4FC;
+            background: rgba(99, 102, 241, 0.07);
+        }
+
+        .insight-box.purple strong {
+            color: #A5B4FC;
+        }
+
+        /* ── Warning box ──────────────────────────────────────────────────── */
+        .warn-box {
+            border-left: 3px solid #FCA5A5;
+            padding: 18px 24px;
+            margin: 24px 0;
+            background: rgba(220, 38, 38, 0.07);
+            border-radius: 0 12px 12px 0;
+        }
+
+        .warn-box p {
+            color: #C8D5F0;
+            text-align: left;
+        }
+
+        .warn-box strong {
+            color: #FCA5A5;
+        }
+
+        /* ── Result callout ─────────────────────────────────────────────── */
+        .result-callout {
+            display: flex;
+            align-items: center;
+            gap: 18px;
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.22), rgba(20, 184, 166, 0.15));
+            border: 2px solid rgba(165, 180, 252, 0.55);
+            border-radius: 16px;
+            padding: 24px 28px;
+            margin: 28px 0;
+            box-shadow: 0 0 40px rgba(99, 102, 241, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .result-callout::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(90deg, transparent, rgba(165, 180, 252, 0.08), transparent);
+            animation: shimmer 2.5s infinite;
+        }
+
+        .result-icon {
+            font-size: 2.2rem;
+            flex-shrink: 0;
+        }
+
+        .result-body h4 {
+            font-family: 'Inter', sans-serif;
+            font-size: 0.7rem;
+            font-weight: 800;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: #5EEAD4;
+            margin-bottom: 6px;
+        }
+
+        .result-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.1rem;
+            color: #fff;
+            font-weight: 500;
+            text-shadow: 0 0 20px rgba(165, 180, 252, 0.7);
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        /* ── Section divider ────────────────────────────────────────────── */
+        .section-divider {
+            border: none;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--glass-border), transparent);
+            margin: 48px 0;
+        }
+
+        /* ── Two-col grid ────────────────────────────────────────────────── */
+        .two-col {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 20px;
+            margin: 24px 0;
+        }
+
+        .concept-card {
+            background: rgba(30, 41, 59, 0.6);
+            border: 1px solid rgba(165, 180, 252, 0.25);
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .concept-card h4 {
+            color: var(--accent-solid);
+            font-family: 'Inter', sans-serif;
+            font-weight: 700;
+            font-size: 0.95rem;
+            margin-bottom: 8px;
+        }
+
+        .concept-card p {
+            font-size: 0.88rem;
+            color: var(--text-muted);
+            margin-bottom: 0;
+            text-align: left;
+        }
+
+        /* ── Table styling ──────────────────────────────────────────────── */
+        .table-container {
+            width: 100%;
+            overflow-x: auto;
+            margin: 20px 0;
+            border-radius: 10px;
+            border: 1px solid rgba(165, 180, 252, 0.2);
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .data-table {
+            width: 100%;
+            min-width: 650px;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+            font-family: 'JetBrains Mono', monospace;
+            margin: 0;
+        }
+
+        .data-table th, .data-table td {
+            padding: 10px 14px;
+            border: 1px solid rgba(165, 180, 252, 0.2);
+            text-align: left;
+            white-space: nowrap;
+        }
+
+        .data-table th {
+            background: rgba(99, 102, 241, 0.25);
+            color: #FFF;
+            font-weight: 600;
+        }
+
+        .data-table td {
+            background: rgba(15, 23, 42, 0.5);
+            color: var(--text-muted);
+        }
+
+        /* ── Footer ────────────────────────────────────────────────────── */
+        footer {
+            text-align: center;
+            padding: 40px 5%;
+            color: #64748B;
+            font-size: 0.85rem;
+            border-top: 1px solid var(--glass-border);
+            position: relative;
+            z-index: 2;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="ambient-background"></div>
+    <canvas id="neural-canvas"></canvas>
+
+    <nav class="top-nav">
+        <a href="../index.html" class="back-link">
+            ← EEG Analysis Odyssey
+        </a>
+        <span class="nav-day-label">Day 3 of 20</span>
+    </nav>
+
+    <header class="hero">
+        <span class="day-pill">Day 03 &bull; Study Guide</span>
+        <h1>Tabular CSV to <span class="highlight">Array Conversion</span> &amp; <span class="highlight-teal">Relational Merging</span></h1>
+        <p class="hero-subtitle">
+            Master the real-world mechanics of merging clinical sociodemographics with electrophysiological features using composite keys, defensive Pandas validation, and reshaping tabular datasets into 2D ML matrices and 5D NumPy Signal Tensors.
+        </p>
+        <div class="badges">
+            <span class="badge">Pandas 3.0</span>
+            <span class="badge">NumPy 2.5</span>
+            <span class="badge">M:1 Relational Merging</span>
+            <span class="badge">Composite Key Lookup</span>
+            <span class="badge">5D Signal Tensors</span>
+        </div>
+    </header>
+
+    <article>
+
+        <!-- SECTION 1 -->
+        <section class="section-block">
+            <div class="phase-header">
+                <div class="phase-number">1</div>
+                <h2>
+                    Why We Merge Data Tables in Real-World Research
+                </h2>
+            </div>
+
+            <div class="glass-card">
+                <p>
+                    In clinical neuroscience, datasets are rarely recorded as a single monolithic file. Electrophysiological hardware exports high-density signal features (spectral power, band ratios), whereas clinical Electronic Health Record (EHR / REDCap) platforms track participant medical charts (Age, Sex, BMI, clinical scores).
+                </p>
+                
+                <div class="two-col">
+                    <div class="concept-card">
+                        <h4>1. Separation of Concerns</h4>
+                        <p>Keeping raw signal acquisition decoupled from REDCap metadata prevents data corruption and streamlines multi-site clinical trials.</p>
+                    </div>
+                    <div class="concept-card">
+                        <h4>2. Memory &amp; Storage Efficiency (M:1)</h4>
+                        <p>A single visit yields 192 feature rows (32 channels &times; 6 bands). Storing static demographics in every raw feature row bloats storage.</p>
+                    </div>
+                    <div class="concept-card">
+                        <h4>3. Controlling Confounders</h4>
+                        <p>Age, Sex, and BMI heavily modulate brain signals (e.g. age-related alpha slowing). Merging demographics is required for ANCOVA and LMM models.</p>
+                    </div>
+                </div>
+
+                <div class="insight-box">
+                    <p>
+                        <strong>REAL-WORLD RATIONALE:</strong> Merging data tables via programmatic joins enables researchers to isolate true neurological signals from demographic covariates without inflating file sizes during recording.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <hr class="section-divider">
+
+        <!-- SECTION 2 -->
+        <section class="section-block">
+            <div class="phase-header">
+                <div class="phase-number">2</div>
+                <h2>
+                    Non-Unique Subject Identifiers &amp; Key Lookup
+                </h2>
+            </div>
+
+            <div class="glass-card">
+                <p>
+                    A common pitfall in multi-group studies is assuming <code>subject_id</code> is globally unique. In our dataset, each study group (<code>Control</code>, <code>Patient</code>, <code>Treatment</code>) labels participants as <code>Sub_01</code> through <code>Sub_30</code> across experimental timepoints (<code>Baseline</code>, <code>Task</code>, <code>Rest</code>).
+                </p>
+
+                <div class="warn-box">
+                    <p>
+                        <strong>WATCH OUT FOR COMPOSITE KEYS:</strong> Because <code>Sub_01</code> appears 9 separate times across the study, joining tables requires the composite key: <code>['group', 'timepoint', 'subject_id']</code>.
+                    </p>
+                </div>
+
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>group</th>
+                                <th>timepoint</th>
+                                <th>subject_id</th>
+                                <th>channel</th>
+                                <th>feature</th>
+                                <th>power_value</th>
+                                <th>age</th>
+                                <th>gender</th>
+                                <th>bmi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>Control</td><td>Baseline</td><td>Sub_01</td><td>Fp1</td><td>delta</td><td>0.397215</td><td>58</td><td>M</td><td>25.3</td></tr>
+                            <tr><td>Patient</td><td>Baseline</td><td>Sub_01</td><td>Fp1</td><td>delta</td><td>0.489120</td><td>61</td><td>F</td><td>28.1</td></tr>
+                            <tr><td>Treatment</td><td>Task</td><td>Sub_01</td><td>Cz</td><td>alpha</td><td>0.612450</td><td>44</td><td>M</td><td>22.9</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <hr class="section-divider">
+
+        <!-- SECTION 3 -->
+        <section class="section-block">
+            <div class="phase-header">
+                <div class="phase-number">3</div>
+                <h2>
+                    Merging Demographics &amp; Defensive Validation
+                </h2>
+            </div>
+
+            <div class="glass-card">
+                <p>
+                    When joining relational tables in Pandas, defensive programmers enforce validation parameters such as <code>validate="many_to_one"</code> (or <code>"m:1"</code>) to guarantee that the right table contains exactly one unique row per composite key.
+                </p>
+
+                <div class="code-block">
+                    <span class="code-tag">PYTHON / PANDAS</span>
+<pre><span class="c-keyword">import</span> pandas <span class="c-keyword">as</span> pd
+
+<span class="c-comment"># 1. Load feature mastersheet and sociodemographics CSVs</span>
+df_features = pd.<span class="c-func">read_csv</span>(<span class="c-string">"data/eeg_mastersheet.csv"</span>)
+df_demo     = pd.<span class="c-func">read_csv</span>(<span class="c-string">"data/sociodemographics.csv"</span>)
+
+<span class="c-comment"># 2. Defensive Sanity Check: Ensure right key has zero duplicates</span>
+composite_key = [<span class="c-string">"group"</span>, <span class="c-string">"timepoint"</span>, <span class="c-string">"subject_id"</span>]
+<span class="c-keyword">assert not</span> df_demo.<span class="c-func">duplicated</span>(subset=composite_key).<span class="c-func">any</span>(), <span class="c-string">"Duplicate demographic keys detected!"</span>
+
+<span class="c-comment"># 3. Relational Left Join with explicit many_to_one validation</span>
+df_enriched = pd.<span class="c-func">merge</span>(
+    df_features,
+    df_demo,
+    on=composite_key,
+    how=<span class="c-string">"left"</span>,
+    validate=<span class="c-string">"many_to_one"</span>  <span class="c-comment"># Validates that right table has unique keys per left row</span>
+)
+
+<span class="c-comment"># 4. Post-Merge Data Integrity Sanity Assertions</span>
+<span class="c-keyword">assert</span> <span class="c-func">len</span>(df_enriched) == <span class="c-func">len</span>(df_features), <span class="c-string">"Row count changed during merge!"</span>
+<span class="c-keyword">assert</span> df_enriched[[<span class="c-string">"age"</span>, <span class="c-string">"gender"</span>, <span class="c-string">"bmi"</span>]].<span class="c-func">isnull</span>().<span class="c-func">sum</span>().<span class="c-func">sum</span>() == <span class="c-number">0</span>, <span class="c-string">"Unmatched demographics!"</span>
+
+df_enriched.<span class="c-func">to_csv</span>(<span class="c-string">"data/eeg_mastersheet_enriched.csv"</span>, index=<span class="c-keyword">False</span>)</pre>
+                </div>
+
+                <div class="result-callout">
+                    <div class="result-icon">🛡️</div>
+                    <div class="result-body">
+                        <h4>MERGE VALIDATION RESULT</h4>
+                        <div class="result-value">Enriched DataFrame: 51,840 rows &times; 10 columns &bull; 0 Missing Demographics</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <hr class="section-divider">
+
+        <!-- SECTION 4 -->
+        <section class="section-block">
+            <div class="phase-header">
+                <div class="phase-number">4</div>
+                <h2>
+                    Reshaping Tabular CSV into 2D Matrices &amp; 5D Tensors
+                </h2>
+            </div>
+
+            <div class="glass-card">
+                <p>
+                    Downstream analytics require pivoting long tabular DataFrames into matrix and tensor formats suitable for Scikit-Learn or MNE indexing:
+                </p>
+
+                <div class="code-block">
+                    <span class="code-tag">PYTHON / SCALARS &amp; MATRICES</span>
+<pre><span class="c-comment"># A. Pivot frequency bands into 2D Feature Matrix (8,640 samples × 6 band features)</span>
+df_wide = df.<span class="c-func">pivot</span>(
+    index=[<span class="c-string">"group"</span>, <span class="c-string">"timepoint"</span>, <span class="c-string">"subject_id"</span>, <span class="c-string">"channel"</span>, <span class="c-string">"region"</span>],
+    columns=<span class="c-string">"feature"</span>,
+    values=<span class="c-string">"power_value"</span>
+).<span class="c-func">reset_index</span>()
+
+feature_cols = [<span class="c-string">"delta"</span>, <span class="c-string">"theta"</span>, <span class="c-string">"alpha"</span>, <span class="c-string">"beta"</span>, <span class="c-string">"gamma"</span>, <span class="c-string">"broadband"</span>]
+X_2d = df_wide[feature_cols].<span class="c-func">to_numpy</span>()  <span class="c-comment"># Shape: (8640, 6)</span>
+
+<span class="c-comment"># B. Convert CSV to 5D Signal Tensor Array (3 × 3 × 30 × 32 × 6)</span>
+df[<span class="c-string">"group"</span>]      = pd.<span class="c-func">Categorical</span>(df[<span class="c-string">"group"</span>], categories=groups, ordered=<span class="c-keyword">True</span>)
+df[<span class="c-string">"timepoint"</span>]  = pd.<span class="c-func">Categorical</span>(df[<span class="c-string">"timepoint"</span>], categories=timepoints, ordered=<span class="c-keyword">True</span>)
+df[<span class="c-string">"subject_id"</span>] = pd.<span class="c-func">Categorical</span>(df[<span class="c-string">"subject_id"</span>], categories=subjects, ordered=<span class="c-keyword">True</span>)
+df[<span class="c-string">"channel"</span>]    = pd.<span class="c-func">Categorical</span>(df[<span class="c-string">"channel"</span>], categories=channels, ordered=<span class="c-keyword">True</span>)
+df[<span class="c-string">"feature"</span>]    = pd.<span class="c-func">Categorical</span>(df[<span class="c-string">"feature"</span>], categories=features, ordered=<span class="c-keyword">True</span>)
+
+df_sorted = df.<span class="c-func">sort_values</span>(by=[<span class="c-string">"group"</span>, <span class="c-string">"timepoint"</span>, <span class="c-string">"subject_id"</span>, <span class="c-string">"channel"</span>, <span class="c-string">"feature"</span>])
+arr_5d = df_sorted[<span class="c-string">"power_value"</span>].<span class="c-func">to_numpy</span>().<span class="c-func">reshape</span>(<span class="c-number">3</span>, <span class="c-number">3</span>, <span class="c-number">30</span>, <span class="c-number">32</span>, <span class="c-number">6</span>)</pre>
+                </div>
+
+                <div class="insight-box purple">
+                    <p>
+                        <strong>ORDERED CATEGORICAL TIP:</strong> Standard string sorting arranges timepoints alphabetically (<code>'Baseline'</code> before <code>'Rest'</code>, placing <code>'Task'</code> last). Using <code>pd.Categorical(..., ordered=True)</code> forces sorting to follow your exact metadata dimension lists (<code>['Baseline', 'Task', 'Rest']</code>).
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <hr class="section-divider">
+
+        <!-- SECTION 5 -->
+        <section class="section-block">
+            <div class="phase-header">
+                <div class="phase-number">5</div>
+                <h2>
+                    Pandas Data Integrity &amp; Sanity Checklist
+                </h2>
+            </div>
+
+            <div class="glass-card">
+                <p>
+                    In scientific computing, silent failure is far more hazardous than explicit exceptions. Always check these invariants:
+                </p>
+
+                <div class="two-col">
+                    <div class="concept-card">
+                        <h4>1. Invariant Row Count</h4>
+                        <p>Assert <code>len(df_merged) == len(df_left)</code> during left joins to catch unintended Cartesian row explosions.</p>
+                    </div>
+                    <div class="concept-card">
+                        <h4>2. Zero Null Merges</h4>
+                        <p>Assert <code>df_merged[new_cols].isnull().sum().sum() == 0</code> to verify 100% key matching across tables.</p>
+                    </div>
+                    <div class="concept-card">
+                        <h4>3. Key Uniqueness</h4>
+                        <p>Assert <code>not df.duplicated(subset=keys).any()</code> on metadata lookup tables prior to merging.</p>
+                    </div>
+                    <div class="concept-card">
+                        <h4>4. Shape Invariants</h4>
+                        <p>Assert <code>X_2d.shape == (8640, 6)</code> before passing features into machine learning algorithms.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ── Further Reading Section ── -->
+        <section style="max-width:860px;margin:0 auto;padding:0 5% 100px;position:relative;z-index:2;">
+            <div style="display:flex;align-items:center;gap:16px;margin-bottom:32px;">
+                <div style="width:48px;height:48px;border-radius:50%;flex-shrink:0;
+                    background:linear-gradient(135deg,#0f172a,#1e293b);
+                    border:2px solid rgba(94,234,212,0.5);
+                    box-shadow:0 0 20px rgba(20,184,166,0.4);
+                    display:flex;align-items:center;justify-content:center;font-size:1.3rem;">
+                    &#x1F4DA;
+                </div>
+                <h2 style="font-size:clamp(1.3rem,2.8vw,1.75rem);color:#fff;
+                    text-shadow:0 0 20px rgba(94,234,212,0.3);
+                    border:none;padding:0;margin:0;display:block;
+                    font-family:'Playfair Display',serif;font-weight:400;">
+                    Further reading
+                </h2>
+            </div>
+            <ol style="color:rgba(165,180,252,0.8);font-family:'Inter',sans-serif;line-height:1.6;padding-left:1.5rem;display:flex;flex-direction:column;gap:20px;">
+                <li style="padding-left:8px;color:#A5B4FC;font-family:'JetBrains Mono',monospace;font-weight:700;">
+                    <div style="font-family:'Inter',sans-serif;">
+                        <a href="https://pandas.pydata.org/docs/user_guide/reshaping.html" target="_blank" rel="noopener"
+                            style="color:#fff;text-decoration:underline;text-decoration-color:rgba(165,180,252,0.4);font-weight:600;font-size:0.95rem;">Pandas Official User Guide: Reshaping &amp; Pivot Tables</a>
+                        <span style="font-size:0.9rem;margin-left:6px;">&#x1F4D6;</span><br>
+                        <span style="color:var(--text-muted);font-size:0.85rem;font-weight:400;">Complete reference for <code>pivot()</code>, <code>unstack()</code>, and <code>melt()</code> for converting long/wide tabular structures.</span>
+                    </div>
+                </li>
+                <li style="padding-left:8px;color:#C4B5FD;font-family:'JetBrains Mono',monospace;font-weight:700;">
+                    <div style="font-family:'Inter',sans-serif;">
+                        <a href="https://pandas.pydata.org/docs/user_guide/merging.html" target="_blank" rel="noopener"
+                            style="color:#fff;text-decoration:underline;text-decoration-color:rgba(196,181,253,0.4);font-weight:600;font-size:0.95rem;">Pandas Official User Guide: Merge, Join &amp; Relational Validation</a>
+                        <span style="font-size:0.9rem;margin-left:6px;">&#x1F4D6;</span><br>
+                        <span style="color:var(--text-muted);font-size:0.85rem;font-weight:400;">Mastering <code>pd.merge()</code>, composite keys, database join mechanics, and enforcing <code>validate="many_to_one"</code> (m:1) integrity.</span>
+                    </div>
+                </li>
+                <li style="padding-left:8px;color:#5EEAD4;font-family:'JetBrains Mono',monospace;font-weight:700;">
+                    <div style="font-family:'Inter',sans-serif;">
+                        <a href="https://realpython.com/python-pandas-tricks/#5-validate-data-with-pandas" target="_blank" rel="noopener"
+                            style="color:#fff;text-decoration:underline;text-decoration-color:rgba(94,234,212,0.4);font-weight:600;font-size:0.95rem;">Real Python: Defensive Data Validation &amp; Pandas Checks</a>
+                        <span style="font-size:0.9rem;margin-left:6px;">&#x1F4D6;</span><br>
+                        <span style="color:var(--text-muted);font-size:0.85rem;font-weight:400;">Comprehensive guide on defensive programming patterns in Python data science, testing invariants, and data validation pipelines.</span>
+                    </div>
+                </li>
+            </ol>
+        </section>
+
+    </article>
+
+    <!-- ── Neural particle canvas ── -->
+    <script>
+        const canvas = document.getElementById('neural-canvas');
+        const ctx = canvas.getContext('2d');
+        let W, H, particles;
+        function resize() { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
+        function initParticles() {
+            particles = Array.from({ length: 120 }, () => ({
+                x: Math.random() * W, y: Math.random() * H,
+                vx: (Math.random() - 0.5) * 0.45, vy: (Math.random() - 0.5) * 0.45,
+                r: Math.random() * 2.2 + 0.8
+            }));
+        }
+        function draw() {
+            ctx.clearRect(0, 0, W, H);
+            for (let i = 0; i < particles.length; i++) {
+                for (let j = i + 1; j < particles.length; j++) {
+                    const dx = particles[i].x - particles[j].x;
+                    const dy = particles[i].y - particles[j].y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < 140) {
+                        ctx.beginPath();
+                        ctx.strokeStyle = `rgba(165,180,252,${0.28 * (1 - dist / 140)})`;
+                        ctx.lineWidth = 0.8;
+                        ctx.moveTo(particles[i].x, particles[i].y);
+                        ctx.lineTo(particles[j].x, particles[j].y);
+                        ctx.stroke();
+                    }
+                }
+            }
+            particles.forEach(p => {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(165,180,252,0.72)';
+                ctx.fill();
+                p.x += p.vx; p.y += p.vy;
+                if (p.x < 0 || p.x > W) p.vx *= -1;
+                if (p.y < 0 || p.y > H) p.vy *= -1;
+            });
+            requestAnimationFrame(draw);
+        }
+        window.addEventListener('resize', () => { resize(); initParticles(); });
+        resize(); initParticles(); draw();
+    </script>
+
+    <!-- ── Footer ── -->
+    <footer>
+        <p>
+            Day 3 &mdash; <a href="../index.html" style="color:var(--accent-solid);text-decoration:underline;">EEG Analysis Odyssey</a> &nbsp;&bull;&nbsp;
+            Tabular CSV to Array Conversion &amp; Relational Merging
+        </p>
+        <p style="margin-top: 10px;">
+            Script 1: <a href="https://github.com/rahulvenugopal/EEGOdyssey/blob/main/day_3/01_csv_to_array.py"
+                target="_blank"
+                style="color:var(--accent-solid);text-decoration:underline;"><code>01_csv_to_array.py</code></a>
+            &nbsp;&bull;&nbsp;
+            Script 2: <a
+                href="https://github.com/rahulvenugopal/EEGOdyssey/blob/main/day_3/02_merge_sociodemographics.py"
+                target="_blank"
+                style="color:var(--accent-solid);text-decoration:underline;"><code>02_merge_sociodemographics.py</code></a>
+        </p>
+    </footer>
+
+</body>
+
+</html>

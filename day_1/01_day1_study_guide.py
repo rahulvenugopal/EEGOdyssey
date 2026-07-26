@@ -106,7 +106,7 @@ clamped = np.clip(data, 0, 1.0)
 
 # np.where with one arg returns indices (like find())
 idxs = np.where(subj_mean > threshold)       # returns tuple of arrays
-print(f"  np.where(condition) → indices: {idxs[0]}")
+print(f"  np.where(condition) -> indices: {idxs[0]}")
 
 # np.take — gather along one axis with an index array
 tba  = np.take(data, indices=[1, 2, 3], axis=4)
@@ -152,9 +152,9 @@ top_two = grades[0:2]
 
 top_two[0] = 10  # Oh no, the teacher made a typo!
 print(f"The View changed to:    {top_two}")
-print(f"The Original array is:  {grades}  <-- MUTATED! 🚨\n")
+print(f"The Original array is:  {grades}  <-- MUTATED! [WARNING]\n")
 
-# Let us look another situation from scratc
+# Let us look another situation from scratch
 grades = np.array([85, 90, 75, 100, 95])
 
 # FANCY INDEXING = "Downloaded Doc" (COPY)
@@ -166,7 +166,7 @@ first_two = grades[[0, 1]]
 
 first_two[0] = 10
 print(f"The Copy changed to:    {first_two}")
-print(f"The Original array is:  {grades}  <-- SAFE! ✅\n")
+print(f"The Original array is:  {grades}  <-- SAFE! [OK]\n")
 
 # Best practice is do copy operation
 first_two_grades = grades[0:2].copy()  # Explicitly demand a copy
