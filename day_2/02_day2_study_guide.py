@@ -163,7 +163,11 @@ ax.set_xlabel("Timepoint", fontsize=11); ax.set_ylabel("Alpha Power ± SEM", fon
 ax.set_title("Mean Alpha Power with Standard Error Bands", fontsize=12)
 
 # Position legend at the bottom below the plot frame so it never obscures confidence bands
-ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.22), ncol=4, frameon=False, fontsize=9)
+ax.legend(loc="upper center",
+          bbox_to_anchor=(0.5, -0.22), # Comment
+          ncol=4, 
+          frameon=False,
+          fontsize=9)
 ax.grid(True, alpha=0.3)
 fig.tight_layout()
 fig.savefig("plots/s03_confidence_bands.png", dpi=120, bbox_inches="tight")
