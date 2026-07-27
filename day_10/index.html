@@ -1,1 +1,350 @@
-<html><body><h1>Welcome to Day 10</h1></body></html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Day 10: Features: Frequency Sliding &mdash; EEG Analysis Odyssey</title>
+    <meta name="description" content="Track how the dominant frequency of a neural oscillation drifts moment by moment &mdash; capturing the non-stationarity that static PSD analysis misses entirely." />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-deep: #05091a;
+            --text-main: #F0F4FF;
+            --text-muted: #B8C4E0;
+            --accent-solid: #A5B4FC;
+            --accent-teal-solid: #2DD4BF;
+            --glass-bg: rgba(99, 102, 241, 0.10);
+            --glass-border: rgba(165, 180, 252, 0.35);
+            --code-bg: rgba(15, 15, 58, 0.85);
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html { scroll-behavior: smooth; }
+        body {
+            background-color: var(--bg-deep);
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            line-height: 1.75;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+        h1, h2, h3, h4 { font-family: 'Playfair Display', serif; font-weight: 400; }
+        p { text-align: justify; }
+
+        .ambient-background {
+            position: fixed; top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            background:
+                radial-gradient(ellipse at 15% 55%, rgba(99, 102, 241, 0.55), transparent 45%),
+                radial-gradient(ellipse at 85% 15%, rgba(20, 184, 166, 0.50), transparent 45%),
+                radial-gradient(ellipse at 50% 95%, rgba(167, 139, 250, 0.30), transparent 50%);
+            filter: blur(60px); z-index: -2;
+            animation: breathe 12s infinite alternate ease-in-out;
+        }
+        @keyframes breathe {
+            0% { transform: scale(1); opacity: 0.85; }
+            100% { transform: scale(1.08); opacity: 1; }
+        }
+        canvas { position: fixed; top: 0; left: 0; z-index: -1; pointer-events: none; }
+
+        /* Nav */
+        .top-nav {
+            position: sticky; top: 0; z-index: 100;
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 14px 5%;
+            background: rgba(5, 9, 26, 0.85);
+            backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+            border-bottom: 1px solid var(--glass-border);
+        }
+        .back-link { display: flex; align-items: center; gap: 8px; color: var(--accent-solid); text-decoration: none; font-size: 0.85rem; font-weight: 600; letter-spacing: 0.5px; transition: color 0.2s, gap 0.2s; white-space: nowrap; }
+        .back-link:hover { color: #fff; gap: 12px; }
+        .nav-day-label { font-size: 0.75rem; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: var(--accent-teal-solid); text-shadow: 0 0 12px rgba(45, 212, 191, 0.7); white-space: nowrap; }
+        .nav-arrows { display: flex; align-items: center; gap: 10px; }
+        .nav-arrow-btn { padding: 6px 16px; border: 1px solid var(--glass-border); border-radius: 8px; font-size: 0.85rem; font-weight: 500; color: var(--text-muted); text-decoration: none; transition: all 0.3s ease; display: inline-flex; align-items: center; background: rgba(99, 102, 241, 0.08); white-space: nowrap; }
+        .nav-arrow-btn:hover:not(.disabled) { border-color: var(--accent-solid); color: #ffffff; box-shadow: 0 0 12px rgba(165, 180, 252, 0.4); background: rgba(99, 102, 241, 0.25); transform: translateY(-1px); }
+        .nav-arrow-btn.disabled { opacity: 0.3; cursor: not-allowed; pointer-events: none; border-color: rgba(255, 255, 255, 0.05); }
+
+        /* Hero */
+        .hero { padding: 70px 5% 50px; max-width: 960px; margin: 0 auto; text-align: center; position: relative; z-index: 2; width: 100%; }
+        .day-pill { display: inline-block; padding: 6px 20px; border-radius: 999px; background: rgba(99, 102, 241, 0.20); border: 1px solid rgba(165, 180, 252, 0.6); font-size: 0.75rem; font-weight: 800; letter-spacing: 4px; text-transform: uppercase; color: #5EEAD4; margin-bottom: 20px; text-shadow: 0 0 14px rgba(45, 212, 191, 0.8); backdrop-filter: blur(12px); }
+        .hero h1 { font-size: clamp(2.2rem, 5vw, 3.8rem); line-height: 1.1; letter-spacing: -0.02em; color: #fff; text-shadow: 0 0 40px rgba(165, 180, 252, 0.9), 0 0 80px rgba(99, 102, 241, 0.5); margin-bottom: 16px; }
+        .hero-subtitle { font-size: clamp(1rem, 2vw, 1.2rem); color: #C8D5F0; max-width: 700px; margin: 0 auto 28px; font-family: 'Inter', sans-serif; text-align: center; }
+        .highlight { color: #C4B5FD; text-shadow: 0 0 30px rgba(165, 180, 252, 1), 0 0 60px rgba(99, 102, 241, 0.6); }
+        .highlight-teal { color: #5EEAD4; text-shadow: 0 0 25px rgba(45, 212, 191, 0.9); }
+        .badges { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+        .badge { padding: 6px 16px; border-radius: 999px; background: rgba(99, 102, 241, 0.15); border: 1px solid rgba(165, 180, 252, 0.5); font-size: 0.78rem; font-weight: 500; color: #E0E7FF; backdrop-filter: blur(8px); }
+
+        /* Article */
+        article { max-width: 860px; margin: 0 auto; padding: 0 5% 80px; position: relative; z-index: 2; }
+        .section-block { margin-bottom: 56px; }
+        .phase-header { display: flex; align-items: center; gap: 16px; margin-bottom: 20px; }
+        .phase-number { width: 48px; height: 48px; border-radius: 50%; flex-shrink: 0; background: linear-gradient(135deg, #6366F1, #8B5CF6); border: 2px solid rgba(165, 180, 252, 0.5); box-shadow: 0 0 20px rgba(99, 102, 241, 0.6); display: flex; align-items: center; justify-content: center; font-family: 'Playfair Display', serif; font-size: 1.3rem; color: #fff; }
+        .phase-header h2 { font-size: clamp(1.4rem, 3vw, 1.9rem); color: #fff; text-shadow: 0 0 20px rgba(165, 180, 252, 0.4); border: none; padding: 0; margin: 0; display: block; }
+
+        /* Glass card */
+        .glass-card { background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: 16px; padding: 28px 32px; backdrop-filter: blur(12px); margin: 20px 0; box-shadow: 0 4px 30px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.07); transition: border-color 0.3s, box-shadow 0.3s; }
+        .glass-card:hover { border-color: rgba(165, 180, 252, 0.55); box-shadow: 0 8px 40px rgba(99, 102, 241, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1); }
+        .glass-card p + p { margin-top: 10px; }
+
+        /* Code block */
+        .code-block { background: var(--code-bg); border: 1px solid rgba(165, 180, 252, 0.20); border-radius: 12px; padding: 20px 24px; margin: 16px 0; overflow-x: auto; position: relative; }
+        .code-block pre { font-family: 'JetBrains Mono', monospace; font-size: 0.84rem; color: #E0E7FF; line-height: 1.7; white-space: pre; }
+        .c-comment { color: #6B7DB3; font-style: italic; }
+        .c-keyword { color: #C4B5FD; font-weight: 500; }
+        .c-func { color: #5EEAD4; }
+        .c-string { color: #86efac; }
+        .c-number { color: #FCA5A5; }
+        .c-var { color: #A5B4FC; }
+        .code-tag { position: absolute; top: 12px; right: 16px; font-family: 'Inter', sans-serif; font-size: 0.62rem; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: rgba(165, 180, 252, 0.5); }
+
+        /* Insight box */
+        .insight-box { border-left: 3px solid var(--accent-teal-solid); padding: 18px 24px; margin: 24px 0; background: rgba(20, 184, 166, 0.07); border-radius: 0 12px 12px 0; }
+        .insight-box p { color: #C8D5F0; text-align: left; }
+        .insight-box strong { color: var(--accent-teal-solid); }
+        .insight-box.purple { border-left-color: #A5B4FC; background: rgba(99, 102, 241, 0.07); }
+        .insight-box.purple strong { color: #A5B4FC; }
+
+        /* Warning box */
+        .warn-box { border-left: 3px solid #FCA5A5; padding: 18px 24px; margin: 24px 0; background: rgba(220, 38, 38, 0.07); border-radius: 0 12px 12px 0; }
+        .warn-box p { color: #C8D5F0; text-align: left; }
+        .warn-box strong { color: #FCA5A5; }
+
+        /* Divider / Grid */
+        .section-divider { border: none; height: 1px; background: linear-gradient(90deg, transparent, var(--glass-border), transparent); margin: 48px 0; }
+        .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0; }
+
+        /* Footer */
+        footer { text-align: center; padding: 40px 20px; color: var(--text-muted); font-size: 0.85rem; border-top: 1px solid var(--glass-border); position: relative; z-index: 2; }
+        footer a { color: var(--accent-solid); text-decoration: none; }
+        footer a:hover { text-decoration: underline; }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #050814; }
+        ::-webkit-scrollbar-thumb { background: rgba(129, 140, 248, 0.4); border-radius: 3px; }
+
+        /* Inline code */
+        code { font-family: 'JetBrains Mono', monospace; font-size: 0.86em; background: var(--code-bg); padding: 2px 7px; border-radius: 5px; color: #A5B4FC; border: 1px solid rgba(165, 180, 252, 0.15); }
+
+        /* Responsive */
+        @media (max-width: 640px) {
+            .two-col { grid-template-columns: 1fr; }
+            .glass-card { padding: 20px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="ambient-background"></div>
+    <canvas id="neural-canvas"></canvas>
+
+    <nav class="top-nav">
+        <a href="../index.html" class="back-link">&#x2190; Back to Odyssey</a>
+        <span class="nav-day-label">Day 10 of 20</span>
+        <div class="nav-arrows">
+            <a href="../day_9/index.html" class="nav-arrow-btn prev-day" title="Previous Day: Features: Power Spectral Density (PSD)">&#x2190; Prev</a>
+            <a href="../day_11/index.html" class="nav-arrow-btn next-day" title="Next Day: Features: FOOOF">Next &#x2192;</a>
+        </div>
+    </nav>
+
+    <header class="hero">
+        <div class="day-pill">&#x2726; Day 10 &middot; Spectral Dynamics</div>
+        <h1><span class='highlight'>Frequency</span><br><span class='highlight-teal'>Sliding</span></h1>
+        <p class="hero-subtitle">Track how the dominant frequency of a neural oscillation drifts moment by moment &mdash; capturing the non-stationarity that static PSD analysis misses entirely.</p>
+                <div class="badges">
+            <span class="badge">&#x1F300; Instantaneous Frequency</span>
+            <span class="badge">&#x1F4C8; Phase Derivative</span>
+            <span class="badge">&#x1F9E0; Non-Stationarity</span>
+            <span class="badge">&#x1F40D; scipy.signal.hilbert</span>
+            <span class="badge">&#x1F4D6; Cohen ANTS Ch. 14</span>
+        </div>
+    </header>
+
+    <article>
+        <div class="section-block">
+            <div class="glass-card">
+                <p>
+                    Standard PSD analysis assumes a signal has stable frequency content over time. But neural oscillations
+                    are <em>not</em> stationary &mdash; alpha frequency drifts, theta bursts come and go, and the brain
+                    constantly shifts between spectral states. <strong>Frequency sliding</strong> tracks how the
+                    <em>instantaneous frequency</em> of a narrow-band signal changes moment by moment.
+                </p>
+            </div>
+        </div>
+
+        <hr class="section-divider">
+
+        <div class="section-block">
+            <div class="phase-header">
+                <div class="phase-number">1</div>
+                <h2>What is Instantaneous Frequency?<br><small>Phase Derivative of the Analytic Signal</small></h2>
+            </div>
+
+            <div class="glass-card">
+                <p>
+                    The <strong>Hilbert transform</strong> (covered in detail on Day 16) converts a real-valued signal
+                    into a <em>complex-valued</em> analytic signal with instantaneous amplitude (envelope) and
+                    instantaneous phase. The <strong>instantaneous frequency</strong> is simply the time derivative
+                    of the instantaneous phase:
+                </p>
+                <p style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:1.1rem;color:#A5B4FC;margin:16px 0;">
+                    f(t) = (1 / 2&pi;) &middot; d&phi;(t) / dt
+                </p>
+                <p>
+                    When the phase advances quickly, the instantaneous frequency is high. When it advances slowly,
+                    the frequency is low. This gives you a <em>single number at every time point</em> representing
+                    the dominant frequency of your filtered signal.
+                </p>
+            </div>
+
+            <div class="insight-box">
+                <p>
+                    <strong>Cohen&rsquo;s analogy (ANTS Ch. 14):</strong> Think of a spinning wheel. The <em>phase</em>
+                    is the current angle of the wheel. The <em>instantaneous frequency</em> is how fast the wheel is
+                    spinning right now. If the wheel speeds up, the instantaneous frequency increases &mdash;
+                    even though the &ldquo;average RPM&rdquo; over a long window might not change much.
+                </p>
+            </div>
+        </div>
+
+        <hr class="section-divider">
+
+        <div class="section-block">
+            <div class="phase-header">
+                <div class="phase-number">2</div>
+                <h2>The Frequency Sliding Pipeline<br><small>Filter &rarr; Hilbert &rarr; Phase &rarr; Derivative</small></h2>
+            </div>
+
+            <div class="glass-card">
+                <p>
+                    <strong>Step 1:</strong> Band-pass filter around the oscillation of interest (e.g., 8&ndash;13 Hz for alpha).<br>
+                    <strong>Step 2:</strong> Apply the Hilbert transform to get the analytic signal.<br>
+                    <strong>Step 3:</strong> Extract instantaneous phase with <code>np.angle()</code>.<br>
+                    <strong>Step 4:</strong> Unwrap the phase (remove 2&pi; jumps) and compute the time derivative.<br>
+                    <strong>Step 5:</strong> Convert from radians/sample to Hz.
+                </p>
+            </div>
+
+            <div class="code-block">
+                <span class="code-tag">Python</span>
+                <pre><span class="c-keyword">from</span> scipy.signal <span class="c-keyword">import</span> hilbert
+<span class="c-keyword">import</span> numpy <span class="c-keyword">as</span> np
+
+<span class="c-comment"># Band-pass filter around alpha</span>
+raw_alpha = raw.copy().filter(l_freq=<span class="c-number">8</span>, h_freq=<span class="c-number">13</span>)
+data = raw_alpha.get_data(picks=<span class="c-string">'Oz'</span>)[<span class="c-number">0</span>]
+
+<span class="c-comment"># Hilbert transform &rarr; analytic signal</span>
+analytic = hilbert(data)
+inst_phase = np.angle(analytic)
+
+<span class="c-comment"># Unwrap &amp; differentiate &rarr; instantaneous frequency</span>
+phase_unwrapped = np.unwrap(inst_phase)
+inst_freq = np.diff(phase_unwrapped) / (<span class="c-number">2</span> * np.pi) * raw.info[<span class="c-string">'sfreq'</span>]
+
+<span class="c-comment"># Smooth with a short moving average to reduce noise</span>
+kernel = np.ones(<span class="c-number">50</span>) / <span class="c-number">50</span>
+inst_freq_smooth = np.convolve(inst_freq, kernel, mode=<span class="c-string">'same'</span>)</pre>
+            </div>
+
+            <div class="warn-box">
+                <p>
+                    <strong>Edge effects:</strong> The Hilbert transform produces artifacts at the beginning and end
+                    of the signal. Always discard the first and last ~500 ms of the instantaneous frequency trace.
+                    Also, instantaneous frequency is only meaningful for <em>narrow-band</em> signals &mdash; applying
+                    it to broadband data yields noisy, uninterpretable results.
+                </p>
+            </div>
+        </div>
+
+        <hr class="section-divider">
+
+        <div class="section-block">
+            <div class="phase-header">
+                <div class="phase-number">3</div>
+                <h2>Why Frequency Slides<br><small>Non-Stationarity in Neural Oscillations</small></h2>
+            </div>
+
+            <div class="glass-card">
+                <p>
+                    Neural oscillations are not perfect sine waves locked to a fixed frequency. Alpha rhythm,
+                    for example, &ldquo;slides&rdquo; between ~8 and ~12 Hz depending on cognitive load, arousal,
+                    and task demands. Frequency sliding captures these dynamics:
+                </p>
+                <p>
+                    &bull; <strong>Alpha peak slows</strong> during drowsiness and increases during alert attention.<br>
+                    &bull; <strong>Theta frequency shifts</strong> during memory encoding vs. retrieval.<br>
+                    &bull; <strong>Beta bursts</strong> show frequency jitter around motor events.
+                </p>
+                <p>
+                    This information is invisible to static PSD analysis, which averages over the entire recording.
+                </p>
+            </div>
+
+            <div class="insight-box purple">
+                <p>
+                    <strong>Key reference:</strong> Cohen (2014), &ldquo;Fluctuations in oscillation frequency
+                    control spike timing and coordinate neural networks.&rdquo; <em>Journal of Neuroscience</em>.
+                </p>
+            </div>
+        </div>
+    </article>
+
+    <footer>
+        <p>Day 10 &mdash; Features: Frequency Sliding</p>
+    </footer>
+
+    <script>
+        const canvas = document.getElementById('neural-canvas');
+        const ctx = canvas.getContext('2d');
+        let W, H, particles;
+        function resize() { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
+        function initParticles() {
+            particles = Array.from({ length: 100 }, () => ({
+                x: Math.random() * W, y: Math.random() * H,
+                vx: (Math.random() - 0.5) * 0.4, vy: (Math.random() - 0.5) * 0.4,
+                r: Math.random() * 2 + 0.8
+            }));
+        }
+        function draw() {
+            ctx.clearRect(0, 0, W, H);
+            for (let i = 0; i < particles.length; i++) {
+                for (let j = i + 1; j < particles.length; j++) {
+                    const dx = particles[i].x - particles[j].x;
+                    const dy = particles[i].y - particles[j].y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < 130) {
+                        ctx.beginPath();
+                        ctx.strokeStyle = 'rgba(165,180,252,' + (0.25 * (1 - dist / 130)) + ')';
+                        ctx.lineWidth = 0.8;
+                        ctx.moveTo(particles[i].x, particles[i].y);
+                        ctx.lineTo(particles[j].x, particles[j].y);
+                        ctx.stroke();
+                    }
+                }
+            }
+            particles.forEach(p => {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(165,180,252,0.7)';
+                ctx.fill();
+                p.x += p.vx; p.y += p.vy;
+                if (p.x < 0 || p.x > W) p.vx *= -1;
+                if (p.y < 0 || p.y > H) p.vy *= -1;
+            });
+            requestAnimationFrame(draw);
+        }
+        window.addEventListener('resize', () => { resize(); initParticles(); });
+        resize(); initParticles(); draw();
+
+        document.addEventListener('keydown', (e) => {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+            if (e.key === 'ArrowLeft') {
+                const prevBtn = document.querySelector('.nav-arrow-btn.prev-day:not(.disabled)');
+                if (prevBtn) prevBtn.click();
+            } else if (e.key === 'ArrowRight') {
+                const nextBtn = document.querySelector('.nav-arrow-btn.next-day:not(.disabled)');
+                if (nextBtn) nextBtn.click();
+            }
+        });
+    </script>
+</body>
+</html>

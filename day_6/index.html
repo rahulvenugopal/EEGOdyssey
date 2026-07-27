@@ -1,1 +1,362 @@
-<html><body><h1>Welcome to Day 6</h1></body></html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Day 6: Data Cleaning: ICA &mdash; EEG Analysis Odyssey</title>
+    <meta name="description" content="Solving the cocktail party problem &mdash; decompose mixed electrode signals into statistically independent sources, identify which ones are artifacts, and surgically remove them while preserving the neural signal." />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-deep: #05091a;
+            --text-main: #F0F4FF;
+            --text-muted: #B8C4E0;
+            --accent-solid: #A5B4FC;
+            --accent-teal-solid: #2DD4BF;
+            --glass-bg: rgba(99, 102, 241, 0.10);
+            --glass-border: rgba(165, 180, 252, 0.35);
+            --code-bg: rgba(15, 15, 58, 0.85);
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html { scroll-behavior: smooth; }
+        body {
+            background-color: var(--bg-deep);
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            line-height: 1.75;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+        h1, h2, h3, h4 { font-family: 'Playfair Display', serif; font-weight: 400; }
+        p { text-align: justify; }
+
+        .ambient-background {
+            position: fixed; top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            background:
+                radial-gradient(ellipse at 15% 55%, rgba(99, 102, 241, 0.55), transparent 45%),
+                radial-gradient(ellipse at 85% 15%, rgba(20, 184, 166, 0.50), transparent 45%),
+                radial-gradient(ellipse at 50% 95%, rgba(167, 139, 250, 0.30), transparent 50%);
+            filter: blur(60px); z-index: -2;
+            animation: breathe 12s infinite alternate ease-in-out;
+        }
+        @keyframes breathe {
+            0% { transform: scale(1); opacity: 0.85; }
+            100% { transform: scale(1.08); opacity: 1; }
+        }
+        canvas { position: fixed; top: 0; left: 0; z-index: -1; pointer-events: none; }
+
+        /* Nav */
+        .top-nav {
+            position: sticky; top: 0; z-index: 100;
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 14px 5%;
+            background: rgba(5, 9, 26, 0.85);
+            backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+            border-bottom: 1px solid var(--glass-border);
+        }
+        .back-link { display: flex; align-items: center; gap: 8px; color: var(--accent-solid); text-decoration: none; font-size: 0.85rem; font-weight: 600; letter-spacing: 0.5px; transition: color 0.2s, gap 0.2s; white-space: nowrap; }
+        .back-link:hover { color: #fff; gap: 12px; }
+        .nav-day-label { font-size: 0.75rem; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: var(--accent-teal-solid); text-shadow: 0 0 12px rgba(45, 212, 191, 0.7); white-space: nowrap; }
+        .nav-arrows { display: flex; align-items: center; gap: 10px; }
+        .nav-arrow-btn { padding: 6px 16px; border: 1px solid var(--glass-border); border-radius: 8px; font-size: 0.85rem; font-weight: 500; color: var(--text-muted); text-decoration: none; transition: all 0.3s ease; display: inline-flex; align-items: center; background: rgba(99, 102, 241, 0.08); white-space: nowrap; }
+        .nav-arrow-btn:hover:not(.disabled) { border-color: var(--accent-solid); color: #ffffff; box-shadow: 0 0 12px rgba(165, 180, 252, 0.4); background: rgba(99, 102, 241, 0.25); transform: translateY(-1px); }
+        .nav-arrow-btn.disabled { opacity: 0.3; cursor: not-allowed; pointer-events: none; border-color: rgba(255, 255, 255, 0.05); }
+
+        /* Hero */
+        .hero { padding: 70px 5% 50px; max-width: 960px; margin: 0 auto; text-align: center; position: relative; z-index: 2; width: 100%; }
+        .day-pill { display: inline-block; padding: 6px 20px; border-radius: 999px; background: rgba(99, 102, 241, 0.20); border: 1px solid rgba(165, 180, 252, 0.6); font-size: 0.75rem; font-weight: 800; letter-spacing: 4px; text-transform: uppercase; color: #5EEAD4; margin-bottom: 20px; text-shadow: 0 0 14px rgba(45, 212, 191, 0.8); backdrop-filter: blur(12px); }
+        .hero h1 { font-size: clamp(2.2rem, 5vw, 3.8rem); line-height: 1.1; letter-spacing: -0.02em; color: #fff; text-shadow: 0 0 40px rgba(165, 180, 252, 0.9), 0 0 80px rgba(99, 102, 241, 0.5); margin-bottom: 16px; }
+        .hero-subtitle { font-size: clamp(1rem, 2vw, 1.2rem); color: #C8D5F0; max-width: 700px; margin: 0 auto 28px; font-family: 'Inter', sans-serif; text-align: center; }
+        .highlight { color: #C4B5FD; text-shadow: 0 0 30px rgba(165, 180, 252, 1), 0 0 60px rgba(99, 102, 241, 0.6); }
+        .highlight-teal { color: #5EEAD4; text-shadow: 0 0 25px rgba(45, 212, 191, 0.9); }
+        .badges { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+        .badge { padding: 6px 16px; border-radius: 999px; background: rgba(99, 102, 241, 0.15); border: 1px solid rgba(165, 180, 252, 0.5); font-size: 0.78rem; font-weight: 500; color: #E0E7FF; backdrop-filter: blur(8px); }
+
+        /* Article */
+        article { max-width: 860px; margin: 0 auto; padding: 0 5% 80px; position: relative; z-index: 2; }
+        .section-block { margin-bottom: 56px; }
+        .phase-header { display: flex; align-items: center; gap: 16px; margin-bottom: 20px; }
+        .phase-number { width: 48px; height: 48px; border-radius: 50%; flex-shrink: 0; background: linear-gradient(135deg, #6366F1, #8B5CF6); border: 2px solid rgba(165, 180, 252, 0.5); box-shadow: 0 0 20px rgba(99, 102, 241, 0.6); display: flex; align-items: center; justify-content: center; font-family: 'Playfair Display', serif; font-size: 1.3rem; color: #fff; }
+        .phase-header h2 { font-size: clamp(1.4rem, 3vw, 1.9rem); color: #fff; text-shadow: 0 0 20px rgba(165, 180, 252, 0.4); border: none; padding: 0; margin: 0; display: block; }
+
+        /* Glass card */
+        .glass-card { background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: 16px; padding: 28px 32px; backdrop-filter: blur(12px); margin: 20px 0; box-shadow: 0 4px 30px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.07); transition: border-color 0.3s, box-shadow 0.3s; }
+        .glass-card:hover { border-color: rgba(165, 180, 252, 0.55); box-shadow: 0 8px 40px rgba(99, 102, 241, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1); }
+        .glass-card p + p { margin-top: 10px; }
+
+        /* Code block */
+        .code-block { background: var(--code-bg); border: 1px solid rgba(165, 180, 252, 0.20); border-radius: 12px; padding: 20px 24px; margin: 16px 0; overflow-x: auto; position: relative; }
+        .code-block pre { font-family: 'JetBrains Mono', monospace; font-size: 0.84rem; color: #E0E7FF; line-height: 1.7; white-space: pre; }
+        .c-comment { color: #6B7DB3; font-style: italic; }
+        .c-keyword { color: #C4B5FD; font-weight: 500; }
+        .c-func { color: #5EEAD4; }
+        .c-string { color: #86efac; }
+        .c-number { color: #FCA5A5; }
+        .c-var { color: #A5B4FC; }
+        .code-tag { position: absolute; top: 12px; right: 16px; font-family: 'Inter', sans-serif; font-size: 0.62rem; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: rgba(165, 180, 252, 0.5); }
+
+        /* Insight box */
+        .insight-box { border-left: 3px solid var(--accent-teal-solid); padding: 18px 24px; margin: 24px 0; background: rgba(20, 184, 166, 0.07); border-radius: 0 12px 12px 0; }
+        .insight-box p { color: #C8D5F0; text-align: left; }
+        .insight-box strong { color: var(--accent-teal-solid); }
+        .insight-box.purple { border-left-color: #A5B4FC; background: rgba(99, 102, 241, 0.07); }
+        .insight-box.purple strong { color: #A5B4FC; }
+
+        /* Warning box */
+        .warn-box { border-left: 3px solid #FCA5A5; padding: 18px 24px; margin: 24px 0; background: rgba(220, 38, 38, 0.07); border-radius: 0 12px 12px 0; }
+        .warn-box p { color: #C8D5F0; text-align: left; }
+        .warn-box strong { color: #FCA5A5; }
+
+        /* Divider / Grid */
+        .section-divider { border: none; height: 1px; background: linear-gradient(90deg, transparent, var(--glass-border), transparent); margin: 48px 0; }
+        .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0; }
+
+        /* Footer */
+        footer { text-align: center; padding: 40px 20px; color: var(--text-muted); font-size: 0.85rem; border-top: 1px solid var(--glass-border); position: relative; z-index: 2; }
+        footer a { color: var(--accent-solid); text-decoration: none; }
+        footer a:hover { text-decoration: underline; }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #050814; }
+        ::-webkit-scrollbar-thumb { background: rgba(129, 140, 248, 0.4); border-radius: 3px; }
+
+        /* Inline code */
+        code { font-family: 'JetBrains Mono', monospace; font-size: 0.86em; background: var(--code-bg); padding: 2px 7px; border-radius: 5px; color: #A5B4FC; border: 1px solid rgba(165, 180, 252, 0.15); }
+
+        /* Responsive */
+        @media (max-width: 640px) {
+            .two-col { grid-template-columns: 1fr; }
+            .glass-card { padding: 20px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="ambient-background"></div>
+    <canvas id="neural-canvas"></canvas>
+
+    <nav class="top-nav">
+        <a href="../index.html" class="back-link">&#x2190; Back to Odyssey</a>
+        <span class="nav-day-label">Day 6 of 20</span>
+        <div class="nav-arrows">
+            <a href="../day_5/index.html" class="nav-arrow-btn prev-day" title="Previous Day: Data Cleaning: ASR">&#x2190; Prev</a>
+            <a href="../day_7/index.html" class="nav-arrow-btn next-day" title="Next Day: Data Cleaning: ICLabel">Next &#x2192;</a>
+        </div>
+    </nav>
+
+    <header class="hero">
+        <div class="day-pill">&#x2726; Day 06 &middot; Signal Separation</div>
+        <h1><span class='highlight'>Independent Component</span><br><span class='highlight-teal'>Analysis (ICA)</span></h1>
+        <p class="hero-subtitle">Solving the cocktail party problem &mdash; decompose mixed electrode signals into statistically independent sources, identify which ones are artifacts, and surgically remove them while preserving the neural signal.</p>
+                <div class="badges">
+            <span class="badge">&#x1F378; Cocktail Party Problem</span>
+            <span class="badge">&#x1F9E0; Unmixing Matrix W</span>
+            <span class="badge">&#x1F441; Eye Blink Removal</span>
+            <span class="badge">&#x2764; ECG Removal</span>
+            <span class="badge">&#x1F40D; mne.preprocessing.ICA</span>
+        </div>
+    </header>
+
+    <article>
+        <div class="section-block">
+            <div class="glass-card">
+                <p>
+                    Independent Component Analysis (ICA) is the workhorse of EEG artifact removal. It solves the
+                    <strong>cocktail party problem</strong>: given a room full of people talking simultaneously
+                    (mixed signals at each microphone/electrode), can we recover each individual speaker&rsquo;s voice?
+                    ICA finds an <em>unmixing matrix</em> <strong>W</strong> that decomposes the mixed electrode signals
+                    into statistically independent sources &mdash; some brain, some artifact.
+                </p>
+            </div>
+        </div>
+
+        <hr class="section-divider">
+
+        <div class="section-block">
+            <div class="phase-header">
+                <div class="phase-number">1</div>
+                <h2>The Cocktail Party Problem<br><small>Mixing &amp; Unmixing Matrices</small></h2>
+            </div>
+
+            <div class="glass-card">
+                <p>
+                    Each EEG electrode records a <em>weighted sum</em> of all active sources in the brain (and body).
+                    Mathematically: <strong>X = A &middot; S</strong>, where <strong>X</strong> is the electrode data,
+                    <strong>A</strong> is the (unknown) mixing matrix encoding how sources project to sensors, and
+                    <strong>S</strong> is the (unknown) source matrix containing the independent components.
+                </p>
+                <p>
+                    ICA estimates the unmixing matrix <strong>W &approx; A<sup>&minus;1</sup></strong> by maximizing
+                    the statistical independence of the recovered sources. The key assumption: brain sources and artifacts
+                    are generated by different physiological processes and are therefore statistically independent.
+                </p>
+            </div>
+
+            <div class="insight-box">
+                <p>
+                    <strong>Cohen&rsquo;s perspective (ANTS Ch. 27):</strong> ICA doesn&rsquo;t &ldquo;know&rdquo;
+                    what an eye blink looks like. It simply finds directions in the data where sources are maximally
+                    non-Gaussian (since mixtures become more Gaussian by the Central Limit Theorem). The interpretation
+                    &mdash; &ldquo;this is an eye blink&rdquo; &mdash; is entirely <em>your</em> job.
+                </p>
+            </div>
+        </div>
+
+        <hr class="section-divider">
+
+        <div class="section-block">
+            <div class="phase-header">
+                <div class="phase-number">2</div>
+                <h2>Fitting ICA in MNE<br><small>Preprocessing Requirements</small></h2>
+            </div>
+
+            <div class="glass-card">
+                <p>
+                    ICA is sensitive to the statistical properties of the input data. Two critical requirements:
+                </p>
+                <p>
+                    <strong>1. High-pass filter at &ge;1 Hz</strong> &mdash; low-frequency drifts dominate the variance
+                    and cause ICA to waste components on slow trends instead of artifacts.
+                </p>
+                <p>
+                    <strong>2. Sufficient data length</strong> &mdash; rule of thumb: at least 20&times; the number of
+                    channels squared data points (e.g., for 64 channels: 64&sup2; &times; 20 = ~82,000 samples).
+                </p>
+            </div>
+
+            <div class="code-block">
+                <span class="code-tag">Python</span>
+                <pre><span class="c-keyword">from</span> mne.preprocessing <span class="c-keyword">import</span> ICA
+
+<span class="c-comment"># Create a copy filtered at 1 Hz for ICA fitting</span>
+raw_filt = raw.copy().filter(l_freq=<span class="c-number">1.0</span>, h_freq=<span class="c-number">None</span>)
+
+<span class="c-comment"># Fit ICA with n_components determined automatically</span>
+ica = ICA(n_components=<span class="c-number">0.99</span>,  <span class="c-comment"># explain 99% variance</span>
+          method=<span class="c-string">'infomax'</span>,
+          random_state=<span class="c-number">42</span>,
+          max_iter=<span class="c-number">800</span>)
+
+ica.fit(raw_filt)
+<span class="c-keyword">print</span>(ica)  <span class="c-comment"># shows number of components found</span></pre>
+            </div>
+
+            <div class="warn-box">
+                <p>
+                    <strong>Critical:</strong> Fit ICA on filtered data but <em>apply</em> the removal to the
+                    original (unfiltered or lightly filtered) data. This preserves your low-frequency neural signals.
+                </p>
+            </div>
+        </div>
+
+        <hr class="section-divider">
+
+        <div class="section-block">
+            <div class="phase-header">
+                <div class="phase-number">3</div>
+                <h2>Identifying Artifact Components<br><small>Spatial Maps, Time Courses &amp; Automated Detection</small></h2>
+            </div>
+
+            <div class="glass-card">
+                <p>
+                    After fitting, you need to decide which components are artifacts. Three complementary approaches:
+                </p>
+                <p>
+                    <strong>Visual inspection:</strong> Plot the spatial topography (<code>ica.plot_components()</code>)
+                    and time course (<code>ica.plot_sources()</code>). Eye blinks have a characteristic frontal dipolar
+                    pattern; heartbeats show a strong left-lateralized pattern.
+                </p>
+                <p>
+                    <strong>Correlation with EOG/ECG:</strong> Use <code>ica.find_bads_eog()</code> and
+                    <code>ica.find_bads_ecg()</code> to automatically find components correlated with reference channels.
+                </p>
+                <p>
+                    <strong>ICLabel (Day 7):</strong> Use deep learning to automatically classify all components.
+                </p>
+            </div>
+
+            <div class="code-block">
+                <span class="code-tag">Python</span>
+                <pre><span class="c-comment"># Visualize component topographies</span>
+ica.plot_components(picks=range(<span class="c-number">20</span>))
+
+<span class="c-comment"># Auto-detect EOG-related components</span>
+eog_indices, eog_scores = ica.find_bads_eog(raw)
+ica.exclude = eog_indices
+<span class="c-keyword">print</span>(f<span class="c-string">"EOG components: {eog_indices}"</span>)
+
+<span class="c-comment"># Apply ICA removal to the ORIGINAL raw data</span>
+raw_clean = ica.apply(raw.copy())</pre>
+            </div>
+
+            <div class="insight-box">
+                <p>
+                    <strong>How many components to remove?</strong> Typically 1&ndash;3 for eye artifacts and 0&ndash;1
+                    for heartbeat. If you find yourself removing &gt;5 components, something may be wrong with your
+                    ICA decomposition (insufficient data, bad channels not removed, filter too low).
+                </p>
+            </div>
+        </div>
+    </article>
+
+    <footer>
+        <p>Day 6 &mdash; Data Cleaning: ICA</p>
+    </footer>
+
+    <script>
+        const canvas = document.getElementById('neural-canvas');
+        const ctx = canvas.getContext('2d');
+        let W, H, particles;
+        function resize() { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
+        function initParticles() {
+            particles = Array.from({ length: 100 }, () => ({
+                x: Math.random() * W, y: Math.random() * H,
+                vx: (Math.random() - 0.5) * 0.4, vy: (Math.random() - 0.5) * 0.4,
+                r: Math.random() * 2 + 0.8
+            }));
+        }
+        function draw() {
+            ctx.clearRect(0, 0, W, H);
+            for (let i = 0; i < particles.length; i++) {
+                for (let j = i + 1; j < particles.length; j++) {
+                    const dx = particles[i].x - particles[j].x;
+                    const dy = particles[i].y - particles[j].y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < 130) {
+                        ctx.beginPath();
+                        ctx.strokeStyle = 'rgba(165,180,252,' + (0.25 * (1 - dist / 130)) + ')';
+                        ctx.lineWidth = 0.8;
+                        ctx.moveTo(particles[i].x, particles[i].y);
+                        ctx.lineTo(particles[j].x, particles[j].y);
+                        ctx.stroke();
+                    }
+                }
+            }
+            particles.forEach(p => {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(165,180,252,0.7)';
+                ctx.fill();
+                p.x += p.vx; p.y += p.vy;
+                if (p.x < 0 || p.x > W) p.vx *= -1;
+                if (p.y < 0 || p.y > H) p.vy *= -1;
+            });
+            requestAnimationFrame(draw);
+        }
+        window.addEventListener('resize', () => { resize(); initParticles(); });
+        resize(); initParticles(); draw();
+
+        document.addEventListener('keydown', (e) => {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+            if (e.key === 'ArrowLeft') {
+                const prevBtn = document.querySelector('.nav-arrow-btn.prev-day:not(.disabled)');
+                if (prevBtn) prevBtn.click();
+            } else if (e.key === 'ArrowRight') {
+                const nextBtn = document.querySelector('.nav-arrow-btn.next-day:not(.disabled)');
+                if (nextBtn) nextBtn.click();
+            }
+        });
+    </script>
+</body>
+</html>

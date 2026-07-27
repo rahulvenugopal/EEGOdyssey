@@ -1,1 +1,382 @@
-<html><body><h1>Welcome to Day 12</h1></body></html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Day 12: Features: IRASA &mdash; EEG Analysis Odyssey</title>
+    <meta name="description" content="A model-free method that exploits fractal self-similarity to separate the 1/f background from oscillatory peaks &mdash; no parametric assumptions about spectral shape required." />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-deep: #05091a;
+            --text-main: #F0F4FF;
+            --text-muted: #B8C4E0;
+            --accent-solid: #A5B4FC;
+            --accent-teal-solid: #2DD4BF;
+            --glass-bg: rgba(99, 102, 241, 0.10);
+            --glass-border: rgba(165, 180, 252, 0.35);
+            --code-bg: rgba(15, 15, 58, 0.85);
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html { scroll-behavior: smooth; }
+        body {
+            background-color: var(--bg-deep);
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            line-height: 1.75;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+        h1, h2, h3, h4 { font-family: 'Playfair Display', serif; font-weight: 400; }
+        p { text-align: justify; }
+
+        .ambient-background {
+            position: fixed; top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            background:
+                radial-gradient(ellipse at 15% 55%, rgba(99, 102, 241, 0.55), transparent 45%),
+                radial-gradient(ellipse at 85% 15%, rgba(20, 184, 166, 0.50), transparent 45%),
+                radial-gradient(ellipse at 50% 95%, rgba(167, 139, 250, 0.30), transparent 50%);
+            filter: blur(60px); z-index: -2;
+            animation: breathe 12s infinite alternate ease-in-out;
+        }
+        @keyframes breathe {
+            0% { transform: scale(1); opacity: 0.85; }
+            100% { transform: scale(1.08); opacity: 1; }
+        }
+        canvas { position: fixed; top: 0; left: 0; z-index: -1; pointer-events: none; }
+
+        /* Nav */
+        .top-nav {
+            position: sticky; top: 0; z-index: 100;
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 14px 5%;
+            background: rgba(5, 9, 26, 0.85);
+            backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+            border-bottom: 1px solid var(--glass-border);
+        }
+        .back-link { display: flex; align-items: center; gap: 8px; color: var(--accent-solid); text-decoration: none; font-size: 0.85rem; font-weight: 600; letter-spacing: 0.5px; transition: color 0.2s, gap 0.2s; white-space: nowrap; }
+        .back-link:hover { color: #fff; gap: 12px; }
+        .nav-day-label { font-size: 0.75rem; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: var(--accent-teal-solid); text-shadow: 0 0 12px rgba(45, 212, 191, 0.7); white-space: nowrap; }
+        .nav-arrows { display: flex; align-items: center; gap: 10px; }
+        .nav-arrow-btn { padding: 6px 16px; border: 1px solid var(--glass-border); border-radius: 8px; font-size: 0.85rem; font-weight: 500; color: var(--text-muted); text-decoration: none; transition: all 0.3s ease; display: inline-flex; align-items: center; background: rgba(99, 102, 241, 0.08); white-space: nowrap; }
+        .nav-arrow-btn:hover:not(.disabled) { border-color: var(--accent-solid); color: #ffffff; box-shadow: 0 0 12px rgba(165, 180, 252, 0.4); background: rgba(99, 102, 241, 0.25); transform: translateY(-1px); }
+        .nav-arrow-btn.disabled { opacity: 0.3; cursor: not-allowed; pointer-events: none; border-color: rgba(255, 255, 255, 0.05); }
+
+        /* Hero */
+        .hero { padding: 70px 5% 50px; max-width: 960px; margin: 0 auto; text-align: center; position: relative; z-index: 2; width: 100%; }
+        .day-pill { display: inline-block; padding: 6px 20px; border-radius: 999px; background: rgba(99, 102, 241, 0.20); border: 1px solid rgba(165, 180, 252, 0.6); font-size: 0.75rem; font-weight: 800; letter-spacing: 4px; text-transform: uppercase; color: #5EEAD4; margin-bottom: 20px; text-shadow: 0 0 14px rgba(45, 212, 191, 0.8); backdrop-filter: blur(12px); }
+        .hero h1 { font-size: clamp(2.2rem, 5vw, 3.8rem); line-height: 1.1; letter-spacing: -0.02em; color: #fff; text-shadow: 0 0 40px rgba(165, 180, 252, 0.9), 0 0 80px rgba(99, 102, 241, 0.5); margin-bottom: 16px; }
+        .hero-subtitle { font-size: clamp(1rem, 2vw, 1.2rem); color: #C8D5F0; max-width: 700px; margin: 0 auto 28px; font-family: 'Inter', sans-serif; text-align: center; }
+        .highlight { color: #C4B5FD; text-shadow: 0 0 30px rgba(165, 180, 252, 1), 0 0 60px rgba(99, 102, 241, 0.6); }
+        .highlight-teal { color: #5EEAD4; text-shadow: 0 0 25px rgba(45, 212, 191, 0.9); }
+        .badges { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+        .badge { padding: 6px 16px; border-radius: 999px; background: rgba(99, 102, 241, 0.15); border: 1px solid rgba(165, 180, 252, 0.5); font-size: 0.78rem; font-weight: 500; color: #E0E7FF; backdrop-filter: blur(8px); }
+
+        /* Article */
+        article { max-width: 860px; margin: 0 auto; padding: 0 5% 80px; position: relative; z-index: 2; }
+        .section-block { margin-bottom: 56px; }
+        .phase-header { display: flex; align-items: center; gap: 16px; margin-bottom: 20px; }
+        .phase-number { width: 48px; height: 48px; border-radius: 50%; flex-shrink: 0; background: linear-gradient(135deg, #6366F1, #8B5CF6); border: 2px solid rgba(165, 180, 252, 0.5); box-shadow: 0 0 20px rgba(99, 102, 241, 0.6); display: flex; align-items: center; justify-content: center; font-family: 'Playfair Display', serif; font-size: 1.3rem; color: #fff; }
+        .phase-header h2 { font-size: clamp(1.4rem, 3vw, 1.9rem); color: #fff; text-shadow: 0 0 20px rgba(165, 180, 252, 0.4); border: none; padding: 0; margin: 0; display: block; }
+
+        /* Glass card */
+        .glass-card { background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: 16px; padding: 28px 32px; backdrop-filter: blur(12px); margin: 20px 0; box-shadow: 0 4px 30px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.07); transition: border-color 0.3s, box-shadow 0.3s; }
+        .glass-card:hover { border-color: rgba(165, 180, 252, 0.55); box-shadow: 0 8px 40px rgba(99, 102, 241, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1); }
+        .glass-card p + p { margin-top: 10px; }
+
+        /* Code block */
+        .code-block { background: var(--code-bg); border: 1px solid rgba(165, 180, 252, 0.20); border-radius: 12px; padding: 20px 24px; margin: 16px 0; overflow-x: auto; position: relative; }
+        .code-block pre { font-family: 'JetBrains Mono', monospace; font-size: 0.84rem; color: #E0E7FF; line-height: 1.7; white-space: pre; }
+        .c-comment { color: #6B7DB3; font-style: italic; }
+        .c-keyword { color: #C4B5FD; font-weight: 500; }
+        .c-func { color: #5EEAD4; }
+        .c-string { color: #86efac; }
+        .c-number { color: #FCA5A5; }
+        .c-var { color: #A5B4FC; }
+        .code-tag { position: absolute; top: 12px; right: 16px; font-family: 'Inter', sans-serif; font-size: 0.62rem; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: rgba(165, 180, 252, 0.5); }
+
+        /* Insight box */
+        .insight-box { border-left: 3px solid var(--accent-teal-solid); padding: 18px 24px; margin: 24px 0; background: rgba(20, 184, 166, 0.07); border-radius: 0 12px 12px 0; }
+        .insight-box p { color: #C8D5F0; text-align: left; }
+        .insight-box strong { color: var(--accent-teal-solid); }
+        .insight-box.purple { border-left-color: #A5B4FC; background: rgba(99, 102, 241, 0.07); }
+        .insight-box.purple strong { color: #A5B4FC; }
+
+        /* Warning box */
+        .warn-box { border-left: 3px solid #FCA5A5; padding: 18px 24px; margin: 24px 0; background: rgba(220, 38, 38, 0.07); border-radius: 0 12px 12px 0; }
+        .warn-box p { color: #C8D5F0; text-align: left; }
+        .warn-box strong { color: #FCA5A5; }
+
+        /* Divider / Grid */
+        .section-divider { border: none; height: 1px; background: linear-gradient(90deg, transparent, var(--glass-border), transparent); margin: 48px 0; }
+        .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0; }
+
+        /* Footer */
+        footer { text-align: center; padding: 40px 20px; color: var(--text-muted); font-size: 0.85rem; border-top: 1px solid var(--glass-border); position: relative; z-index: 2; }
+        footer a { color: var(--accent-solid); text-decoration: none; }
+        footer a:hover { text-decoration: underline; }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #050814; }
+        ::-webkit-scrollbar-thumb { background: rgba(129, 140, 248, 0.4); border-radius: 3px; }
+
+        /* Inline code */
+        code { font-family: 'JetBrains Mono', monospace; font-size: 0.86em; background: var(--code-bg); padding: 2px 7px; border-radius: 5px; color: #A5B4FC; border: 1px solid rgba(165, 180, 252, 0.15); }
+
+        /* Responsive */
+        @media (max-width: 640px) {
+            .two-col { grid-template-columns: 1fr; }
+            .glass-card { padding: 20px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="ambient-background"></div>
+    <canvas id="neural-canvas"></canvas>
+
+    <nav class="top-nav">
+        <a href="../index.html" class="back-link">&#x2190; Back to Odyssey</a>
+        <span class="nav-day-label">Day 12 of 20</span>
+        <div class="nav-arrows">
+            <a href="../day_11/index.html" class="nav-arrow-btn prev-day" title="Previous Day: Features: FOOOF">&#x2190; Prev</a>
+            <a href="../day_13/index.html" class="nav-arrow-btn next-day" title="Next Day: Features: Autocorrelation Window (ACW)">Next &#x2192;</a>
+        </div>
+    </nav>
+
+    <header class="hero">
+        <div class="day-pill">&#x2726; Day 12 &middot; Aperiodic Decomposition</div>
+        <h1><span class='highlight'>IRASA</span><br><span class='highlight-teal'>Irregular Resampling Auto-Spectral Analysis</span></h1>
+        <p class="hero-subtitle">A model-free method that exploits fractal self-similarity to separate the 1/f background from oscillatory peaks &mdash; no parametric assumptions about spectral shape required.</p>
+                <div class="badges">
+            <span class="badge">&#x1F300; Fractal Invariance</span>
+            <span class="badge">&#x1F504; Resampling Trick</span>
+            <span class="badge">&#x1F4CA; Model-Free Separation</span>
+            <span class="badge">&#x1F40D; yasa.irasa / pyrasa</span>
+        </div>
+    </header>
+
+    <article>
+        <div class="section-block">
+            <div class="glass-card">
+                <p>
+                    IRASA (Irregular Resampling Auto-Spectral Analysis) offers an alternative to specparam for
+                    separating periodic and aperiodic components &mdash; but uses a fundamentally different strategy.
+                    Instead of <em>fitting a model</em> to the spectrum, IRASA exploits a mathematical property:
+                    <strong>fractal (aperiodic) signals are invariant to resampling, while oscillatory peaks are not</strong>.
+                    This makes IRASA model-free and assumption-light.
+                </p>
+            </div>
+        </div>
+
+        <hr class="section-divider">
+
+        <div class="section-block">
+            <div class="phase-header">
+                <div class="phase-number">1</div>
+                <h2>The Resampling Trick<br><small>Fractal Invariance Under Stretching</small></h2>
+            </div>
+
+            <div class="glass-card">
+                <p>
+                    Consider what happens when you resample a signal by a non-integer factor <em>h</em>:
+                </p>
+                <p>
+                    <strong>Oscillatory components</strong> (narrow-band peaks) get shifted to different frequencies.
+                    A 10 Hz alpha peak resampled by <em>h</em> = 1.1 moves to 10/1.1 &approx; 9.09 Hz. The peak
+                    literally slides along the frequency axis.
+                </p>
+                <p>
+                    <strong>Fractal (1/f) components</strong> follow a power law. Resampling stretches the frequency
+                    axis but the power law relationship is preserved &mdash; the 1/f shape is <em>self-similar</em>
+                    at all scales.
+                </p>
+                <p>
+                    IRASA exploits this by resampling the signal at multiple <em>h</em> values, computing the PSD of each
+                    resampled version, and taking the <strong>geometric mean</strong> across all resampled PSDs. The oscillatory
+                    peaks get &ldquo;smeared out&rdquo; by the resampling while the fractal component remains stable.
+                    The result: a clean estimate of the aperiodic spectrum.
+                </p>
+            </div>
+
+            <div class="insight-box">
+                <p>
+                    <strong>Analogy:</strong> Imagine photographing a mountain (fractal) with a flag (oscillation)
+                    planted on top. If you take photos from slightly different zoom levels and overlay them,
+                    the mountain&rsquo;s shape stays the same but the flag appears blurred because it&rsquo;s at
+                    a different apparent position in each photo. Averaging the photos removes the flag but preserves
+                    the mountain.
+                </p>
+            </div>
+        </div>
+
+        <hr class="section-divider">
+
+        <div class="section-block">
+            <div class="phase-header">
+                <div class="phase-number">2</div>
+                <h2>Step-by-Step Algorithm<br><small>Resample at h and 1/h, Take the Median</small></h2>
+            </div>
+
+            <div class="glass-card">
+                <p>
+                    For each resampling factor <em>h</em> in a set (e.g., 1.1, 1.15, 1.2, &hellip;, 1.9):
+                </p>
+                <p>
+                    1. Resample the signal by <em>h</em> (upsample) &rarr; compute PSD<sub>up</sub><br>
+                    2. Resample the signal by <em>1/h</em> (downsample) &rarr; compute PSD<sub>down</sub><br>
+                    3. Take the geometric mean: PSD<sub>fractal</sub>(h) = &radic;(PSD<sub>up</sub> &times; PSD<sub>down</sub>)<br>
+                    4. Repeat for all <em>h</em> values and take the median across all fractal estimates.<br>
+                    5. Oscillatory component = Original PSD &minus; Fractal PSD
+                </p>
+            </div>
+
+            <div class="code-block">
+                <span class="code-tag">Python</span>
+                <pre><span class="c-keyword">import</span> yasa
+<span class="c-keyword">import</span> numpy <span class="c-keyword">as</span> np
+
+<span class="c-comment"># Get data from a single channel</span>
+data = raw.get_data(picks=<span class="c-string">'Oz'</span>)[<span class="c-number">0</span>]
+sf = raw.info[<span class="c-string">'sfreq'</span>]
+
+<span class="c-comment"># Run IRASA</span>
+freqs, psd_aperiodic, psd_oscillatory = yasa.irasa(
+    data, sf=sf, band=(<span class="c-number">1</span>, <span class="c-number">45</span>),
+    hset=np.arange(<span class="c-number">1.1</span>, <span class="c-number">1.95</span>, <span class="c-number">0.05</span>)
+)
+
+<span class="c-comment"># psd_aperiodic: the fractal (1/f) component</span>
+<span class="c-comment"># psd_oscillatory: the rhythmic peaks only</span>
+<span class="c-keyword">print</span>(f<span class="c-string">"Aperiodic shape: {psd_aperiodic.shape}"</span>)
+<span class="c-keyword">print</span>(f<span class="c-string">"Oscillatory shape: {psd_oscillatory.shape}"</span>)</pre>
+            </div>
+        </div>
+
+        <hr class="section-divider">
+
+        <div class="section-block">
+            <div class="phase-header">
+                <div class="phase-number">3</div>
+                <h2>IRASA vs. FOOOF<br><small>When to Use Which</small></h2>
+            </div>
+
+            <div class="two-col">
+                <div class="glass-card" style="margin:0;">
+                    <p style="font-family:'Inter',sans-serif;font-size:0.68rem;font-weight:800;letter-spacing:3px;text-transform:uppercase;color:#A5B4FC;margin-bottom:10px;">FOOOF / specparam</p>
+                    <p style="font-size:0.88rem;">&bull; <strong>Model-based:</strong> fits a parametric curve<br>
+                    &bull; Works on a single PSD (no raw data needed)<br>
+                    &bull; Returns peak parameters (CF, power, BW)<br>
+                    &bull; Assumes specific 1/f functional form<br>
+                    &bull; Mature, widely cited</p>
+                </div>
+                <div class="glass-card" style="margin:0;">
+                    <p style="font-family:'Inter',sans-serif;font-size:0.68rem;font-weight:800;letter-spacing:3px;text-transform:uppercase;color:#2DD4BF;margin-bottom:10px;">IRASA</p>
+                    <p style="font-size:0.88rem;">&bull; <strong>Model-free:</strong> no parametric assumptions<br>
+                    &bull; Needs raw time-domain data<br>
+                    &bull; Returns continuous aperiodic spectrum<br>
+                    &bull; Handles spectral knees naturally<br>
+                    &bull; More robust for non-standard spectra</p>
+                </div>
+            </div>
+
+            <div class="insight-box">
+                <p>
+                    <strong>Practical advice:</strong> Use both and compare. If your spectra have clean, well-separated
+                    peaks, specparam gives you rich parametric information. If your spectra are messy, have broad humps,
+                    or deviate from a simple power-law background, IRASA may be more reliable.
+                </p>
+            </div>
+        </div>
+
+        <hr class="section-divider">
+
+        <div class="section-block">
+            <div class="phase-header">
+                <div class="phase-number">4</div>
+                <h2>The Fractal Exponent as a Biomarker<br><small>Brain State, Aging &amp; Consciousness</small></h2>
+            </div>
+
+            <div class="glass-card">
+                <p>
+                    The slope of the aperiodic component is increasingly used as a standalone biomarker:
+                </p>
+                <p>
+                    &bull; <strong>Sleep:</strong> The exponent steepens during deep sleep (more inhibition-dominant).<br>
+                    &bull; <strong>Aging:</strong> The exponent flattens with age (reduced E/I balance).<br>
+                    &bull; <strong>Anaesthesia:</strong> Propofol dramatically steepens the slope.<br>
+                    &bull; <strong>Cognitive load:</strong> The exponent flattens during demanding tasks.
+                </p>
+            </div>
+
+            <div class="insight-box purple">
+                <p>
+                    <strong>Key references:</strong> Wen &amp; Liu (2016) &mdash; original IRASA paper.
+                    Vallat &amp; Walker (2021) &mdash; YASA Python implementation.
+                    Schmidt et al. (2024) &mdash; PyRASA extended implementation.
+                </p>
+            </div>
+        </div>
+    </article>
+
+    <footer>
+        <p>Day 12 &mdash; Features: IRASA</p>
+    </footer>
+
+    <script>
+        const canvas = document.getElementById('neural-canvas');
+        const ctx = canvas.getContext('2d');
+        let W, H, particles;
+        function resize() { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
+        function initParticles() {
+            particles = Array.from({ length: 100 }, () => ({
+                x: Math.random() * W, y: Math.random() * H,
+                vx: (Math.random() - 0.5) * 0.4, vy: (Math.random() - 0.5) * 0.4,
+                r: Math.random() * 2 + 0.8
+            }));
+        }
+        function draw() {
+            ctx.clearRect(0, 0, W, H);
+            for (let i = 0; i < particles.length; i++) {
+                for (let j = i + 1; j < particles.length; j++) {
+                    const dx = particles[i].x - particles[j].x;
+                    const dy = particles[i].y - particles[j].y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < 130) {
+                        ctx.beginPath();
+                        ctx.strokeStyle = 'rgba(165,180,252,' + (0.25 * (1 - dist / 130)) + ')';
+                        ctx.lineWidth = 0.8;
+                        ctx.moveTo(particles[i].x, particles[i].y);
+                        ctx.lineTo(particles[j].x, particles[j].y);
+                        ctx.stroke();
+                    }
+                }
+            }
+            particles.forEach(p => {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(165,180,252,0.7)';
+                ctx.fill();
+                p.x += p.vx; p.y += p.vy;
+                if (p.x < 0 || p.x > W) p.vx *= -1;
+                if (p.y < 0 || p.y > H) p.vy *= -1;
+            });
+            requestAnimationFrame(draw);
+        }
+        window.addEventListener('resize', () => { resize(); initParticles(); });
+        resize(); initParticles(); draw();
+
+        document.addEventListener('keydown', (e) => {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+            if (e.key === 'ArrowLeft') {
+                const prevBtn = document.querySelector('.nav-arrow-btn.prev-day:not(.disabled)');
+                if (prevBtn) prevBtn.click();
+            } else if (e.key === 'ArrowRight') {
+                const nextBtn = document.querySelector('.nav-arrow-btn.next-day:not(.disabled)');
+                if (nextBtn) nextBtn.click();
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,1 +1,360 @@
-<html><body><h1>Welcome to Day 13</h1></body></html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Day 13: Features: Autocorrelation Window (ACW) &mdash; EEG Analysis Odyssey</title>
+    <meta name="description" content="Measure how long a brain region remembers its own recent past &mdash; capturing the fundamental temporal hierarchy that organizes cortical processing from fast sensory areas to slow association regions." />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-deep: #05091a;
+            --text-main: #F0F4FF;
+            --text-muted: #B8C4E0;
+            --accent-solid: #A5B4FC;
+            --accent-teal-solid: #2DD4BF;
+            --glass-bg: rgba(99, 102, 241, 0.10);
+            --glass-border: rgba(165, 180, 252, 0.35);
+            --code-bg: rgba(15, 15, 58, 0.85);
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html { scroll-behavior: smooth; }
+        body {
+            background-color: var(--bg-deep);
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            line-height: 1.75;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+        h1, h2, h3, h4 { font-family: 'Playfair Display', serif; font-weight: 400; }
+        p { text-align: justify; }
+
+        .ambient-background {
+            position: fixed; top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            background:
+                radial-gradient(ellipse at 15% 55%, rgba(99, 102, 241, 0.55), transparent 45%),
+                radial-gradient(ellipse at 85% 15%, rgba(20, 184, 166, 0.50), transparent 45%),
+                radial-gradient(ellipse at 50% 95%, rgba(167, 139, 250, 0.30), transparent 50%);
+            filter: blur(60px); z-index: -2;
+            animation: breathe 12s infinite alternate ease-in-out;
+        }
+        @keyframes breathe {
+            0% { transform: scale(1); opacity: 0.85; }
+            100% { transform: scale(1.08); opacity: 1; }
+        }
+        canvas { position: fixed; top: 0; left: 0; z-index: -1; pointer-events: none; }
+
+        /* Nav */
+        .top-nav {
+            position: sticky; top: 0; z-index: 100;
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 14px 5%;
+            background: rgba(5, 9, 26, 0.85);
+            backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+            border-bottom: 1px solid var(--glass-border);
+        }
+        .back-link { display: flex; align-items: center; gap: 8px; color: var(--accent-solid); text-decoration: none; font-size: 0.85rem; font-weight: 600; letter-spacing: 0.5px; transition: color 0.2s, gap 0.2s; white-space: nowrap; }
+        .back-link:hover { color: #fff; gap: 12px; }
+        .nav-day-label { font-size: 0.75rem; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: var(--accent-teal-solid); text-shadow: 0 0 12px rgba(45, 212, 191, 0.7); white-space: nowrap; }
+        .nav-arrows { display: flex; align-items: center; gap: 10px; }
+        .nav-arrow-btn { padding: 6px 16px; border: 1px solid var(--glass-border); border-radius: 8px; font-size: 0.85rem; font-weight: 500; color: var(--text-muted); text-decoration: none; transition: all 0.3s ease; display: inline-flex; align-items: center; background: rgba(99, 102, 241, 0.08); white-space: nowrap; }
+        .nav-arrow-btn:hover:not(.disabled) { border-color: var(--accent-solid); color: #ffffff; box-shadow: 0 0 12px rgba(165, 180, 252, 0.4); background: rgba(99, 102, 241, 0.25); transform: translateY(-1px); }
+        .nav-arrow-btn.disabled { opacity: 0.3; cursor: not-allowed; pointer-events: none; border-color: rgba(255, 255, 255, 0.05); }
+
+        /* Hero */
+        .hero { padding: 70px 5% 50px; max-width: 960px; margin: 0 auto; text-align: center; position: relative; z-index: 2; width: 100%; }
+        .day-pill { display: inline-block; padding: 6px 20px; border-radius: 999px; background: rgba(99, 102, 241, 0.20); border: 1px solid rgba(165, 180, 252, 0.6); font-size: 0.75rem; font-weight: 800; letter-spacing: 4px; text-transform: uppercase; color: #5EEAD4; margin-bottom: 20px; text-shadow: 0 0 14px rgba(45, 212, 191, 0.8); backdrop-filter: blur(12px); }
+        .hero h1 { font-size: clamp(2.2rem, 5vw, 3.8rem); line-height: 1.1; letter-spacing: -0.02em; color: #fff; text-shadow: 0 0 40px rgba(165, 180, 252, 0.9), 0 0 80px rgba(99, 102, 241, 0.5); margin-bottom: 16px; }
+        .hero-subtitle { font-size: clamp(1rem, 2vw, 1.2rem); color: #C8D5F0; max-width: 700px; margin: 0 auto 28px; font-family: 'Inter', sans-serif; text-align: center; }
+        .highlight { color: #C4B5FD; text-shadow: 0 0 30px rgba(165, 180, 252, 1), 0 0 60px rgba(99, 102, 241, 0.6); }
+        .highlight-teal { color: #5EEAD4; text-shadow: 0 0 25px rgba(45, 212, 191, 0.9); }
+        .badges { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+        .badge { padding: 6px 16px; border-radius: 999px; background: rgba(99, 102, 241, 0.15); border: 1px solid rgba(165, 180, 252, 0.5); font-size: 0.78rem; font-weight: 500; color: #E0E7FF; backdrop-filter: blur(8px); }
+
+        /* Article */
+        article { max-width: 860px; margin: 0 auto; padding: 0 5% 80px; position: relative; z-index: 2; }
+        .section-block { margin-bottom: 56px; }
+        .phase-header { display: flex; align-items: center; gap: 16px; margin-bottom: 20px; }
+        .phase-number { width: 48px; height: 48px; border-radius: 50%; flex-shrink: 0; background: linear-gradient(135deg, #6366F1, #8B5CF6); border: 2px solid rgba(165, 180, 252, 0.5); box-shadow: 0 0 20px rgba(99, 102, 241, 0.6); display: flex; align-items: center; justify-content: center; font-family: 'Playfair Display', serif; font-size: 1.3rem; color: #fff; }
+        .phase-header h2 { font-size: clamp(1.4rem, 3vw, 1.9rem); color: #fff; text-shadow: 0 0 20px rgba(165, 180, 252, 0.4); border: none; padding: 0; margin: 0; display: block; }
+
+        /* Glass card */
+        .glass-card { background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: 16px; padding: 28px 32px; backdrop-filter: blur(12px); margin: 20px 0; box-shadow: 0 4px 30px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.07); transition: border-color 0.3s, box-shadow 0.3s; }
+        .glass-card:hover { border-color: rgba(165, 180, 252, 0.55); box-shadow: 0 8px 40px rgba(99, 102, 241, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1); }
+        .glass-card p + p { margin-top: 10px; }
+
+        /* Code block */
+        .code-block { background: var(--code-bg); border: 1px solid rgba(165, 180, 252, 0.20); border-radius: 12px; padding: 20px 24px; margin: 16px 0; overflow-x: auto; position: relative; }
+        .code-block pre { font-family: 'JetBrains Mono', monospace; font-size: 0.84rem; color: #E0E7FF; line-height: 1.7; white-space: pre; }
+        .c-comment { color: #6B7DB3; font-style: italic; }
+        .c-keyword { color: #C4B5FD; font-weight: 500; }
+        .c-func { color: #5EEAD4; }
+        .c-string { color: #86efac; }
+        .c-number { color: #FCA5A5; }
+        .c-var { color: #A5B4FC; }
+        .code-tag { position: absolute; top: 12px; right: 16px; font-family: 'Inter', sans-serif; font-size: 0.62rem; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: rgba(165, 180, 252, 0.5); }
+
+        /* Insight box */
+        .insight-box { border-left: 3px solid var(--accent-teal-solid); padding: 18px 24px; margin: 24px 0; background: rgba(20, 184, 166, 0.07); border-radius: 0 12px 12px 0; }
+        .insight-box p { color: #C8D5F0; text-align: left; }
+        .insight-box strong { color: var(--accent-teal-solid); }
+        .insight-box.purple { border-left-color: #A5B4FC; background: rgba(99, 102, 241, 0.07); }
+        .insight-box.purple strong { color: #A5B4FC; }
+
+        /* Warning box */
+        .warn-box { border-left: 3px solid #FCA5A5; padding: 18px 24px; margin: 24px 0; background: rgba(220, 38, 38, 0.07); border-radius: 0 12px 12px 0; }
+        .warn-box p { color: #C8D5F0; text-align: left; }
+        .warn-box strong { color: #FCA5A5; }
+
+        /* Divider / Grid */
+        .section-divider { border: none; height: 1px; background: linear-gradient(90deg, transparent, var(--glass-border), transparent); margin: 48px 0; }
+        .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0; }
+
+        /* Footer */
+        footer { text-align: center; padding: 40px 20px; color: var(--text-muted); font-size: 0.85rem; border-top: 1px solid var(--glass-border); position: relative; z-index: 2; }
+        footer a { color: var(--accent-solid); text-decoration: none; }
+        footer a:hover { text-decoration: underline; }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #050814; }
+        ::-webkit-scrollbar-thumb { background: rgba(129, 140, 248, 0.4); border-radius: 3px; }
+
+        /* Inline code */
+        code { font-family: 'JetBrains Mono', monospace; font-size: 0.86em; background: var(--code-bg); padding: 2px 7px; border-radius: 5px; color: #A5B4FC; border: 1px solid rgba(165, 180, 252, 0.15); }
+
+        /* Responsive */
+        @media (max-width: 640px) {
+            .two-col { grid-template-columns: 1fr; }
+            .glass-card { padding: 20px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="ambient-background"></div>
+    <canvas id="neural-canvas"></canvas>
+
+    <nav class="top-nav">
+        <a href="../index.html" class="back-link">&#x2190; Back to Odyssey</a>
+        <span class="nav-day-label">Day 13 of 20</span>
+        <div class="nav-arrows">
+            <a href="../day_12/index.html" class="nav-arrow-btn prev-day" title="Previous Day: Features: IRASA">&#x2190; Prev</a>
+            <a href="../day_14/index.html" class="nav-arrow-btn next-day" title="Next Day: Time-Frequency: Wavelets">Next &#x2192;</a>
+        </div>
+    </nav>
+
+    <header class="hero">
+        <div class="day-pill">&#x2726; Day 13 &middot; Neural Timescales</div>
+        <h1><span class='highlight'>Autocorrelation</span><br><span class='highlight-teal'>Window (ACW)</span></h1>
+        <p class="hero-subtitle">Measure how long a brain region remembers its own recent past &mdash; capturing the fundamental temporal hierarchy that organizes cortical processing from fast sensory areas to slow association regions.</p>
+                <div class="badges">
+            <span class="badge">&#x23F1; Temporal Hierarchy</span>
+            <span class="badge">&#x1F4C8; Autocorrelation</span>
+            <span class="badge">&#x1F9E0; Intrinsic Timescales</span>
+            <span class="badge">&#x1F4CA; ACW-0 &amp; ACW-50</span>
+        </div>
+    </header>
+
+    <article>
+        <div class="section-block">
+            <div class="glass-card">
+                <p>
+                    How long does a brain region &ldquo;remember&rdquo; its own recent past? The <strong>Autocorrelation
+                    Window (ACW)</strong> quantifies this by measuring how quickly the temporal autocorrelation of neural
+                    activity decays. A long ACW means the signal is predictable far into the future &mdash; the region
+                    integrates information over a wide temporal window. A short ACW means the signal decorrelates quickly
+                    &mdash; the region responds rapidly to new inputs.
+                </p>
+            </div>
+        </div>
+
+        <hr class="section-divider">
+
+        <div class="section-block">
+            <div class="phase-header">
+                <div class="phase-number">1</div>
+                <h2>Intrinsic Neural Timescales<br><small>The Cortical Hierarchy of Time</small></h2>
+            </div>
+
+            <div class="glass-card">
+                <p>
+                    The brain is organized as a <strong>temporal hierarchy</strong>. Early sensory areas (V1, A1)
+                    operate on fast timescales (~tens of milliseconds) to track rapidly changing stimuli. Higher-order
+                    association areas (prefrontal cortex, temporal pole) operate on slow timescales (~hundreds of
+                    milliseconds to seconds) to maintain contextual representations over time.
+                </p>
+                <p>
+                    This gradient was first described using fMRI by Murray et al. (2014), but EEG can capture it
+                    at much finer temporal resolution using the ACW.
+                </p>
+            </div>
+
+            <div class="insight-box">
+                <p>
+                    <strong>Analogy:</strong> Imagine a chain of workers on an assembly line. The first worker
+                    (sensory cortex) handles items as they arrive and immediately passes them on &mdash; short memory.
+                    The last worker (prefrontal cortex) needs to hold many items in mind to make decisions about the
+                    whole batch &mdash; long memory. The ACW measures each worker&rsquo;s &ldquo;holding time.&rdquo;
+                </p>
+            </div>
+        </div>
+
+        <hr class="section-divider">
+
+        <div class="section-block">
+            <div class="phase-header">
+                <div class="phase-number">2</div>
+                <h2>Computing the ACW<br><small>Autocorrelation &rarr; Decay &rarr; Threshold</small></h2>
+            </div>
+
+            <div class="glass-card">
+                <p>
+                    <strong>Step 1:</strong> Divide the EEG signal into overlapping windows (typically 20 seconds, 50% overlap).<br>
+                    <strong>Step 2:</strong> Compute the autocorrelation function (ACF) within each window. The ACF at lag &tau;
+                    measures the correlation between the signal and a copy shifted by &tau; time points.<br>
+                    <strong>Step 3:</strong> Determine the ACW as the lag at which the ACF decays to a threshold.
+                </p>
+            </div>
+
+            <div class="two-col">
+                <div class="glass-card" style="margin:0;">
+                    <p style="font-family:'Inter',sans-serif;font-size:0.68rem;font-weight:800;letter-spacing:3px;text-transform:uppercase;color:#A5B4FC;margin-bottom:10px;">ACW-0</p>
+                    <p style="font-size:0.88rem;">The lag at which the autocorrelation first crosses <strong>zero</strong>.
+                    Captures the full decay cycle. More robust, better test-retest reliability.</p>
+                </div>
+                <div class="glass-card" style="margin:0;">
+                    <p style="font-family:'Inter',sans-serif;font-size:0.68rem;font-weight:800;letter-spacing:3px;text-transform:uppercase;color:#2DD4BF;margin-bottom:10px;">ACW-50</p>
+                    <p style="font-size:0.88rem;">The lag at which the autocorrelation drops to <strong>50%</strong> of its maximum.
+                    Captures the initial decay rate. More sensitive to fast dynamics.</p>
+                </div>
+            </div>
+
+            <div class="code-block">
+                <span class="code-tag">Python</span>
+                <pre><span class="c-keyword">import</span> numpy <span class="c-keyword">as</span> np
+
+<span class="c-keyword">def</span> <span class="c-func">compute_acw</span>(signal, sfreq, win_sec=<span class="c-number">20</span>, overlap=<span class="c-number">0.5</span>):
+    <span class="c-string">"""Compute ACW-0 and ACW-50 for a 1-D signal."""</span>
+    win_samples = <span class="c-keyword">int</span>(win_sec * sfreq)
+    step = <span class="c-keyword">int</span>(win_samples * (<span class="c-number">1</span> - overlap))
+    max_lag = win_samples // <span class="c-number">2</span>
+    acw0_list, acw50_list = [], []
+
+    <span class="c-keyword">for</span> start <span class="c-keyword">in</span> range(<span class="c-number">0</span>, len(signal) - win_samples, step):
+        chunk = signal[start:start + win_samples]
+        chunk = chunk - chunk.mean()
+
+        <span class="c-comment"># Full autocorrelation, normalized</span>
+        acf = np.correlate(chunk, chunk, mode=<span class="c-string">'full'</span>)
+        acf = acf[len(acf)//2:]  <span class="c-comment"># positive lags only</span>
+        acf = acf / acf[<span class="c-number">0</span>]       <span class="c-comment"># normalize to 1 at lag 0</span>
+
+        <span class="c-comment"># ACW-0: first zero crossing</span>
+        zero_cross = np.where(acf[:max_lag] &lt;= <span class="c-number">0</span>)[<span class="c-number">0</span>]
+        acw0 = zero_cross[<span class="c-number">0</span>] / sfreq <span class="c-keyword">if</span> len(zero_cross) > <span class="c-number">0</span> <span class="c-keyword">else</span> np.nan
+
+        <span class="c-comment"># ACW-50: first drop below 0.5</span>
+        half_cross = np.where(acf[:max_lag] &lt;= <span class="c-number">0.5</span>)[<span class="c-number">0</span>]
+        acw50 = half_cross[<span class="c-number">0</span>] / sfreq <span class="c-keyword">if</span> len(half_cross) > <span class="c-number">0</span> <span class="c-keyword">else</span> np.nan
+
+        acw0_list.append(acw0)
+        acw50_list.append(acw50)
+
+    <span class="c-keyword">return</span> np.nanmean(acw0_list), np.nanmean(acw50_list)</pre>
+            </div>
+        </div>
+
+        <hr class="section-divider">
+
+        <div class="section-block">
+            <div class="phase-header">
+                <div class="phase-number">3</div>
+                <h2>Clinical &amp; Cognitive Relevance<br><small>Consciousness, Aging &amp; Psychiatric Disorders</small></h2>
+            </div>
+
+            <div class="glass-card">
+                <p>
+                    ACW is gaining traction as a neural biomarker across multiple domains:
+                </p>
+                <p>
+                    &bull; <strong>Disorders of consciousness:</strong> Patients in minimally conscious states show
+                    significantly shorter ACWs than healthy controls, reflecting reduced temporal integration.<br>
+                    &bull; <strong>Aging:</strong> ACW generally shortens with age in association areas, mirroring
+                    the flattening of the 1/f exponent.<br>
+                    &bull; <strong>Schizophrenia:</strong> Altered ACW patterns suggest disrupted temporal binding.<br>
+                    &bull; <strong>Meditation:</strong> Long-term meditators show altered ACW hierarchies.
+                </p>
+            </div>
+
+            <div class="insight-box purple">
+                <p>
+                    <strong>Key references:</strong> Murray et al. (2014) &mdash; cortical timescale hierarchy.
+                    Watanabe et al. (2019) &mdash; ACW in EEG. Wolff et al. (2022) &mdash; ACW and consciousness.
+                    Golesorkhi et al. (2021) &mdash; test-retest reliability.
+                </p>
+            </div>
+        </div>
+    </article>
+
+    <footer>
+        <p>Day 13 &mdash; Features: Autocorrelation Window (ACW)</p>
+    </footer>
+
+    <script>
+        const canvas = document.getElementById('neural-canvas');
+        const ctx = canvas.getContext('2d');
+        let W, H, particles;
+        function resize() { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
+        function initParticles() {
+            particles = Array.from({ length: 100 }, () => ({
+                x: Math.random() * W, y: Math.random() * H,
+                vx: (Math.random() - 0.5) * 0.4, vy: (Math.random() - 0.5) * 0.4,
+                r: Math.random() * 2 + 0.8
+            }));
+        }
+        function draw() {
+            ctx.clearRect(0, 0, W, H);
+            for (let i = 0; i < particles.length; i++) {
+                for (let j = i + 1; j < particles.length; j++) {
+                    const dx = particles[i].x - particles[j].x;
+                    const dy = particles[i].y - particles[j].y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < 130) {
+                        ctx.beginPath();
+                        ctx.strokeStyle = 'rgba(165,180,252,' + (0.25 * (1 - dist / 130)) + ')';
+                        ctx.lineWidth = 0.8;
+                        ctx.moveTo(particles[i].x, particles[i].y);
+                        ctx.lineTo(particles[j].x, particles[j].y);
+                        ctx.stroke();
+                    }
+                }
+            }
+            particles.forEach(p => {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(165,180,252,0.7)';
+                ctx.fill();
+                p.x += p.vx; p.y += p.vy;
+                if (p.x < 0 || p.x > W) p.vx *= -1;
+                if (p.y < 0 || p.y > H) p.vy *= -1;
+            });
+            requestAnimationFrame(draw);
+        }
+        window.addEventListener('resize', () => { resize(); initParticles(); });
+        resize(); initParticles(); draw();
+
+        document.addEventListener('keydown', (e) => {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+            if (e.key === 'ArrowLeft') {
+                const prevBtn = document.querySelector('.nav-arrow-btn.prev-day:not(.disabled)');
+                if (prevBtn) prevBtn.click();
+            } else if (e.key === 'ArrowRight') {
+                const nextBtn = document.querySelector('.nav-arrow-btn.next-day:not(.disabled)');
+                if (nextBtn) nextBtn.click();
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,1 +1,462 @@
-<html><body><h1>Welcome to Day 4</h1></body></html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Day 4: Data Cleaning: Downsampling, Bad Channels & Segments &mdash; EEG Analysis Odyssey</title>
+    <meta name="description" content="Why we downsample, how to catch broken electrodes, and when to cut corrupted time windows &mdash; the essential quality control pipeline every EEG analysis begins with." />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-deep: #05091a;
+            --text-main: #F0F4FF;
+            --text-muted: #B8C4E0;
+            --accent-solid: #A5B4FC;
+            --accent-teal-solid: #2DD4BF;
+            --glass-bg: rgba(99, 102, 241, 0.10);
+            --glass-border: rgba(165, 180, 252, 0.35);
+            --code-bg: rgba(15, 15, 58, 0.85);
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html { scroll-behavior: smooth; }
+        body {
+            background-color: var(--bg-deep);
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            line-height: 1.75;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+        h1, h2, h3, h4 { font-family: 'Playfair Display', serif; font-weight: 400; }
+        p { text-align: justify; }
+
+        .ambient-background {
+            position: fixed; top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            background:
+                radial-gradient(ellipse at 15% 55%, rgba(99, 102, 241, 0.55), transparent 45%),
+                radial-gradient(ellipse at 85% 15%, rgba(20, 184, 166, 0.50), transparent 45%),
+                radial-gradient(ellipse at 50% 95%, rgba(167, 139, 250, 0.30), transparent 50%);
+            filter: blur(60px); z-index: -2;
+            animation: breathe 12s infinite alternate ease-in-out;
+        }
+        @keyframes breathe {
+            0% { transform: scale(1); opacity: 0.85; }
+            100% { transform: scale(1.08); opacity: 1; }
+        }
+        canvas { position: fixed; top: 0; left: 0; z-index: -1; pointer-events: none; }
+
+        /* Nav */
+        .top-nav {
+            position: sticky; top: 0; z-index: 100;
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 14px 5%;
+            background: rgba(5, 9, 26, 0.85);
+            backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+            border-bottom: 1px solid var(--glass-border);
+        }
+        .back-link { display: flex; align-items: center; gap: 8px; color: var(--accent-solid); text-decoration: none; font-size: 0.85rem; font-weight: 600; letter-spacing: 0.5px; transition: color 0.2s, gap 0.2s; white-space: nowrap; }
+        .back-link:hover { color: #fff; gap: 12px; }
+        .nav-day-label { font-size: 0.75rem; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: var(--accent-teal-solid); text-shadow: 0 0 12px rgba(45, 212, 191, 0.7); white-space: nowrap; }
+        .nav-arrows { display: flex; align-items: center; gap: 10px; }
+        .nav-arrow-btn { padding: 6px 16px; border: 1px solid var(--glass-border); border-radius: 8px; font-size: 0.85rem; font-weight: 500; color: var(--text-muted); text-decoration: none; transition: all 0.3s ease; display: inline-flex; align-items: center; background: rgba(99, 102, 241, 0.08); white-space: nowrap; }
+        .nav-arrow-btn:hover:not(.disabled) { border-color: var(--accent-solid); color: #ffffff; box-shadow: 0 0 12px rgba(165, 180, 252, 0.4); background: rgba(99, 102, 241, 0.25); transform: translateY(-1px); }
+        .nav-arrow-btn.disabled { opacity: 0.3; cursor: not-allowed; pointer-events: none; border-color: rgba(255, 255, 255, 0.05); }
+
+        /* Hero */
+        .hero { padding: 70px 5% 50px; max-width: 960px; margin: 0 auto; text-align: center; position: relative; z-index: 2; width: 100%; }
+        .day-pill { display: inline-block; padding: 6px 20px; border-radius: 999px; background: rgba(99, 102, 241, 0.20); border: 1px solid rgba(165, 180, 252, 0.6); font-size: 0.75rem; font-weight: 800; letter-spacing: 4px; text-transform: uppercase; color: #5EEAD4; margin-bottom: 20px; text-shadow: 0 0 14px rgba(45, 212, 191, 0.8); backdrop-filter: blur(12px); }
+        .hero h1 { font-size: clamp(2.2rem, 5vw, 3.8rem); line-height: 1.1; letter-spacing: -0.02em; color: #fff; text-shadow: 0 0 40px rgba(165, 180, 252, 0.9), 0 0 80px rgba(99, 102, 241, 0.5); margin-bottom: 16px; }
+        .hero-subtitle { font-size: clamp(1rem, 2vw, 1.2rem); color: #C8D5F0; max-width: 700px; margin: 0 auto 28px; font-family: 'Inter', sans-serif; text-align: center; }
+        .highlight { color: #C4B5FD; text-shadow: 0 0 30px rgba(165, 180, 252, 1), 0 0 60px rgba(99, 102, 241, 0.6); }
+        .highlight-teal { color: #5EEAD4; text-shadow: 0 0 25px rgba(45, 212, 191, 0.9); }
+        .badges { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+        .badge { padding: 6px 16px; border-radius: 999px; background: rgba(99, 102, 241, 0.15); border: 1px solid rgba(165, 180, 252, 0.5); font-size: 0.78rem; font-weight: 500; color: #E0E7FF; backdrop-filter: blur(8px); }
+
+        /* Article */
+        article { max-width: 860px; margin: 0 auto; padding: 0 5% 80px; position: relative; z-index: 2; }
+        .section-block { margin-bottom: 56px; }
+        .phase-header { display: flex; align-items: center; gap: 16px; margin-bottom: 20px; }
+        .phase-number { width: 48px; height: 48px; border-radius: 50%; flex-shrink: 0; background: linear-gradient(135deg, #6366F1, #8B5CF6); border: 2px solid rgba(165, 180, 252, 0.5); box-shadow: 0 0 20px rgba(99, 102, 241, 0.6); display: flex; align-items: center; justify-content: center; font-family: 'Playfair Display', serif; font-size: 1.3rem; color: #fff; }
+        .phase-header h2 { font-size: clamp(1.4rem, 3vw, 1.9rem); color: #fff; text-shadow: 0 0 20px rgba(165, 180, 252, 0.4); border: none; padding: 0; margin: 0; display: block; }
+
+        /* Glass card */
+        .glass-card { background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: 16px; padding: 28px 32px; backdrop-filter: blur(12px); margin: 20px 0; box-shadow: 0 4px 30px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.07); transition: border-color 0.3s, box-shadow 0.3s; }
+        .glass-card:hover { border-color: rgba(165, 180, 252, 0.55); box-shadow: 0 8px 40px rgba(99, 102, 241, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1); }
+        .glass-card p + p { margin-top: 10px; }
+
+        /* Code block */
+        .code-block { background: var(--code-bg); border: 1px solid rgba(165, 180, 252, 0.20); border-radius: 12px; padding: 20px 24px; margin: 16px 0; overflow-x: auto; position: relative; }
+        .code-block pre { font-family: 'JetBrains Mono', monospace; font-size: 0.84rem; color: #E0E7FF; line-height: 1.7; white-space: pre; }
+        .c-comment { color: #6B7DB3; font-style: italic; }
+        .c-keyword { color: #C4B5FD; font-weight: 500; }
+        .c-func { color: #5EEAD4; }
+        .c-string { color: #86efac; }
+        .c-number { color: #FCA5A5; }
+        .c-var { color: #A5B4FC; }
+        .code-tag { position: absolute; top: 12px; right: 16px; font-family: 'Inter', sans-serif; font-size: 0.62rem; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: rgba(165, 180, 252, 0.5); }
+
+        /* Insight box */
+        .insight-box { border-left: 3px solid var(--accent-teal-solid); padding: 18px 24px; margin: 24px 0; background: rgba(20, 184, 166, 0.07); border-radius: 0 12px 12px 0; }
+        .insight-box p { color: #C8D5F0; text-align: left; }
+        .insight-box strong { color: var(--accent-teal-solid); }
+        .insight-box.purple { border-left-color: #A5B4FC; background: rgba(99, 102, 241, 0.07); }
+        .insight-box.purple strong { color: #A5B4FC; }
+
+        /* Warning box */
+        .warn-box { border-left: 3px solid #FCA5A5; padding: 18px 24px; margin: 24px 0; background: rgba(220, 38, 38, 0.07); border-radius: 0 12px 12px 0; }
+        .warn-box p { color: #C8D5F0; text-align: left; }
+        .warn-box strong { color: #FCA5A5; }
+
+        /* Divider / Grid */
+        .section-divider { border: none; height: 1px; background: linear-gradient(90deg, transparent, var(--glass-border), transparent); margin: 48px 0; }
+        .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0; }
+
+        /* Footer */
+        footer { text-align: center; padding: 40px 20px; color: var(--text-muted); font-size: 0.85rem; border-top: 1px solid var(--glass-border); position: relative; z-index: 2; }
+        footer a { color: var(--accent-solid); text-decoration: none; }
+        footer a:hover { text-decoration: underline; }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #050814; }
+        ::-webkit-scrollbar-thumb { background: rgba(129, 140, 248, 0.4); border-radius: 3px; }
+
+        /* Inline code */
+        code { font-family: 'JetBrains Mono', monospace; font-size: 0.86em; background: var(--code-bg); padding: 2px 7px; border-radius: 5px; color: #A5B4FC; border: 1px solid rgba(165, 180, 252, 0.15); }
+
+        /* Responsive */
+        @media (max-width: 640px) {
+            .two-col { grid-template-columns: 1fr; }
+            .glass-card { padding: 20px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="ambient-background"></div>
+    <canvas id="neural-canvas"></canvas>
+
+    <nav class="top-nav">
+        <a href="../index.html" class="back-link">&#x2190; Back to Odyssey</a>
+        <span class="nav-day-label">Day 4 of 20</span>
+        <div class="nav-arrows">
+            <a href="../day_3/index.html" class="nav-arrow-btn prev-day" title="Previous Day: Python Basics: Dataframes to Arrays">&#x2190; Prev</a>
+            <a href="../day_5/index.html" class="nav-arrow-btn next-day" title="Next Day: Data Cleaning: ASR">Next &#x2192;</a>
+        </div>
+    </nav>
+
+    <header class="hero">
+        <div class="day-pill">&#x2726; Day 04 &middot; Preprocessing</div>
+        <h1><span class='highlight'>Downsampling</span>, Bad Channels<br><span class='highlight-teal'>&amp; Segment Rejection</span></h1>
+        <p class="hero-subtitle">Why we downsample, how to catch broken electrodes, and when to cut corrupted time windows &mdash; the essential quality control pipeline every EEG analysis begins with.</p>
+                <div class="badges">
+            <span class="badge">&#x1F50D; Visual Inspection</span>
+            <span class="badge">&#x1F4C9; Nyquist Theorem</span>
+            <span class="badge">&#x1F6E0; raw.resample()</span>
+            <span class="badge">&#x1F9F9; Interpolation</span>
+            <span class="badge">&#x1F4CA; Peak-to-Peak Rejection</span>
+        </div>
+    </header>
+
+    <article>
+        <div class="section-block">
+            <div class="glass-card">
+                <p>
+                    Before any analysis, raw EEG data is almost always contaminated &mdash; noisy channels, movement artifacts,
+                    and often sampled at rates far higher than necessary. This day covers the three foundational cleaning operations
+                    that every preprocessing pipeline begins with. Think of it as <strong>quality control</strong> for your neural data:
+                    reduce redundancy (downsample), identify broken sensors (bad channels), and excise corrupted time windows (bad segments).
+                </p>
+            </div>
+        </div>
+
+        <hr class="section-divider">
+
+        <div class="section-block">
+            <div class="phase-header">
+                <div class="phase-number">1</div>
+                <h2>Why Downsample?<br><small>Nyquist, Aliasing &amp; the Anti-Alias Filter</small></h2>
+            </div>
+
+            <div class="glass-card">
+                <p>
+                    Most EEG amplifiers record at 500&ndash;2048 Hz, but neural oscillations of interest rarely exceed 100 Hz.
+                    Carrying all those extra samples wastes memory and slows every downstream computation. <strong>Downsampling</strong>
+                    reduces the sampling rate &mdash; but there is a critical catch.
+                </p>
+                <p>
+                    The <strong>Nyquist theorem</strong> states that you can only faithfully represent frequencies up to half
+                    the sampling rate (<em>f<sub>s</sub>/2</em>). If you downsample from 1000 Hz to 250 Hz without first removing
+                    frequencies above 125 Hz, those high-frequency components &ldquo;fold back&rdquo; into your signal as phantom
+                    oscillations &mdash; this is <strong>aliasing</strong>, and it is irreversible.
+                </p>
+            </div>
+
+            <div class="code-block">
+                <span class="code-tag">Python</span>
+                <pre><span class="c-comment"># ALWAYS low-pass filter BEFORE downsampling</span>
+raw.load_data()
+raw.filter(l_freq=<span class="c-number">None</span>, h_freq=<span class="c-number">100</span>)    <span class="c-comment"># anti-alias: remove &gt;100 Hz</span>
+raw.resample(sfreq=<span class="c-number">250</span>)                   <span class="c-comment"># safe to downsample now</span>
+
+<span class="c-comment"># Check the new sampling rate</span>
+<span class="c-keyword">print</span>(f<span class="c-string">"New sfreq: {raw.info['sfreq']} Hz"</span>)
+<span class="c-keyword">print</span>(f<span class="c-string">"Nyquist:   {raw.info['sfreq'] / 2} Hz"</span>)</pre>
+            </div>
+
+            <div class="insight-box">
+                <p>
+                    <strong>Cohen&rsquo;s intuition (ANTS Ch. 6):</strong> Think of aliasing like a wagon wheel
+                    in a movie &mdash; when the camera&rsquo;s frame rate is too low, the wheel appears to spin backward.
+                    The anti-alias filter is your insurance policy: apply it <em>before</em> you reduce the frame rate.
+                </p>
+            </div>
+        </div>
+
+        <hr class="section-divider">
+
+        <div class="section-block">
+            <div class="phase-header">
+                <div class="phase-number">2</div>
+                <h2>Identifying Bad Channels<br><small>Flat, Noisy &amp; Bridged Electrodes</small></h2>
+            </div>
+
+            <div class="glass-card">
+                <p>
+                    A &ldquo;bad&rdquo; channel is any electrode whose signal no longer reflects the underlying neural activity.
+                    Common culprits: <strong>flat channels</strong> (dead amplifier, dried gel), <strong>noisy channels</strong>
+                    (broken wire, excessive impedance), and <strong>bridged channels</strong> (conductive gel connecting two
+                    electrodes, making them nearly identical).
+                </p>
+                <p>
+                    Bad channels propagate errors into every subsequent step &mdash; re-referencing, ICA, source localization &mdash;
+                    so catching them early is critical. MNE lets you mark them manually or use automated detection.
+                </p>
+            </div>
+
+            <div class="code-block">
+                <span class="code-tag">Python</span>
+                <pre><span class="c-comment"># Manual marking after visual inspection</span>
+raw.info[<span class="c-string">'bads'</span>] = [<span class="c-string">'Fp1'</span>, <span class="c-string">'T8'</span>]
+
+<span class="c-comment"># Automated: RANSAC-based detection (requires autoreject)</span>
+<span class="c-keyword">from</span> autoreject <span class="c-keyword">import</span> Ransac
+ransac = Ransac(verbose=<span class="c-number">False</span>, n_jobs=<span class="c-number">1</span>)
+ransac.fit(epochs)
+<span class="c-keyword">print</span>(f<span class="c-string">"Bad channels detected: {ransac.bad_chs_}"</span>)
+
+<span class="c-comment"># Interpolate: reconstruct from neighbours using spherical splines</span>
+raw.interpolate_bads(reset_bads=<span class="c-number">True</span>)</pre>
+            </div>
+
+            <div class="insight-box">
+                <p>
+                    <strong>Mental model:</strong> Interpolation replaces the bad channel&rsquo;s data with a weighted
+                    average of its spatial neighbours &mdash; imagine filling a hole in a topographic map by smoothly
+                    blending the surrounding elevation contours. It recovers the <em>spatial pattern</em> but not
+                    the original unique neural information at that site.
+                </p>
+            </div>
+
+            <div class="warn-box">
+                <p>
+                    <strong>Pitfall:</strong> If you interpolate <em>too many</em> channels (&gt;10&ndash;15% of your montage),
+                    your data becomes a smooth spatial average rather than genuine EEG. Consider whether the recording
+                    should simply be excluded.
+                </p>
+            </div>
+        </div>
+
+        <hr class="section-divider">
+
+        <div class="section-block">
+            <div class="phase-header">
+                <div class="phase-number">3</div>
+                <h2>Marking Bad Segments<br><small>Annotations &amp; reject_by_annotation</small></h2>
+            </div>
+
+            <div class="glass-card">
+                <p>
+                    Even after fixing bad channels, stretches of the continuous recording can be corrupted by movement,
+                    muscle clenching, or equipment bumps. MNE uses the <strong>Annotations</strong> system &mdash; any
+                    annotation whose description starts with <code>"bad"</code> is treated as a bad segment and automatically
+                    excluded from epoching, filtering, and ICA fitting.
+                </p>
+            </div>
+
+            <div class="code-block">
+                <span class="code-tag">Python</span>
+                <pre><span class="c-keyword">import</span> mne
+
+<span class="c-comment"># Interactive: click-drag in the raw plot to mark bad segments</span>
+raw.plot(block=<span class="c-number">True</span>)
+
+<span class="c-comment"># Programmatic: mark a 5-second artifact starting at t=42s</span>
+annot = mne.Annotations(onset=[<span class="c-number">42.0</span>], duration=[<span class="c-number">5.0</span>],
+                        description=[<span class="c-string">'bad_muscle'</span>])
+raw.set_annotations(raw.annotations + annot)
+
+<span class="c-comment"># Later, epoching will automatically skip bad segments</span>
+epochs = mne.Epochs(raw, events, reject_by_annotation=<span class="c-number">True</span>)</pre>
+            </div>
+
+            <div class="insight-box">
+                <p>
+                    <strong>Why &ldquo;bad_&rdquo; prefix?</strong> MNE treats the description prefix as a semantic tag.
+                    <code>bad_blink</code>, <code>bad_muscle</code>, <code>bad_movement</code> &mdash; all are excluded automatically,
+                    but their distinct names let you audit <em>why</em> data was rejected later.
+                </p>
+            </div>
+        </div>
+
+        <hr class="section-divider">
+
+        <div class="section-block">
+            <div class="phase-header">
+                <div class="phase-number">4</div>
+                <h2>Peak-to-Peak Epoch Rejection<br><small>Amplitude Thresholds for Quality Control</small></h2>
+            </div>
+
+            <div class="glass-card">
+                <p>
+                    After epoching, the simplest artifact rejection strategy is <strong>peak-to-peak (PTP) thresholding</strong>:
+                    if any channel in an epoch swings more than a defined voltage range, the entire epoch is dropped.
+                    Typical thresholds: ~100&ndash;150 &micro;V for EEG, ~250 &micro;V for EOG.
+                </p>
+                <p>
+                    This is a blunt instrument &mdash; it catches large artifacts but misses subtle ones and wastes data
+                    by rejecting entire epochs when only one channel is bad. More sophisticated approaches (ICA, autoreject)
+                    are covered in later days.
+                </p>
+            </div>
+
+            <div class="code-block">
+                <span class="code-tag">Python</span>
+                <pre><span class="c-comment"># Define PTP amplitude thresholds (in Volts)</span>
+reject = <span class="c-keyword">dict</span>(eeg=<span class="c-number">150e-6</span>,    <span class="c-comment"># 150 uV</span>
+               eog=<span class="c-number">250e-6</span>)    <span class="c-comment"># 250 uV</span>
+
+<span class="c-comment"># Also define minimum thresholds to catch flat channels</span>
+flat = <span class="c-keyword">dict</span>(eeg=<span class="c-number">1e-6</span>)       <span class="c-comment"># 1 uV (practically flat)</span>
+
+epochs = mne.Epochs(raw, events, tmin=<span class="c-number">-0.2</span>, tmax=<span class="c-number">0.5</span>,
+                    reject=reject, flat=flat, preload=<span class="c-number">True</span>)
+
+<span class="c-comment"># See how many epochs survived</span>
+<span class="c-keyword">print</span>(epochs.drop_log_stats())</pre>
+            </div>
+
+            <div class="insight-box purple">
+                <p>
+                    <strong>Rule of thumb:</strong> If you are rejecting more than ~25% of your epochs, your thresholds
+                    may be too aggressive, or the recording quality needs addressing upstream (bad channels, filtering).
+                </p>
+            </div>
+        </div>
+
+        <hr class="section-divider">
+
+        <div class="section-block">
+            <div class="phase-header">
+                <div class="phase-number">5</div>
+                <h2>The Preprocessing Pipeline Order<br><small>When to Do What</small></h2>
+            </div>
+
+            <div class="glass-card">
+                <p>
+                    Order matters enormously in preprocessing. Here is the canonical pipeline that most EEG labs follow:
+                </p>
+            </div>
+
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;margin:20px 0;">
+                <div style="border-radius:12px;padding:18px;text-align:center;background:rgba(99,102,241,0.14);border:1px solid rgba(165,180,252,0.35);">
+                    <p style="font-family:'JetBrains Mono',monospace;font-size:1.3rem;font-weight:700;color:#A5B4FC;">Step 1</p>
+                    <p style="font-size:0.8rem;color:var(--text-muted);margin-top:4px;">Import &amp;<br>Montage</p>
+                </div>
+                <div style="border-radius:12px;padding:18px;text-align:center;background:rgba(20,184,166,0.12);border:1px solid rgba(45,212,191,0.30);">
+                    <p style="font-family:'JetBrains Mono',monospace;font-size:1.3rem;font-weight:700;color:#2DD4BF;">Step 2</p>
+                    <p style="font-size:0.8rem;color:var(--text-muted);margin-top:4px;">Mark Bad<br>Channels</p>
+                </div>
+                <div style="border-radius:12px;padding:18px;text-align:center;background:rgba(167,139,250,0.12);border:1px solid rgba(196,181,253,0.30);">
+                    <p style="font-family:'JetBrains Mono',monospace;font-size:1.3rem;font-weight:700;color:#C4B5FD;">Step 3</p>
+                    <p style="font-size:0.8rem;color:var(--text-muted);margin-top:4px;">Filter<br>(HP + LP)</p>
+                </div>
+                <div style="border-radius:12px;padding:18px;text-align:center;background:rgba(134,239,172,0.10);border:1px solid rgba(134,239,172,0.28);">
+                    <p style="font-family:'JetBrains Mono',monospace;font-size:1.3rem;font-weight:700;color:#86efac;">Step 4</p>
+                    <p style="font-size:0.8rem;color:var(--text-muted);margin-top:4px;">Downsample</p>
+                </div>
+                <div style="border-radius:12px;padding:18px;text-align:center;background:rgba(252,165,165,0.10);border:1px solid rgba(252,165,165,0.28);">
+                    <p style="font-family:'JetBrains Mono',monospace;font-size:1.3rem;font-weight:700;color:#fca5a5;">Step 5</p>
+                    <p style="font-size:0.8rem;color:var(--text-muted);margin-top:4px;">ICA / ASR<br>Artifact Fix</p>
+                </div>
+            </div>
+
+            <div class="insight-box">
+                <p>
+                    <strong>Key dependencies:</strong> Filter <em>before</em> downsampling (anti-alias). Mark bad channels
+                    <em>before</em> ICA (bad channels corrupt unmixing). Interpolate <em>after</em> ICA (preserve rank for decomposition).
+                </p>
+            </div>
+        </div>
+    </article>
+
+    <footer>
+        <p>Day 4 &mdash; Data Cleaning: Downsampling, Bad Channels &amp; Segments</p>
+    </footer>
+
+    <script>
+        const canvas = document.getElementById('neural-canvas');
+        const ctx = canvas.getContext('2d');
+        let W, H, particles;
+        function resize() { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
+        function initParticles() {
+            particles = Array.from({ length: 100 }, () => ({
+                x: Math.random() * W, y: Math.random() * H,
+                vx: (Math.random() - 0.5) * 0.4, vy: (Math.random() - 0.5) * 0.4,
+                r: Math.random() * 2 + 0.8
+            }));
+        }
+        function draw() {
+            ctx.clearRect(0, 0, W, H);
+            for (let i = 0; i < particles.length; i++) {
+                for (let j = i + 1; j < particles.length; j++) {
+                    const dx = particles[i].x - particles[j].x;
+                    const dy = particles[i].y - particles[j].y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < 130) {
+                        ctx.beginPath();
+                        ctx.strokeStyle = 'rgba(165,180,252,' + (0.25 * (1 - dist / 130)) + ')';
+                        ctx.lineWidth = 0.8;
+                        ctx.moveTo(particles[i].x, particles[i].y);
+                        ctx.lineTo(particles[j].x, particles[j].y);
+                        ctx.stroke();
+                    }
+                }
+            }
+            particles.forEach(p => {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(165,180,252,0.7)';
+                ctx.fill();
+                p.x += p.vx; p.y += p.vy;
+                if (p.x < 0 || p.x > W) p.vx *= -1;
+                if (p.y < 0 || p.y > H) p.vy *= -1;
+            });
+            requestAnimationFrame(draw);
+        }
+        window.addEventListener('resize', () => { resize(); initParticles(); });
+        resize(); initParticles(); draw();
+
+        document.addEventListener('keydown', (e) => {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+            if (e.key === 'ArrowLeft') {
+                const prevBtn = document.querySelector('.nav-arrow-btn.prev-day:not(.disabled)');
+                if (prevBtn) prevBtn.click();
+            } else if (e.key === 'ArrowRight') {
+                const nextBtn = document.querySelector('.nav-arrow-btn.next-day:not(.disabled)');
+                if (nextBtn) nextBtn.click();
+            }
+        });
+    </script>
+</body>
+</html>

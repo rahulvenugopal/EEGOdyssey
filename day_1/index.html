@@ -91,6 +91,9 @@
         }
 
         /* ── Nav ───────────────────────────────────────────────────────── */
+        
+
+        /* Nav & Day Arrow Navigation */
         .top-nav {
             position: sticky;
             top: 0;
@@ -99,9 +102,45 @@
             align-items: center;
             justify-content: space-between;
             padding: 14px 5%;
-            background: rgba(5, 9, 26, 0.80);
+            background: rgba(5, 9, 26, 0.85);
             backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
             border-bottom: 1px solid var(--glass-border);
+        }
+
+        .nav-arrows {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .nav-arrow-btn {
+            padding: 6px 16px;
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-muted);
+            text-decoration: none;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            background: rgba(99, 102, 241, 0.08);
+        }
+
+        .nav-arrow-btn:hover:not(.disabled) {
+            border-color: var(--accent-solid);
+            color: #ffffff;
+            box-shadow: 0 0 12px rgba(165, 180, 252, 0.4);
+            background: rgba(99, 102, 241, 0.25);
+            transform: translateY(-1px);
+        }
+
+        .nav-arrow-btn.disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+            pointer-events: none;
+            border-color: rgba(255, 255, 255, 0.05);
         }
 
         .back-link {
@@ -132,12 +171,13 @@
 
         /* ── Hero ──────────────────────────────────────────────────────── */
         .hero {
-            padding: 80px 5% 60px;
-            max-width: 1000px;
+            padding: 70px 5% 50px;
+            max-width: 960px;
             margin: 0 auto;
             text-align: center;
             position: relative;
             z-index: 2;
+            width: 100%;
         }
 
         .day-pill {
@@ -571,10 +611,14 @@
     <div class="ambient-background"></div>
     <canvas id="neural-canvas"></canvas>
 
-    <!-- ── Navigation ── -->
+    <!-- Navigation -->
     <nav class="top-nav">
         <a href="../index.html" class="back-link">&#x2190; Back to Odyssey</a>
         <span class="nav-day-label">Day 1 of 20</span>
+        <div class="nav-arrows">
+            <span class="nav-arrow-btn prev-day disabled">&#x2190; Prev</span>
+            <a href="../day_2/index.html" class="nav-arrow-btn next-day" title="Next Day: Python Basics: Plotting for Insights">Next &#x2192;</a>
+        </div>
     </nav>
 
     <!-- ── Hero ── -->
@@ -1347,13 +1391,24 @@ first_two_grades = grades[<span class="c-number">0</span>:<span class="c-number"
         }
         window.addEventListener('resize', () => { resize(); initParticles(); });
         resize(); initParticles(); draw();
+    
+        // Keyboard arrow key navigation (Left = Prev, Right = Next)
+        document.addEventListener('keydown', (e) => {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+            if (e.key === 'ArrowLeft') {
+                const prevBtn = document.querySelector('.nav-arrow-btn.prev-day:not(.disabled)');
+                if (prevBtn) prevBtn.click();
+            } else if (e.key === 'ArrowRight') {
+                const nextBtn = document.querySelector('.nav-arrow-btn.next-day:not(.disabled)');
+                if (nextBtn) nextBtn.click();
+            }
+        });
     </script>
 
     <!-- ── Footer ── -->
     <footer>
         <p>
-            Day 1 &mdash; <a href="../index.html">EEG Analysis Odyssey</a> &nbsp;&bull;&nbsp;
-            NumPy Indexing, Slicing &amp; Dicing
+            Day 1 &mdash; NumPy Indexing, Slicing &amp; Dicing
         </p>
         <p style="margin-top: 10px;">
             Dataset: <a href="https://github.com/rahulvenugopal/EEGOdyssey/tree/main/day_1/data"

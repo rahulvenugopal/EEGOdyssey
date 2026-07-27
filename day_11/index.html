@@ -1,1 +1,385 @@
-<html><body><h1>Welcome to Day 11</h1></body></html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Day 11: Features: FOOOF &mdash; EEG Analysis Odyssey</title>
+    <meta name="description" content="Decompose neural power spectra into periodic oscillations and aperiodic 1/f background &mdash; because traditional band power conflates the two, leading to systematic misinterpretation." />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-deep: #05091a;
+            --text-main: #F0F4FF;
+            --text-muted: #B8C4E0;
+            --accent-solid: #A5B4FC;
+            --accent-teal-solid: #2DD4BF;
+            --glass-bg: rgba(99, 102, 241, 0.10);
+            --glass-border: rgba(165, 180, 252, 0.35);
+            --code-bg: rgba(15, 15, 58, 0.85);
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html { scroll-behavior: smooth; }
+        body {
+            background-color: var(--bg-deep);
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            line-height: 1.75;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+        h1, h2, h3, h4 { font-family: 'Playfair Display', serif; font-weight: 400; }
+        p { text-align: justify; }
+
+        .ambient-background {
+            position: fixed; top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            background:
+                radial-gradient(ellipse at 15% 55%, rgba(99, 102, 241, 0.55), transparent 45%),
+                radial-gradient(ellipse at 85% 15%, rgba(20, 184, 166, 0.50), transparent 45%),
+                radial-gradient(ellipse at 50% 95%, rgba(167, 139, 250, 0.30), transparent 50%);
+            filter: blur(60px); z-index: -2;
+            animation: breathe 12s infinite alternate ease-in-out;
+        }
+        @keyframes breathe {
+            0% { transform: scale(1); opacity: 0.85; }
+            100% { transform: scale(1.08); opacity: 1; }
+        }
+        canvas { position: fixed; top: 0; left: 0; z-index: -1; pointer-events: none; }
+
+        /* Nav */
+        .top-nav {
+            position: sticky; top: 0; z-index: 100;
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 14px 5%;
+            background: rgba(5, 9, 26, 0.85);
+            backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+            border-bottom: 1px solid var(--glass-border);
+        }
+        .back-link { display: flex; align-items: center; gap: 8px; color: var(--accent-solid); text-decoration: none; font-size: 0.85rem; font-weight: 600; letter-spacing: 0.5px; transition: color 0.2s, gap 0.2s; white-space: nowrap; }
+        .back-link:hover { color: #fff; gap: 12px; }
+        .nav-day-label { font-size: 0.75rem; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: var(--accent-teal-solid); text-shadow: 0 0 12px rgba(45, 212, 191, 0.7); white-space: nowrap; }
+        .nav-arrows { display: flex; align-items: center; gap: 10px; }
+        .nav-arrow-btn { padding: 6px 16px; border: 1px solid var(--glass-border); border-radius: 8px; font-size: 0.85rem; font-weight: 500; color: var(--text-muted); text-decoration: none; transition: all 0.3s ease; display: inline-flex; align-items: center; background: rgba(99, 102, 241, 0.08); white-space: nowrap; }
+        .nav-arrow-btn:hover:not(.disabled) { border-color: var(--accent-solid); color: #ffffff; box-shadow: 0 0 12px rgba(165, 180, 252, 0.4); background: rgba(99, 102, 241, 0.25); transform: translateY(-1px); }
+        .nav-arrow-btn.disabled { opacity: 0.3; cursor: not-allowed; pointer-events: none; border-color: rgba(255, 255, 255, 0.05); }
+
+        /* Hero */
+        .hero { padding: 70px 5% 50px; max-width: 960px; margin: 0 auto; text-align: center; position: relative; z-index: 2; width: 100%; }
+        .day-pill { display: inline-block; padding: 6px 20px; border-radius: 999px; background: rgba(99, 102, 241, 0.20); border: 1px solid rgba(165, 180, 252, 0.6); font-size: 0.75rem; font-weight: 800; letter-spacing: 4px; text-transform: uppercase; color: #5EEAD4; margin-bottom: 20px; text-shadow: 0 0 14px rgba(45, 212, 191, 0.8); backdrop-filter: blur(12px); }
+        .hero h1 { font-size: clamp(2.2rem, 5vw, 3.8rem); line-height: 1.1; letter-spacing: -0.02em; color: #fff; text-shadow: 0 0 40px rgba(165, 180, 252, 0.9), 0 0 80px rgba(99, 102, 241, 0.5); margin-bottom: 16px; }
+        .hero-subtitle { font-size: clamp(1rem, 2vw, 1.2rem); color: #C8D5F0; max-width: 700px; margin: 0 auto 28px; font-family: 'Inter', sans-serif; text-align: center; }
+        .highlight { color: #C4B5FD; text-shadow: 0 0 30px rgba(165, 180, 252, 1), 0 0 60px rgba(99, 102, 241, 0.6); }
+        .highlight-teal { color: #5EEAD4; text-shadow: 0 0 25px rgba(45, 212, 191, 0.9); }
+        .badges { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+        .badge { padding: 6px 16px; border-radius: 999px; background: rgba(99, 102, 241, 0.15); border: 1px solid rgba(165, 180, 252, 0.5); font-size: 0.78rem; font-weight: 500; color: #E0E7FF; backdrop-filter: blur(8px); }
+
+        /* Article */
+        article { max-width: 860px; margin: 0 auto; padding: 0 5% 80px; position: relative; z-index: 2; }
+        .section-block { margin-bottom: 56px; }
+        .phase-header { display: flex; align-items: center; gap: 16px; margin-bottom: 20px; }
+        .phase-number { width: 48px; height: 48px; border-radius: 50%; flex-shrink: 0; background: linear-gradient(135deg, #6366F1, #8B5CF6); border: 2px solid rgba(165, 180, 252, 0.5); box-shadow: 0 0 20px rgba(99, 102, 241, 0.6); display: flex; align-items: center; justify-content: center; font-family: 'Playfair Display', serif; font-size: 1.3rem; color: #fff; }
+        .phase-header h2 { font-size: clamp(1.4rem, 3vw, 1.9rem); color: #fff; text-shadow: 0 0 20px rgba(165, 180, 252, 0.4); border: none; padding: 0; margin: 0; display: block; }
+
+        /* Glass card */
+        .glass-card { background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: 16px; padding: 28px 32px; backdrop-filter: blur(12px); margin: 20px 0; box-shadow: 0 4px 30px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.07); transition: border-color 0.3s, box-shadow 0.3s; }
+        .glass-card:hover { border-color: rgba(165, 180, 252, 0.55); box-shadow: 0 8px 40px rgba(99, 102, 241, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1); }
+        .glass-card p + p { margin-top: 10px; }
+
+        /* Code block */
+        .code-block { background: var(--code-bg); border: 1px solid rgba(165, 180, 252, 0.20); border-radius: 12px; padding: 20px 24px; margin: 16px 0; overflow-x: auto; position: relative; }
+        .code-block pre { font-family: 'JetBrains Mono', monospace; font-size: 0.84rem; color: #E0E7FF; line-height: 1.7; white-space: pre; }
+        .c-comment { color: #6B7DB3; font-style: italic; }
+        .c-keyword { color: #C4B5FD; font-weight: 500; }
+        .c-func { color: #5EEAD4; }
+        .c-string { color: #86efac; }
+        .c-number { color: #FCA5A5; }
+        .c-var { color: #A5B4FC; }
+        .code-tag { position: absolute; top: 12px; right: 16px; font-family: 'Inter', sans-serif; font-size: 0.62rem; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: rgba(165, 180, 252, 0.5); }
+
+        /* Insight box */
+        .insight-box { border-left: 3px solid var(--accent-teal-solid); padding: 18px 24px; margin: 24px 0; background: rgba(20, 184, 166, 0.07); border-radius: 0 12px 12px 0; }
+        .insight-box p { color: #C8D5F0; text-align: left; }
+        .insight-box strong { color: var(--accent-teal-solid); }
+        .insight-box.purple { border-left-color: #A5B4FC; background: rgba(99, 102, 241, 0.07); }
+        .insight-box.purple strong { color: #A5B4FC; }
+
+        /* Warning box */
+        .warn-box { border-left: 3px solid #FCA5A5; padding: 18px 24px; margin: 24px 0; background: rgba(220, 38, 38, 0.07); border-radius: 0 12px 12px 0; }
+        .warn-box p { color: #C8D5F0; text-align: left; }
+        .warn-box strong { color: #FCA5A5; }
+
+        /* Divider / Grid */
+        .section-divider { border: none; height: 1px; background: linear-gradient(90deg, transparent, var(--glass-border), transparent); margin: 48px 0; }
+        .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0; }
+
+        /* Footer */
+        footer { text-align: center; padding: 40px 20px; color: var(--text-muted); font-size: 0.85rem; border-top: 1px solid var(--glass-border); position: relative; z-index: 2; }
+        footer a { color: var(--accent-solid); text-decoration: none; }
+        footer a:hover { text-decoration: underline; }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #050814; }
+        ::-webkit-scrollbar-thumb { background: rgba(129, 140, 248, 0.4); border-radius: 3px; }
+
+        /* Inline code */
+        code { font-family: 'JetBrains Mono', monospace; font-size: 0.86em; background: var(--code-bg); padding: 2px 7px; border-radius: 5px; color: #A5B4FC; border: 1px solid rgba(165, 180, 252, 0.15); }
+
+        /* Responsive */
+        @media (max-width: 640px) {
+            .two-col { grid-template-columns: 1fr; }
+            .glass-card { padding: 20px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="ambient-background"></div>
+    <canvas id="neural-canvas"></canvas>
+
+    <nav class="top-nav">
+        <a href="../index.html" class="back-link">&#x2190; Back to Odyssey</a>
+        <span class="nav-day-label">Day 11 of 20</span>
+        <div class="nav-arrows">
+            <a href="../day_10/index.html" class="nav-arrow-btn prev-day" title="Previous Day: Features: Frequency Sliding">&#x2190; Prev</a>
+            <a href="../day_12/index.html" class="nav-arrow-btn next-day" title="Next Day: Features: IRASA">Next &#x2192;</a>
+        </div>
+    </nav>
+
+    <header class="hero">
+        <div class="day-pill">&#x2726; Day 11 &middot; Spectral Parameterization</div>
+        <h1><span class='highlight'>FOOOF /</span><br><span class='highlight-teal'>specparam</span></h1>
+        <p class="hero-subtitle">Decompose neural power spectra into periodic oscillations and aperiodic 1/f background &mdash; because traditional band power conflates the two, leading to systematic misinterpretation.</p>
+                <div class="badges">
+            <span class="badge">&#x1F4C9; 1/f Decomposition</span>
+            <span class="badge">&#x1F3AF; Peak Detection</span>
+            <span class="badge">&#x2696; E/I Balance Proxy</span>
+            <span class="badge">&#x1F40D; specparam</span>
+            <span class="badge">&#x1F4D6; Donoghue et al. 2020</span>
+        </div>
+    </header>
+
+    <article>
+        <div class="section-block">
+            <div class="glass-card">
+                <p>
+                    On Day 9 you learned to compute PSD and extract band power. But here is the uncomfortable truth:
+                    <strong>traditional band power is confounded</strong>. What you measure as &ldquo;alpha power&rdquo;
+                    is actually a mixture of the genuine alpha oscillation <em>plus</em> the underlying 1/f aperiodic
+                    background. If the background shifts, your &ldquo;alpha power&rdquo; changes even when the oscillation
+                    itself hasn&rsquo;t. <strong>FOOOF</strong> (now called <strong>specparam</strong>) solves this by
+                    mathematically decomposing the spectrum into its periodic and aperiodic components.
+                </p>
+            </div>
+        </div>
+
+        <hr class="section-divider">
+
+        <div class="section-block">
+            <div class="phase-header">
+                <div class="phase-number">1</div>
+                <h2>The 1/f Problem<br><small>Why Traditional Band Power is Confounded</small></h2>
+            </div>
+
+            <div class="glass-card">
+                <p>
+                    Every neural power spectrum has two components riding on top of each other:
+                </p>
+                <p>
+                    <strong>Aperiodic (1/f) component:</strong> A broadband, non-oscillatory background where power
+                    decreases as frequency increases, following a power law: <em>P(f) = b &middot; f<sup>&minus;&chi;</sup></em>.
+                    The exponent &chi; (chi) reflects the balance between neural excitation and inhibition (E/I balance).
+                </p>
+                <p>
+                    <strong>Periodic (oscillatory) component:</strong> The rhythmic peaks that rise above the 1/f
+                    background &mdash; your alpha, theta, beta oscillations.
+                </p>
+                <p>
+                    When you compute &ldquo;alpha power&rdquo; by integrating 8&ndash;13 Hz, you are measuring
+                    <em>both</em> components lumped together. A steeper 1/f slope will inflate low-frequency band power
+                    and deflate high-frequency band power, even with zero change in actual oscillations.
+                </p>
+            </div>
+
+            <div class="insight-box">
+                <p>
+                    <strong>Donoghue et al. (2020):</strong> &ldquo;Parameterizing neural power spectra into periodic
+                    and aperiodic components&rdquo; &mdash; the foundational paper showing that ignoring the aperiodic
+                    component leads to systematic misinterpretation of oscillatory changes across development,
+                    aging, and clinical conditions.
+                </p>
+            </div>
+        </div>
+
+        <hr class="section-divider">
+
+        <div class="section-block">
+            <div class="phase-header">
+                <div class="phase-number">2</div>
+                <h2>How specparam Works<br><small>Fit Background &rarr; Subtract &rarr; Find Peaks</small></h2>
+            </div>
+
+            <div class="glass-card">
+                <p>The algorithm operates in three stages:</p>
+                <p>
+                    <strong>Stage 1 &mdash; Aperiodic fit:</strong> Model the 1/f background as a line in log-log space
+                    (or with a knee for spectra that flatten at low frequencies). Parameters: <em>offset</em> (overall power level)
+                    and <em>exponent</em> (slope steepness).
+                </p>
+                <p>
+                    <strong>Stage 2 &mdash; Flatten:</strong> Subtract the aperiodic model from the spectrum. What remains
+                    are the oscillatory peaks sitting on a flat baseline.
+                </p>
+                <p>
+                    <strong>Stage 3 &mdash; Peak detection:</strong> Fit Gaussians to the remaining peaks. Each peak is
+                    characterized by three parameters: <em>center frequency</em>, <em>power</em> (height above background),
+                    and <em>bandwidth</em>.
+                </p>
+            </div>
+
+            <div class="code-block">
+                <span class="code-tag">Python</span>
+                <pre><span class="c-keyword">from</span> specparam <span class="c-keyword">import</span> SpectralModel
+
+<span class="c-comment"># Compute PSD first</span>
+spectrum = raw.compute_psd(method=<span class="c-string">'welch'</span>, fmin=<span class="c-number">1</span>, fmax=<span class="c-number">40</span>)
+psds, freqs = spectrum.get_data(return_freqs=<span class="c-number">True</span>)
+
+<span class="c-comment"># Fit specparam on a single channel</span>
+fm = SpectralModel(peak_width_limits=[<span class="c-number">1</span>, <span class="c-number">8</span>],
+                   max_n_peaks=<span class="c-number">6</span>,
+                   min_peak_height=<span class="c-number">0.1</span>)
+
+fm.fit(freqs, psds[<span class="c-number">0</span>], [<span class="c-number">1</span>, <span class="c-number">40</span>])
+fm.report()
+
+<span class="c-comment"># Extract results</span>
+<span class="c-keyword">print</span>(f<span class="c-string">"Aperiodic: offset={fm.aperiodic_params_[0]:.2f}, "</span>
+      f<span class="c-string">"exponent={fm.aperiodic_params_[1]:.2f}"</span>)
+<span class="c-keyword">print</span>(f<span class="c-string">"Peaks found: {len(fm.peak_params_)}"</span>)
+<span class="c-keyword">for</span> peak <span class="c-keyword">in</span> fm.peak_params_:
+    <span class="c-keyword">print</span>(f<span class="c-string">"  CF={peak[0]:.1f} Hz, Power={peak[1]:.2f}, BW={peak[2]:.1f}"</span>)</pre>
+            </div>
+        </div>
+
+        <hr class="section-divider">
+
+        <div class="section-block">
+            <div class="phase-header">
+                <div class="phase-number">3</div>
+                <h2>The Aperiodic Exponent<br><small>A Window into E/I Balance</small></h2>
+            </div>
+
+            <div class="glass-card">
+                <p>
+                    The aperiodic exponent is emerging as a powerful biomarker in its own right. Computational
+                    models show that a <strong>steeper exponent</strong> (more negative slope) reflects greater
+                    <em>inhibition-dominant</em> neural activity, while a <strong>flatter exponent</strong>
+                    reflects greater <em>excitation</em>.
+                </p>
+                <p>
+                    This has clinical implications: the exponent changes systematically with aging (flattens),
+                    anaesthesia (steepens), ADHD (flatter), and disorders of consciousness.
+                </p>
+            </div>
+
+            <div class="insight-box purple">
+                <p>
+                    <strong>Data-driven advantage:</strong> Unlike fixed band boundaries, specparam discovers
+                    where peaks actually are in <em>your</em> data. If a participant&rsquo;s alpha peak is at 9.5 Hz
+                    instead of the canonical 10 Hz, specparam finds it automatically.
+                </p>
+            </div>
+        </div>
+
+        <hr class="section-divider">
+
+        <div class="section-block">
+            <div class="phase-header">
+                <div class="phase-number">4</div>
+                <h2>Batch Processing<br><small>SpectralGroupModel for Multiple Spectra</small></h2>
+            </div>
+
+            <div class="glass-card">
+                <p>
+                    In practice you need to fit models across all channels, all subjects, and all conditions.
+                    <code>SpectralGroupModel</code> handles this efficiently:
+                </p>
+            </div>
+
+            <div class="code-block">
+                <span class="code-tag">Python</span>
+                <pre><span class="c-keyword">from</span> specparam <span class="c-keyword">import</span> SpectralGroupModel
+
+<span class="c-comment"># Fit all channels at once</span>
+fg = SpectralGroupModel(peak_width_limits=[<span class="c-number">1</span>, <span class="c-number">8</span>],
+                        max_n_peaks=<span class="c-number">6</span>,
+                        min_peak_height=<span class="c-number">0.1</span>)
+fg.fit(freqs, psds, [<span class="c-number">1</span>, <span class="c-number">40</span>])
+
+<span class="c-comment"># Extract exponents across all channels</span>
+exponents = fg.get_params(<span class="c-string">'aperiodic_params'</span>, <span class="c-string">'exponent'</span>)
+<span class="c-keyword">print</span>(f<span class="c-string">"Mean exponent: {exponents.mean():.2f} +/- {exponents.std():.2f}"</span>)</pre>
+            </div>
+        </div>
+    </article>
+
+    <footer>
+        <p>Day 11 &mdash; Features: FOOOF / specparam</p>
+    </footer>
+
+    <script>
+        const canvas = document.getElementById('neural-canvas');
+        const ctx = canvas.getContext('2d');
+        let W, H, particles;
+        function resize() { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
+        function initParticles() {
+            particles = Array.from({ length: 100 }, () => ({
+                x: Math.random() * W, y: Math.random() * H,
+                vx: (Math.random() - 0.5) * 0.4, vy: (Math.random() - 0.5) * 0.4,
+                r: Math.random() * 2 + 0.8
+            }));
+        }
+        function draw() {
+            ctx.clearRect(0, 0, W, H);
+            for (let i = 0; i < particles.length; i++) {
+                for (let j = i + 1; j < particles.length; j++) {
+                    const dx = particles[i].x - particles[j].x;
+                    const dy = particles[i].y - particles[j].y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < 130) {
+                        ctx.beginPath();
+                        ctx.strokeStyle = 'rgba(165,180,252,' + (0.25 * (1 - dist / 130)) + ')';
+                        ctx.lineWidth = 0.8;
+                        ctx.moveTo(particles[i].x, particles[i].y);
+                        ctx.lineTo(particles[j].x, particles[j].y);
+                        ctx.stroke();
+                    }
+                }
+            }
+            particles.forEach(p => {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(165,180,252,0.7)';
+                ctx.fill();
+                p.x += p.vx; p.y += p.vy;
+                if (p.x < 0 || p.x > W) p.vx *= -1;
+                if (p.y < 0 || p.y > H) p.vy *= -1;
+            });
+            requestAnimationFrame(draw);
+        }
+        window.addEventListener('resize', () => { resize(); initParticles(); });
+        resize(); initParticles(); draw();
+
+        document.addEventListener('keydown', (e) => {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+            if (e.key === 'ArrowLeft') {
+                const prevBtn = document.querySelector('.nav-arrow-btn.prev-day:not(.disabled)');
+                if (prevBtn) prevBtn.click();
+            } else if (e.key === 'ArrowRight') {
+                const nextBtn = document.querySelector('.nav-arrow-btn.next-day:not(.disabled)');
+                if (nextBtn) nextBtn.click();
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,1 +1,385 @@
-<html><body><h1>Welcome to Day 14</h1></body></html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Day 14: Time-Frequency: Wavelets &mdash; EEG Analysis Odyssey</title>
+    <meta name="description" content="Map how oscillatory power evolves over time with adaptive resolution &mdash; using Morlet wavelets that automatically balance temporal precision at high frequencies with spectral precision at low frequencies." />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-deep: #05091a;
+            --text-main: #F0F4FF;
+            --text-muted: #B8C4E0;
+            --accent-solid: #A5B4FC;
+            --accent-teal-solid: #2DD4BF;
+            --glass-bg: rgba(99, 102, 241, 0.10);
+            --glass-border: rgba(165, 180, 252, 0.35);
+            --code-bg: rgba(15, 15, 58, 0.85);
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html { scroll-behavior: smooth; }
+        body {
+            background-color: var(--bg-deep);
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            line-height: 1.75;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+        h1, h2, h3, h4 { font-family: 'Playfair Display', serif; font-weight: 400; }
+        p { text-align: justify; }
+
+        .ambient-background {
+            position: fixed; top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            background:
+                radial-gradient(ellipse at 15% 55%, rgba(99, 102, 241, 0.55), transparent 45%),
+                radial-gradient(ellipse at 85% 15%, rgba(20, 184, 166, 0.50), transparent 45%),
+                radial-gradient(ellipse at 50% 95%, rgba(167, 139, 250, 0.30), transparent 50%);
+            filter: blur(60px); z-index: -2;
+            animation: breathe 12s infinite alternate ease-in-out;
+        }
+        @keyframes breathe {
+            0% { transform: scale(1); opacity: 0.85; }
+            100% { transform: scale(1.08); opacity: 1; }
+        }
+        canvas { position: fixed; top: 0; left: 0; z-index: -1; pointer-events: none; }
+
+        /* Nav */
+        .top-nav {
+            position: sticky; top: 0; z-index: 100;
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 14px 5%;
+            background: rgba(5, 9, 26, 0.85);
+            backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+            border-bottom: 1px solid var(--glass-border);
+        }
+        .back-link { display: flex; align-items: center; gap: 8px; color: var(--accent-solid); text-decoration: none; font-size: 0.85rem; font-weight: 600; letter-spacing: 0.5px; transition: color 0.2s, gap 0.2s; white-space: nowrap; }
+        .back-link:hover { color: #fff; gap: 12px; }
+        .nav-day-label { font-size: 0.75rem; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: var(--accent-teal-solid); text-shadow: 0 0 12px rgba(45, 212, 191, 0.7); white-space: nowrap; }
+        .nav-arrows { display: flex; align-items: center; gap: 10px; }
+        .nav-arrow-btn { padding: 6px 16px; border: 1px solid var(--glass-border); border-radius: 8px; font-size: 0.85rem; font-weight: 500; color: var(--text-muted); text-decoration: none; transition: all 0.3s ease; display: inline-flex; align-items: center; background: rgba(99, 102, 241, 0.08); white-space: nowrap; }
+        .nav-arrow-btn:hover:not(.disabled) { border-color: var(--accent-solid); color: #ffffff; box-shadow: 0 0 12px rgba(165, 180, 252, 0.4); background: rgba(99, 102, 241, 0.25); transform: translateY(-1px); }
+        .nav-arrow-btn.disabled { opacity: 0.3; cursor: not-allowed; pointer-events: none; border-color: rgba(255, 255, 255, 0.05); }
+
+        /* Hero */
+        .hero { padding: 70px 5% 50px; max-width: 960px; margin: 0 auto; text-align: center; position: relative; z-index: 2; width: 100%; }
+        .day-pill { display: inline-block; padding: 6px 20px; border-radius: 999px; background: rgba(99, 102, 241, 0.20); border: 1px solid rgba(165, 180, 252, 0.6); font-size: 0.75rem; font-weight: 800; letter-spacing: 4px; text-transform: uppercase; color: #5EEAD4; margin-bottom: 20px; text-shadow: 0 0 14px rgba(45, 212, 191, 0.8); backdrop-filter: blur(12px); }
+        .hero h1 { font-size: clamp(2.2rem, 5vw, 3.8rem); line-height: 1.1; letter-spacing: -0.02em; color: #fff; text-shadow: 0 0 40px rgba(165, 180, 252, 0.9), 0 0 80px rgba(99, 102, 241, 0.5); margin-bottom: 16px; }
+        .hero-subtitle { font-size: clamp(1rem, 2vw, 1.2rem); color: #C8D5F0; max-width: 700px; margin: 0 auto 28px; font-family: 'Inter', sans-serif; text-align: center; }
+        .highlight { color: #C4B5FD; text-shadow: 0 0 30px rgba(165, 180, 252, 1), 0 0 60px rgba(99, 102, 241, 0.6); }
+        .highlight-teal { color: #5EEAD4; text-shadow: 0 0 25px rgba(45, 212, 191, 0.9); }
+        .badges { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+        .badge { padding: 6px 16px; border-radius: 999px; background: rgba(99, 102, 241, 0.15); border: 1px solid rgba(165, 180, 252, 0.5); font-size: 0.78rem; font-weight: 500; color: #E0E7FF; backdrop-filter: blur(8px); }
+
+        /* Article */
+        article { max-width: 860px; margin: 0 auto; padding: 0 5% 80px; position: relative; z-index: 2; }
+        .section-block { margin-bottom: 56px; }
+        .phase-header { display: flex; align-items: center; gap: 16px; margin-bottom: 20px; }
+        .phase-number { width: 48px; height: 48px; border-radius: 50%; flex-shrink: 0; background: linear-gradient(135deg, #6366F1, #8B5CF6); border: 2px solid rgba(165, 180, 252, 0.5); box-shadow: 0 0 20px rgba(99, 102, 241, 0.6); display: flex; align-items: center; justify-content: center; font-family: 'Playfair Display', serif; font-size: 1.3rem; color: #fff; }
+        .phase-header h2 { font-size: clamp(1.4rem, 3vw, 1.9rem); color: #fff; text-shadow: 0 0 20px rgba(165, 180, 252, 0.4); border: none; padding: 0; margin: 0; display: block; }
+
+        /* Glass card */
+        .glass-card { background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: 16px; padding: 28px 32px; backdrop-filter: blur(12px); margin: 20px 0; box-shadow: 0 4px 30px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.07); transition: border-color 0.3s, box-shadow 0.3s; }
+        .glass-card:hover { border-color: rgba(165, 180, 252, 0.55); box-shadow: 0 8px 40px rgba(99, 102, 241, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1); }
+        .glass-card p + p { margin-top: 10px; }
+
+        /* Code block */
+        .code-block { background: var(--code-bg); border: 1px solid rgba(165, 180, 252, 0.20); border-radius: 12px; padding: 20px 24px; margin: 16px 0; overflow-x: auto; position: relative; }
+        .code-block pre { font-family: 'JetBrains Mono', monospace; font-size: 0.84rem; color: #E0E7FF; line-height: 1.7; white-space: pre; }
+        .c-comment { color: #6B7DB3; font-style: italic; }
+        .c-keyword { color: #C4B5FD; font-weight: 500; }
+        .c-func { color: #5EEAD4; }
+        .c-string { color: #86efac; }
+        .c-number { color: #FCA5A5; }
+        .c-var { color: #A5B4FC; }
+        .code-tag { position: absolute; top: 12px; right: 16px; font-family: 'Inter', sans-serif; font-size: 0.62rem; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: rgba(165, 180, 252, 0.5); }
+
+        /* Insight box */
+        .insight-box { border-left: 3px solid var(--accent-teal-solid); padding: 18px 24px; margin: 24px 0; background: rgba(20, 184, 166, 0.07); border-radius: 0 12px 12px 0; }
+        .insight-box p { color: #C8D5F0; text-align: left; }
+        .insight-box strong { color: var(--accent-teal-solid); }
+        .insight-box.purple { border-left-color: #A5B4FC; background: rgba(99, 102, 241, 0.07); }
+        .insight-box.purple strong { color: #A5B4FC; }
+
+        /* Warning box */
+        .warn-box { border-left: 3px solid #FCA5A5; padding: 18px 24px; margin: 24px 0; background: rgba(220, 38, 38, 0.07); border-radius: 0 12px 12px 0; }
+        .warn-box p { color: #C8D5F0; text-align: left; }
+        .warn-box strong { color: #FCA5A5; }
+
+        /* Divider / Grid */
+        .section-divider { border: none; height: 1px; background: linear-gradient(90deg, transparent, var(--glass-border), transparent); margin: 48px 0; }
+        .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0; }
+
+        /* Footer */
+        footer { text-align: center; padding: 40px 20px; color: var(--text-muted); font-size: 0.85rem; border-top: 1px solid var(--glass-border); position: relative; z-index: 2; }
+        footer a { color: var(--accent-solid); text-decoration: none; }
+        footer a:hover { text-decoration: underline; }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #050814; }
+        ::-webkit-scrollbar-thumb { background: rgba(129, 140, 248, 0.4); border-radius: 3px; }
+
+        /* Inline code */
+        code { font-family: 'JetBrains Mono', monospace; font-size: 0.86em; background: var(--code-bg); padding: 2px 7px; border-radius: 5px; color: #A5B4FC; border: 1px solid rgba(165, 180, 252, 0.15); }
+
+        /* Responsive */
+        @media (max-width: 640px) {
+            .two-col { grid-template-columns: 1fr; }
+            .glass-card { padding: 20px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="ambient-background"></div>
+    <canvas id="neural-canvas"></canvas>
+
+    <nav class="top-nav">
+        <a href="../index.html" class="back-link">&#x2190; Back to Odyssey</a>
+        <span class="nav-day-label">Day 14 of 20</span>
+        <div class="nav-arrows">
+            <a href="../day_13/index.html" class="nav-arrow-btn prev-day" title="Previous Day: Features: Autocorrelation Window (ACW)">&#x2190; Prev</a>
+            <a href="../day_15/index.html" class="nav-arrow-btn next-day" title="Next Day: Time-Frequency: Multitaper">Next &#x2192;</a>
+        </div>
+    </nav>
+
+    <header class="hero">
+        <div class="day-pill">&#x2726; Day 14 &middot; Time-Frequency Analysis</div>
+        <h1><span class='highlight'>Wavelet</span><br><span class='highlight-teal'>Analysis</span></h1>
+        <p class="hero-subtitle">Map how oscillatory power evolves over time with adaptive resolution &mdash; using Morlet wavelets that automatically balance temporal precision at high frequencies with spectral precision at low frequencies.</p>
+                <div class="badges">
+            <span class="badge">&#x1F30A; Morlet Wavelets</span>
+            <span class="badge">&#x23F1; Time-Frequency Maps</span>
+            <span class="badge">&#x1F504; Convolution = Filtering</span>
+            <span class="badge">&#x1F40D; compute_tfr('morlet')</span>
+            <span class="badge">&#x1F4D6; Cohen ANTS Ch. 12&ndash;13</span>
+        </div>
+    </header>
+
+    <article>
+        <div class="section-block">
+            <div class="glass-card">
+                <p>
+                    The PSD (Day 9) tells you <em>which</em> frequencies are present but not <em>when</em> they occur.
+                    Neural oscillations wax and wane over time &mdash; alpha bursts during blinks, theta surges during
+                    memory encoding, beta rebounds after movement. <strong>Wavelet analysis</strong> gives you
+                    a time-frequency map: power at every frequency at every time point. This is arguably the most
+                    important analysis tool in cognitive electrophysiology.
+                </p>
+            </div>
+        </div>
+
+        <hr class="section-divider">
+
+        <div class="section-block">
+            <div class="phase-header">
+                <div class="phase-number">1</div>
+                <h2>Why the FFT Fails for Non-Stationary Signals<br><small>The Uncertainty Principle</small></h2>
+            </div>
+
+            <div class="glass-card">
+                <p>
+                    The standard FFT computes frequency content over the <em>entire</em> signal &mdash; it has perfect
+                    frequency resolution but <strong>zero time resolution</strong>. If alpha power increases for just
+                    200 ms during a trial, the FFT smears it across the whole epoch.
+                </p>
+                <p>
+                    You could chop the signal into short windows and FFT each one (the Short-Time Fourier Transform),
+                    but this creates a fundamental tradeoff: short windows give good time resolution but poor frequency
+                    resolution; long windows give the opposite. This is the <strong>Heisenberg&ndash;Gabor uncertainty
+                    principle</strong> for signal processing: you cannot simultaneously have perfect resolution in both
+                    time and frequency.
+                </p>
+                <p>
+                    Wavelets offer an elegant solution: <strong>adaptive resolution</strong>. Low frequencies use wide
+                    wavelets (good frequency resolution), and high frequencies use narrow wavelets (good time resolution).
+                </p>
+            </div>
+
+            <div class="insight-box">
+                <p>
+                    <strong>Cohen&rsquo;s analogy (ANTS Ch. 12):</strong> Imagine you are listening to music in a concert
+                    hall. The FFT is like asking &ldquo;what notes were played during the entire concert?&rdquo;
+                    A spectrogram is like asking &ldquo;what notes were played in each 5-second window?&rdquo;
+                    Wavelets are like asking &ldquo;what notes were played, with timing precision that matches
+                    each note&rsquo;s natural duration?&rdquo;
+                </p>
+            </div>
+        </div>
+
+        <hr class="section-divider">
+
+        <div class="section-block">
+            <div class="phase-header">
+                <div class="phase-number">2</div>
+                <h2>The Morlet Wavelet<br><small>A Gaussian-Windowed Sine Wave</small></h2>
+            </div>
+
+            <div class="glass-card">
+                <p>
+                    The <strong>complex Morlet wavelet</strong> is a sine wave multiplied by a Gaussian envelope:
+                </p>
+                <p style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:1rem;color:#A5B4FC;margin:16px 0;">
+                    &psi;(t) = exp(2&pi;ift) &middot; exp(&minus;t&sup2; / 2&sigma;&sup2;)
+                </p>
+                <p>
+                    The sine part defines the <em>center frequency f</em>. The Gaussian part defines the <em>temporal
+                    width &sigma;</em>. The ratio between these &mdash; traditionally parameterized as the &ldquo;number
+                    of cycles&rdquo; <em>n</em> = 2&pi;f&sigma; &mdash; controls the time-frequency tradeoff.
+                </p>
+                <p>
+                    <strong>More cycles</strong> = narrower frequency response, wider in time.<br>
+                    <strong>Fewer cycles</strong> = wider frequency response, tighter in time.
+                </p>
+            </div>
+
+            <div class="code-block">
+                <span class="code-tag">Python</span>
+                <pre><span class="c-keyword">import</span> mne
+<span class="c-keyword">import</span> numpy <span class="c-keyword">as</span> np
+
+<span class="c-comment"># Define frequencies of interest</span>
+freqs = np.arange(<span class="c-number">4</span>, <span class="c-number">40</span>, <span class="c-number">1</span>)   <span class="c-comment"># 4 to 39 Hz in 1-Hz steps</span>
+
+<span class="c-comment"># Number of cycles: trade off resolution</span>
+<span class="c-comment"># Option 1: fixed cycles (e.g., 7)</span>
+n_cycles = <span class="c-number">7</span>
+
+<span class="c-comment"># Option 2: frequency-adaptive (Cohen's recommendation)</span>
+n_cycles = np.linspace(<span class="c-number">3</span>, <span class="c-number">10</span>, len(freqs))  <span class="c-comment"># fewer at low f, more at high f</span>
+
+<span class="c-comment"># Compute time-frequency representation</span>
+tfr = epochs.compute_tfr(method=<span class="c-string">'morlet'</span>,
+                         freqs=freqs,
+                         n_cycles=n_cycles,
+                         return_itc=<span class="c-number">False</span>)
+tfr.plot([<span class="c-number">0</span>], baseline=(<span class="c-number">-0.3</span>, <span class="c-number">0</span>), mode=<span class="c-string">'logratio'</span>)</pre>
+            </div>
+        </div>
+
+        <hr class="section-divider">
+
+        <div class="section-block">
+            <div class="phase-header">
+                <div class="phase-number">3</div>
+                <h2>Convolution = Filtering<br><small>What the Wavelet Actually Does</small></h2>
+            </div>
+
+            <div class="glass-card">
+                <p>
+                    Computing the wavelet transform is <strong>convolution</strong>: you slide the wavelet along the
+                    signal, multiplying point-by-point and summing. At each time point, the result tells you how well
+                    the signal matches the wavelet at that frequency.
+                </p>
+                <p>
+                    Because the Morlet wavelet is complex-valued, the output at each time-frequency point is also
+                    complex. The <strong>squared magnitude</strong> gives you <em>power</em>; the <strong>angle</strong>
+                    gives you <em>phase</em>. This is how wavelet analysis simultaneously delivers time-frequency power
+                    maps and phase information.
+                </p>
+            </div>
+
+            <div class="insight-box">
+                <p>
+                    <strong>Key equivalence (Cohen ANTS Ch. 13):</strong> Convolution in the time domain is identical
+                    to multiplication in the frequency domain. In practice, MNE computes wavelet convolution using the
+                    FFT for speed: FFT the signal, FFT the wavelet, multiply, inverse FFT. Same result, orders of
+                    magnitude faster.
+                </p>
+            </div>
+        </div>
+
+        <hr class="section-divider">
+
+        <div class="section-block">
+            <div class="phase-header">
+                <div class="phase-number">4</div>
+                <h2>FWHM Parameterization<br><small>A Better Way to Define Wavelet Width</small></h2>
+            </div>
+
+            <div class="glass-card">
+                <p>
+                    Cohen (2019) argued that the traditional &ldquo;number of cycles&rdquo; parameterization is
+                    unintuitive. Instead, he advocates specifying the wavelet width using the <strong>Full Width at
+                    Half Maximum (FWHM)</strong> &mdash; the duration in milliseconds over which the wavelet&rsquo;s
+                    Gaussian envelope exceeds half its peak value.
+                </p>
+                <p>
+                    FWHM is directly interpretable: &ldquo;this wavelet integrates activity over a ~300 ms window&rdquo;
+                    is more intuitive than &ldquo;this wavelet uses 5 cycles at 10 Hz.&rdquo; The relationship:
+                    FWHM = n_cycles / f &times; 2&radic;(2 ln 2).
+                </p>
+            </div>
+
+            <div class="insight-box purple">
+                <p>
+                    <strong>References:</strong> Cohen (2019), &ldquo;A better way to define and describe Morlet
+                    wavelets for time-frequency analysis.&rdquo; <em>NeuroImage</em>.
+                    ANTS book chapters 12&ndash;13.
+                </p>
+            </div>
+        </div>
+    </article>
+
+    <footer>
+        <p>Day 14 &mdash; Time-Frequency: Wavelets</p>
+    </footer>
+
+    <script>
+        const canvas = document.getElementById('neural-canvas');
+        const ctx = canvas.getContext('2d');
+        let W, H, particles;
+        function resize() { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
+        function initParticles() {
+            particles = Array.from({ length: 100 }, () => ({
+                x: Math.random() * W, y: Math.random() * H,
+                vx: (Math.random() - 0.5) * 0.4, vy: (Math.random() - 0.5) * 0.4,
+                r: Math.random() * 2 + 0.8
+            }));
+        }
+        function draw() {
+            ctx.clearRect(0, 0, W, H);
+            for (let i = 0; i < particles.length; i++) {
+                for (let j = i + 1; j < particles.length; j++) {
+                    const dx = particles[i].x - particles[j].x;
+                    const dy = particles[i].y - particles[j].y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < 130) {
+                        ctx.beginPath();
+                        ctx.strokeStyle = 'rgba(165,180,252,' + (0.25 * (1 - dist / 130)) + ')';
+                        ctx.lineWidth = 0.8;
+                        ctx.moveTo(particles[i].x, particles[i].y);
+                        ctx.lineTo(particles[j].x, particles[j].y);
+                        ctx.stroke();
+                    }
+                }
+            }
+            particles.forEach(p => {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(165,180,252,0.7)';
+                ctx.fill();
+                p.x += p.vx; p.y += p.vy;
+                if (p.x < 0 || p.x > W) p.vx *= -1;
+                if (p.y < 0 || p.y > H) p.vy *= -1;
+            });
+            requestAnimationFrame(draw);
+        }
+        window.addEventListener('resize', () => { resize(); initParticles(); });
+        resize(); initParticles(); draw();
+
+        document.addEventListener('keydown', (e) => {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+            if (e.key === 'ArrowLeft') {
+                const prevBtn = document.querySelector('.nav-arrow-btn.prev-day:not(.disabled)');
+                if (prevBtn) prevBtn.click();
+            } else if (e.key === 'ArrowRight') {
+                const nextBtn = document.querySelector('.nav-arrow-btn.next-day:not(.disabled)');
+                if (nextBtn) nextBtn.click();
+            }
+        });
+    </script>
+</body>
+</html>
