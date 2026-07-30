@@ -18,7 +18,7 @@ import pandas as pd
 
 def generate_sociodemographics():
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    output_dir = os.path.join(script_dir, "data")
+    output_dir = os.path.abspath(os.path.join(script_dir, "..", "data"))
     os.makedirs(output_dir, exist_ok=True)
     output_csv = os.path.join(output_dir, "sociodemographics.csv")
 

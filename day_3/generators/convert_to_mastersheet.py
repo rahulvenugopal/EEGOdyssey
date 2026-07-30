@@ -22,20 +22,20 @@ import pandas as pd
 def resolve_input_paths():
     """Find neural_data.npy and metadata.pkl relative to script directory or CWD."""
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    workspace_root = os.path.dirname(script_dir)
+    workspace_root = os.path.dirname(os.path.dirname(script_dir))
 
     data_candidates = [
-        os.path.join(script_dir, "..", "day_1", "data", "neural_data.npy"),
+        os.path.join(script_dir, "..", "..", "day_1", "data", "neural_data.npy"),
+        os.path.join(script_dir, "..", "data", "neural_data.npy"),
         os.path.join(workspace_root, "day_1", "data", "neural_data.npy"),
-        os.path.join(script_dir, "data", "neural_data.npy"),
         "day_1/data/neural_data.npy",
         "data/neural_data.npy",
     ]
 
     meta_candidates = [
-        os.path.join(script_dir, "..", "day_1", "data", "metadata.pkl"),
+        os.path.join(script_dir, "..", "..", "day_1", "data", "metadata.pkl"),
+        os.path.join(script_dir, "..", "data", "metadata.pkl"),
         os.path.join(workspace_root, "day_1", "data", "metadata.pkl"),
-        os.path.join(script_dir, "data", "metadata.pkl"),
         "day_1/data/metadata.pkl",
         "data/metadata.pkl",
     ]
@@ -111,15 +111,52 @@ def create_mastersheet():
         ]
     ]
 
-    # 6. Save output CSV file
+    # 6. Inject realistic missing values (NaNs) for pedagogical & real-world training
+    # Mechanism 1: Sensor/Channel Dropouts (loose electrode/high impedance during visit)
+    mask_channel_dropout1 = (
+        (df["group"] == "Patient")
+        & (df["subject_id"] == "Sub_07")
+        & (df["timepoint"] == "Task")
+        & (df["channel"] == "O1")
+    )
+    mask_channel_dropout2 = (
+        (df["group"] == "Treatment")
+        & (df["subject_id"] == "Sub_12")
+        & (df["timepoint"] == "Baseline")
+        & (df["channel"] == "T7")
+    )
+
+    # Mechanism 2: Unrecorded Visit (participant missed visit follow-up)
+    mask_unrecorded_visit = (
+        (df["group"] == "Patient")
+        & (df["subject_id"] == "Sub_28")
+        & (df["timepoint"] == "Rest")
+    )
+
+    # Mechanism 3: Random Noise / Artifact Epoch Rejection (~1.5% random cells)
+    rng = np.random.default_rng(2026)
+    random_nan_indices = rng.choice(len(df), size=int(len(df) * 0.015), replace=False)
+
+    # Apply missingness to power_value column
+    df.loc[mask_channel_dropout1 | mask_channel_dropout2 | mask_unrecorded_visit, "power_value"] = np.nan
+    df.loc[random_nan_indices, "power_value"] = np.nan
+
+    # 7. Save output CSV file
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    output_dir = os.path.join(script_dir, "data")
+    output_dir = os.path.abspath(os.path.join(script_dir, "..", "data"))
     os.makedirs(output_dir, exist_ok=True)
 
     output_csv = os.path.join(output_dir, "eeg_mastersheet.csv")
     df.to_csv(output_csv, index=False)
 
+    n_missing = df["power_value"].isnull().sum()
+    pct_missing = (n_missing / len(df)) * 100
+
     print(f"\nSuccessfully generated mastersheet with {len(df):,} rows!")
+    print(f"  • Total Missing Values (NaNs) : {n_missing:,} ({pct_missing:.2f}%)")
+    print(f"  • Channel Dropouts Simulated : O1 (Sub_07/Patient/Task), T7 (Sub_12/Treatment/Baseline)")
+    print(f"  • Unrecorded Visit Simulated : Sub_28/Patient/Rest")
+    print(f"  • Artifact Rejections        : {len(random_nan_indices):,} random observations")
     print(f"Saved to: {output_csv}")
     print("\nPreview of first 10 rows:")
     print(df.head(10).to_string(index=False))

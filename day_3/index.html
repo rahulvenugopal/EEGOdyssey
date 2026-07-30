@@ -310,6 +310,10 @@
             margin: 20px 0;
             box-shadow: 0 4px 30px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.07);
             transition: border-color 0.3s, box-shadow 0.3s;
+            max-width: 100%;
+            overflow: hidden;
+            word-break: break-word;
+            overflow-wrap: anywhere;
         }
 
         .glass-card:hover {
@@ -321,12 +325,25 @@
             margin-top: 10px;
         }
 
+        code {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.82em;
+            background: rgba(99, 102, 241, 0.18);
+            color: #A5B4FC;
+            padding: 2px 6px;
+            border-radius: 4px;
+            border: 1px solid rgba(165, 180, 252, 0.25);
+            display: inline-block;
+            white-space: nowrap;
+            word-break: normal;
+        }
+
         /* ── Code block ────────────────────────────────────────────────── */
         .code-block {
             background: var(--code-bg);
             border: 1px solid rgba(165, 180, 252, 0.20);
             border-radius: 12px;
-            padding: 20px 24px;
+            padding: 38px 24px 20px;
             margin: 16px 0;
             overflow-x: auto;
             position: relative;
@@ -349,14 +366,20 @@
 
         .code-tag {
             position: absolute;
-            top: 12px;
+            top: 10px;
             right: 16px;
             font-family: 'Inter', sans-serif;
             font-size: 0.62rem;
             font-weight: 700;
             letter-spacing: 2px;
             text-transform: uppercase;
-            color: rgba(165, 180, 252, 0.5);
+            color: rgba(165, 180, 252, 0.7);
+            background: rgba(15, 15, 58, 0.95);
+            padding: 3px 10px;
+            border-radius: 6px;
+            border: 1px solid rgba(165, 180, 252, 0.25);
+            pointer-events: none;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
         }
 
         /* ── Insight box ─────────────────────────────────────────────────── */
@@ -366,6 +389,8 @@
             margin: 24px 0;
             background: rgba(20, 184, 166, 0.07);
             border-radius: 0 12px 12px 0;
+            word-break: break-word;
+            overflow-wrap: anywhere;
         }
 
         .insight-box p {
@@ -393,6 +418,8 @@
             margin: 24px 0;
             background: rgba(220, 38, 38, 0.07);
             border-radius: 0 12px 12px 0;
+            word-break: break-word;
+            overflow-wrap: anywhere;
         }
 
         .warn-box p {
@@ -476,6 +503,9 @@
             border: 1px solid rgba(165, 180, 252, 0.25);
             border-radius: 12px;
             padding: 20px;
+            overflow: hidden;
+            word-break: break-word;
+            overflow-wrap: anywhere;
         }
 
         .concept-card h4 {
@@ -491,6 +521,8 @@
             color: var(--text-muted);
             margin-bottom: 0;
             text-align: left;
+            word-break: break-word;
+            overflow-wrap: anywhere;
         }
 
         /* ── Table styling ──────────────────────────────────────────────── */
@@ -766,6 +798,76 @@ arr_5d = df_sorted[<span class="c-string">"power_value"</span>].<span class="c-f
             <div class="phase-header">
                 <div class="phase-number">5</div>
                 <h2>
+                    Feature Matrix Dynamics &amp; Deletion Strategies
+                </h2>
+            </div>
+
+            <div class="glass-card">
+                <p>
+                    In machine learning and tabular EEG processing, data is represented as a feature matrix <b>X</b> &isin; &#x211D;<sup><i>N</i> &times; <i>P</i></sup>, where rows (<i>N</i> = 8,640) represent sample observations and columns (<i>P</i> = 6) represent frequency band features (<code>delta</code>, <code>theta</code>, <code>alpha</code>, <code>beta</code>, <code>gamma</code>, <code>broadband</code>). Selecting the appropriate deletion strategy requires balancing sample retention (<i>N</i>) against feature richness (<i>P</i>).
+                </p>
+
+                <div class="two-col">
+                    <div class="concept-card">
+                        <h4>1. Sample-wise (Listwise) Row Deletion</h4>
+                        <p>Drops an entire sample row <b>x</b><sub><i>i</i></sub> if <em>any single feature</em> <i>x</i><sub><i>ij</i></sub> = NaN. Preserves all <i>P</i> features, but reduces sample size <i>N</i>. Unbiased under <strong>MCAR</strong>, but vulnerable to sample loss cascades.</p>
+                    </div>
+                    <div class="concept-card">
+                        <h4>2. Feature-wise (Column) Deletion</h4>
+                        <p>Drops an entire feature column <b>f</b><sub><i>j</i></sub> if missingness in that feature exceeds a threshold (e.g. &gt;5%). Preserves all <i>N</i> sample rows, but reduces feature dimension <i>P</i>.</p>
+                    </div>
+                    <div class="concept-card">
+                        <h4>3. Pairwise Feature Analysis</h4>
+                        <p>Calculates feature-feature summary statistics (means via <code>np.nanmean</code>, Pearson correlations via <code>df.corr()</code>) over non-null sample pairs without discarding whole rows or columns.</p>
+                    </div>
+                    <div class="concept-card">
+                        <h4>4. Subject / Visit-wise Deletion</h4>
+                        <p>Filters out an entire participant or timepoint visit when data completeness drops below critical operational thresholds (e.g. unrecorded visits).</p>
+                    </div>
+                </div>
+
+                <div class="code-block">
+                    <span class="code-tag">PYTHON / NUMPY &amp; PANDAS MATRIX OPERATIONS</span>
+<pre><span class="c-comment"># 1. Feature Matrix Construction: X in R^(N x P) (8,640 samples x 6 features)</span>
+X_2d = df_wide[feature_cols].<span class="c-func">to_numpy</span>()
+
+<span class="c-comment"># 2. Sample-wise (Listwise) Row Deletion: Drops row i if ANY x_ij is NaN</span>
+valid_rows = ~np.<span class="c-func">isnan</span>(X_2d).<span class="c-func">any</span>(axis=<span class="c-number">1</span>)
+X_clean    = X_2d[valid_rows]  <span class="c-comment"># Preserves P=6 features, reduces N from 8,640 to 7,860</span>
+
+<span class="c-comment"># 3. Feature-wise (Column) Deletion: Drops column j if NaN rate > 5%</span>
+nan_pct_per_feature = np.<span class="c-func">isnan</span>(X_2d).<span class="c-func">mean</span>(axis=<span class="c-number">0</span>)
+X_kept_features     = X_2d[:, nan_pct_per_feature &lt; <span class="c-number">0.05</span>]  <span class="c-comment"># Preserves N=8,640 samples</span>
+
+<span class="c-comment"># 4. Pairwise Feature Correlation Matrix</span>
+corr_pairwise = df_wide[feature_cols].<span class="c-func">corr</span>()  <span class="c-comment"># Pairwise Pearson correlation over valid pairs</span></pre>
+                </div>
+
+                <div class="warn-box">
+                    <p>
+                        <strong>THE MULTI-FEATURE DATA LOSS CASCADE:</strong>
+                        <br>When dealing with <i>P</i> feature columns, small missingness rates per feature compound exponentially during Listwise Deletion. Even if individual features have only ~1.5–1.9% missing values, their union across 6 features causes <strong>9.03% of all sample rows (780 samples) to be deleted</strong>! Always check individual feature missingness before applying listwise row deletion.
+                    </p>
+                </div>
+
+                <div class="insight-box purple">
+                    <p>
+                        <strong>THEORETICAL GROUNDING — MISSINGNESS MECHANISMS:</strong>
+                        <br>&bull; <strong>MCAR (Missing Completely at Random):</strong> Missingness is independent of any feature values (e.g., random ADC glitch). Listwise deletion yields unbiased estimates.
+                        <br>&bull; <strong>MAR (Missing at Random):</strong> Missingness depends on observed features (e.g., higher age participants missing gamma power). Requires model covariates.
+                        <br>&bull; <strong>MNAR (Missing Not at Random):</strong> Missingness depends on unobserved values (e.g., severe artifact saturation in high-power states). Listwise deletion induces severe bias!
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <hr class="section-divider">
+
+        <!-- SECTION 6 -->
+        <section class="section-block">
+            <div class="phase-header">
+                <div class="phase-number">6</div>
+                <h2>
                     Pandas Data Integrity &amp; Sanity Checklist
                 </h2>
             </div>
@@ -782,7 +884,7 @@ arr_5d = df_sorted[<span class="c-string">"power_value"</span>].<span class="c-f
                     </div>
                     <div class="concept-card">
                         <h4>2. Zero Null Merges</h4>
-                        <p>Assert <code>df_merged[new_cols].isnull().sum().sum() == 0</code> to verify 100% key matching across tables.</p>
+                        <p>Assert <code>df_merged[new_cols].isnull().sum().sum() == 0</code> to verify 100% key matching across demographic tables.</p>
                     </div>
                     <div class="concept-card">
                         <h4>3. Key Uniqueness</h4>
@@ -790,7 +892,7 @@ arr_5d = df_sorted[<span class="c-string">"power_value"</span>].<span class="c-f
                     </div>
                     <div class="concept-card">
                         <h4>4. Shape Invariants</h4>
-                        <p>Assert <code>X_2d.shape == (8640, 6)</code> before passing features into machine learning algorithms.</p>
+                        <p>Assert <code>X_2d.shape == (8640, 6)</code> and track <code>np.isnan(arr_5d).sum()</code> before passing features downstream.</p>
                     </div>
                 </div>
             </div>

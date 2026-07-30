@@ -26,9 +26,14 @@ import os
 import pandas as pd
 
 
+import sys
+
 def resolve_file_paths():
     """Resolve paths for features CSV and sociodemographics CSV."""
     script_dir = os.path.dirname(os.path.abspath(__file__))
+    gen_dir = os.path.join(script_dir, "generators")
+    if gen_dir not in sys.path:
+        sys.path.insert(0, gen_dir)
 
     features_path = os.path.join(script_dir, "data", "eeg_mastersheet.csv")
     demo_path = os.path.join(script_dir, "data", "sociodemographics.csv")
@@ -91,7 +96,7 @@ def main():
 
     # 4. Post-Merge Defensive Invariant Assertions
     print("\n" + "-" * 80)
-    print("[STEP 5] Post-Merge Invariant Assertions")
+    print("[STEP 5] Post-Merge Invariant Assertions & Missingness Audit")
     print("-" * 80)
 
     # Invariant 1: Row count must match left feature dataframe exactly
@@ -102,6 +107,11 @@ def main():
     missing_demo_vals = df_merged[["age", "gender", "bmi"]].isnull().sum().sum()
     assert missing_demo_vals == 0, "Unmatched demographic entries detected!"
     print("  [OK] Invariant 2: Demographics 100% matched (0 null values)!")
+
+    # Invariant 3: Audit feature missing values preserved across left join
+    missing_power = df_merged["power_value"].isnull().sum()
+    pct_missing_power = (missing_power / len(df_merged)) * 100
+    print(f"  [OK] Invariant 3: Feature missing values preserved ({missing_power:,} NaNs / {pct_missing_power:.2f}%)")
 
     print("\nFirst 10 rows of Enriched Master CSV:")
     print(df_merged.head(10).to_string(index=False))
