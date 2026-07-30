@@ -1106,6 +1106,137 @@ fig.colorbar(im, ax=ax2, shrink=0.75, pad=0.04, label=<span class="c-string">"Δ
         </div>
     </section>
 
+    <!-- ── Homework Exercises Section ── -->
+    <section style="max-width:860px;margin:0 auto;padding:0 5% 60px;position:relative;z-index:2;">
+        <div style="display:flex;align-items:center;gap:16px;margin-bottom:32px;">
+            <div style="width:48px;height:48px;border-radius:50%;flex-shrink:0;
+                background:linear-gradient(135deg,#0f172a,#1e293b);
+                border:2px solid rgba(165,180,252,0.5);
+                box-shadow:0 0 20px rgba(99,102,241,0.4);
+                display:flex;align-items:center;justify-content:center;font-size:1.3rem;">
+                &#x1F3AF;
+            </div>
+            <div>
+                <h2 style="font-size:clamp(1.3rem,2.8vw,1.75rem);color:#fff;
+                    text-shadow:0 0 20px rgba(165,180,252,0.3);
+                    border:none;padding:0;margin:0;display:block;
+                    font-family:'Playfair Display',serif;font-weight:400;">
+                    Homework Challenges
+                </h2>
+                <p style="color:var(--text-muted);font-size:0.9rem;margin-top:4px;">
+                    Hands-on problem sets targeting custom error representations, shared axis normalization, topographic scaling, higher-dimensional subplot grids, and composite biomarker discovery. Python solution scripts are available under <code>day_2/hw/</code>.
+                </p>
+            </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:24px;">
+            <!-- Homework 1 -->
+            <div style="background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:16px;padding:24px;backdrop-filter:blur(12px);">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+                    <span style="font-family:'JetBrains Mono',monospace;color:#34D399;font-weight:700;font-size:0.85rem;background:rgba(52,211,153,0.15);padding:4px 12px;border-radius:20px;border:1px solid rgba(52,211,153,0.3);">
+                        HW 1 &bull; Figure 3
+                    </span>
+                    <span style="font-size:0.82rem;color:var(--text-muted);font-family:'JetBrains Mono',monospace;">
+                        Solution: <code>day_2/hw/01_fig3_errorbars.py</code>
+                    </span>
+                </div>
+                <h3 style="font-size:1.15rem;color:#fff;margin-bottom:8px;font-family:'Inter',sans-serif;font-weight:600;">
+                    Discrete Error Bars Instead of Confidence Ribbon (Mean &plusmn; SEM)
+                </h3>
+                <p style="color:var(--text-muted);font-size:0.92rem;line-height:1.6;margin-bottom:12px;">
+                    In <code>s03_confidence_bands.png</code>, group variance was depicted using continuous shaded ribbons (<code>ax.fill_between</code>). For this challenge, modify the visualization to plot discrete error bars (<code>ax.errorbar</code>) at each discrete timepoint (Baseline, Task, Rest) displaying mean &plusmn; SEM without ribbon shading.
+                </p>
+                <div style="background:var(--code-bg);border:1px solid rgba(165,180,252,0.2);border-radius:8px;padding:10px 14px;font-family:'JetBrains Mono',monospace;font-size:0.82rem;color:#A5B4FC;">
+                    <code>ax.errorbar(t_axis, mu, yerr=sem, fmt='-o', capsize=6, capthick=1.8, label=gnames[g])</code>
+                </div>
+            </div>
+
+            <!-- Homework 2 -->
+            <div style="background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:16px;padding:24px;backdrop-filter:blur(12px);">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+                    <span style="font-family:'JetBrains Mono',monospace;color:#38BDF8;font-weight:700;font-size:0.85rem;background:rgba(56,189,248,0.15);padding:4px 12px;border-radius:20px;border:1px solid rgba(56,189,248,0.3);">
+                        HW 2 &bull; Figure 4
+                    </span>
+                    <span style="font-size:0.82rem;color:var(--text-muted);font-family:'JetBrains Mono',monospace;">
+                        Solution: <code>day_2/hw/02_fig4_shared_y.py</code>
+                    </span>
+                </div>
+                <h3 style="font-size:1.15rem;color:#fff;margin-bottom:8px;font-family:'Inter',sans-serif;font-weight:600;">
+                    Shared Y-Axis Scale &amp; Overlayed Cohorts Across Frequency Bands
+                </h3>
+                <p style="color:var(--text-muted);font-size:0.92rem;line-height:1.6;margin-bottom:12px;">
+                    Transform the 2x3 subplot matrix from Figure 4 into a single 1x3 row (Alpha, Beta, Gamma). Plot both <strong>Control</strong> and <strong>Patient</strong> cohorts overlayed on the same axes within each frequency band, and enforce a unified Y-axis scale (<code>sharey=True</code>) across all three subplots to facilitate direct power amplitude comparison across frequency bands.
+                </p>
+                <div style="background:var(--code-bg);border:1px solid rgba(165,180,252,0.2);border-radius:8px;padding:10px 14px;font-family:'JetBrains Mono',monospace;font-size:0.82rem;color:#A5B4FC;">
+                    <code>fig, axes = plt.subplots(1, 3, figsize=(14, 4.5), sharey=True)</code>
+                </div>
+            </div>
+
+            <!-- Homework 3 -->
+            <div style="background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:16px;padding:24px;backdrop-filter:blur(12px);">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+                    <span style="font-family:'JetBrains Mono',monospace;color:#FBBF24;font-weight:700;font-size:0.85rem;background:rgba(251,191,36,0.15);padding:4px 12px;border-radius:20px;border:1px solid rgba(251,191,36,0.3);">
+                        HW 3 &bull; Figure 5
+                    </span>
+                    <span style="font-size:0.82rem;color:var(--text-muted);font-family:'JetBrains Mono',monospace;">
+                        Solution: <code>day_2/hw/03_fig5_shared_clim.py</code>
+                    </span>
+                </div>
+                <h3 style="font-size:1.15rem;color:#fff;margin-bottom:8px;font-family:'Inter',sans-serif;font-weight:600;">
+                    Standardized Global Color Limits Across MNE Topoplots
+                </h3>
+                <p style="color:var(--text-muted);font-size:0.92rem;line-height:1.6;margin-bottom:12px;">
+                    In Figure 5, each scalp topoplot dynamically computed its own <code>vmin</code> and <code>vmax</code>, resulting in misaligned color scales. Calculate a single global minimum (<code>vmin</code>) and maximum (<code>vmax</code>) across all three cohorts combined (Control, Patient, Treatment) and apply <code>vlim=(global_vmin, global_vmax)</code> across all three topoplots for fair visual spatial comparison.
+                </p>
+                <div style="background:var(--code-bg);border:1px solid rgba(165,180,252,0.2);border-radius:8px;padding:10px 14px;font-family:'JetBrains Mono',monospace;font-size:0.82rem;color:#A5B4FC;">
+                    <code>mne.viz.plot_topomap(alpha_power, info, axes=ax, vlim=(global_vmin, global_vmax))</code>
+                </div>
+            </div>
+
+            <!-- Homework 4 -->
+            <div style="background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:16px;padding:24px;backdrop-filter:blur(12px);">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+                    <span style="font-family:'JetBrains Mono',monospace;color:#F472B6;font-weight:700;font-size:0.85rem;background:rgba(244,114,182,0.15);padding:4px 12px;border-radius:20px;border:1px solid rgba(244,114,182,0.3);">
+                        HW 4 &bull; Figure 7
+                    </span>
+                    <span style="font-size:0.82rem;color:var(--text-muted);font-family:'JetBrains Mono',monospace;">
+                        Solution: <code>day_2/hw/04_fig7_grid3x3.py</code>
+                    </span>
+                </div>
+                <h3 style="font-size:1.15rem;color:#fff;margin-bottom:8px;font-family:'Inter',sans-serif;font-weight:600;">
+                    3&times;3 Dynamic Feature Correlation Matrix Grid (Timepoint &times; Cohort)
+                </h3>
+                <p style="color:var(--text-muted);font-size:0.92rem;line-height:1.6;margin-bottom:12px;">
+                    Expand Figure 7 into a 3&times;3 matrix of correlation plots. Each row represents a timepoint (Row 0: Baseline, Row 1: Task, Row 2: Rest) and each column represents a cohort (Col 0: Control, Col 1: Patient, Col 2: Treatment). Calculate feature correlation matrices per cell and annotate each cell with correlation values.
+                </p>
+                <div style="background:var(--code-bg);border:1px solid rgba(165,180,252,0.2);border-radius:8px;padding:10px 14px;font-family:'JetBrains Mono',monospace;font-size:0.82rem;color:#A5B4FC;">
+                    <code>fig, axes = plt.subplots(3, 3, figsize=(14, 12)); mat = data[g, t].reshape(-1, F)</code>
+                </div>
+            </div>
+
+            <!-- Homework 5 -->
+            <div style="background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:16px;padding:24px;backdrop-filter:blur(12px);">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+                    <span style="font-family:'JetBrains Mono',monospace;color:#A78BFA;font-weight:700;font-size:0.85rem;background:rgba(167,139,250,0.15);padding:4px 12px;border-radius:20px;border:1px solid rgba(167,139,250,0.3);">
+                        HW 5 &bull; Figure 8
+                    </span>
+                    <span style="font-size:0.82rem;color:var(--text-muted);font-family:'JetBrains Mono',monospace;">
+                        Solution: <code>day_2/hw/05_fig8_composite.py</code>
+                    </span>
+                </div>
+                <h3 style="font-size:1.15rem;color:#fff;margin-bottom:8px;font-family:'Inter',sans-serif;font-weight:600;">
+                    Biomarker Discovery Composite Figure &amp; Scientific Inference
+                </h3>
+                <p style="color:var(--text-muted);font-size:0.92rem;line-height:1.6;margin-bottom:12px;">
+                    Analyze <code>neural_data.npy</code> to discover electrophysiological biomarkers separating Control, Patient, and Treatment cohorts. Create a 2-panel composite figure (Panel A: Theta/Alpha Ratio across cohorts; Panel B: Alpha vs Theta subject-level cluster space with convex hull boundaries) and provide a written scientific inference detailing patient alpha suppression, theta elevation, and treatment normalization.
+                </p>
+                <div style="background:var(--code-bg);border:1px solid rgba(165,180,252,0.2);border-radius:8px;padding:10px 14px;font-family:'JetBrains Mono',monospace;font-size:0.82rem;color:#A5B4FC;">
+                    <code>tar = theta_power / alpha_power  # Panel A: TAR distribution | Panel B: Joint cluster space</code>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <!-- ── Further Reading Section ── -->
     <section style="max-width:860px;margin:0 auto;padding:0 5% 100px;position:relative;z-index:2;">
         <div style="display:flex;align-items:center;gap:16px;margin-bottom:32px;">

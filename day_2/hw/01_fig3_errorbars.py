@@ -1,0 +1,82 @@
+"""
+Day 2 Homework Solution — Figure 3: Error Bars Instead of Ribbon (Mean ± SEM)
+EEG Analysis Odyssey — Day 2
+"""
+
+import os
+import pickle
+import numpy as np
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+
+# Dynamic file path loading
+script_dir = os.path.dirname(os.path.abspath(__file__))
+day2_dir = os.path.dirname(script_dir)
+workspace_dir = os.path.dirname(day2_dir)
+
+data_candidates = [
+    os.path.join(workspace_dir, "day_1", "data", "neural_data.npy"),
+    os.path.join(day2_dir, "..", "day_1", "data", "neural_data.npy"),
+    "day_1/data/neural_data.npy",
+]
+meta_candidates = [
+    os.path.join(workspace_dir, "day_1", "data", "metadata.pkl"),
+    os.path.join(day2_dir, "..", "day_1", "data", "metadata.pkl"),
+    "day_1/data/metadata.pkl",
+]
+
+data_path = next((p for p in data_candidates if os.path.exists(p)), "day_1/data/neural_data.npy")
+meta_path = next((p for p in meta_candidates if os.path.exists(p)), "day_1/data/metadata.pkl")
+
+data = np.load(data_path)
+with open(meta_path, "rb") as fh:
+    meta = pickle.load(fh)
+
+G, T, S, C, F = data.shape
+gnames = meta["group_names"]
+t_names = ["Baseline", "Task", "Rest"]
+COLORS = ["#2196F3", "#F44336", "#4CAF50"]   # Blue, Red, Green
+t_axis = np.arange(T)
+
+# Ensure hw/plots directory exists inside the hw folder
+output_dir = os.path.join(script_dir, "plots")
+os.makedirs(output_dir, exist_ok=True)
+
+# Helper: mean and SEM calculation
+def _mean_sem(g, fi=2):
+    sig = data[g, :, :, :, fi]            # (T, S, C)
+    mu = sig.mean(axis=(1, 2))            # (T,) mean over subjects & channels
+    per_subj = sig.mean(axis=2)          # (T, S) mean over channels
+    sem = per_subj.std(axis=1) / np.sqrt(S)  # (T,) SEM across subjects
+    return mu, sem
+
+# Plotting with error bars
+fig, ax = plt.subplots(figsize=(10, 4.5))
+
+for g in range(G):
+    mu, sem = _mean_sem(g, fi=2)   # Alpha band
+    ax.errorbar(
+        t_axis, mu, yerr=sem,
+        fmt="-o", color=COLORS[g], lw=2.2, markersize=7,
+        capsize=6, capthick=1.8, elinewidth=1.8,
+        label=gnames[g]
+    )
+
+ax.set_xticks(t_axis)
+ax.set_xticklabels(t_names, fontsize=11, fontweight="medium")
+ax.set_xlabel("Timepoint", fontsize=11, fontweight="bold")
+ax.set_ylabel("Alpha Power (μV²/Hz) ± SEM", fontsize=11, fontweight="bold")
+ax.set_title("Alpha Power Over Time — Discrete Error Bars (Mean ± SEM)", fontsize=13, fontweight="bold", pad=12)
+
+ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.18), ncol=3, frameon=False, fontsize=10)
+ax.grid(True, alpha=0.3, linestyle="--")
+ax.spines["top"].set_visible(False)
+ax.spines["right"].set_visible(False)
+
+fig.tight_layout()
+save_path = os.path.join(output_dir, "hw_fig3_errorbars.png")
+fig.savefig(save_path, dpi=150, bbox_inches="tight")
+plt.close(fig)
+
+print(f"[HW 1 Solution] Figure saved successfully to: {save_path}")
