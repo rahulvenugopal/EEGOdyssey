@@ -91,7 +91,7 @@
         }
 
         /* ── Nav ───────────────────────────────────────────────────────── */
-        
+
 
         /* Nav & Day Arrow Navigation */
         .top-nav {
@@ -357,12 +357,31 @@
             white-space: pre;
         }
 
-        .c-comment { color: #6B7DB3; font-style: italic; }
-        .c-keyword { color: #C4B5FD; font-weight: 500; }
-        .c-func    { color: #5EEAD4; }
-        .c-string  { color: #86efac; }
-        .c-number  { color: #FCA5A5; }
-        .c-var     { color: #A5B4FC; }
+        .c-comment {
+            color: #6B7DB3;
+            font-style: italic;
+        }
+
+        .c-keyword {
+            color: #C4B5FD;
+            font-weight: 500;
+        }
+
+        .c-func {
+            color: #5EEAD4;
+        }
+
+        .c-string {
+            color: #86efac;
+        }
+
+        .c-number {
+            color: #FCA5A5;
+        }
+
+        .c-var {
+            color: #A5B4FC;
+        }
 
         .code-tag {
             position: absolute;
@@ -478,8 +497,13 @@
         }
 
         @keyframes shimmer {
-            0% { transform: translateX(-100%); }
-            100% { transform: translateX(100%); }
+            0% {
+                transform: translateX(-100%);
+            }
+
+            100% {
+                transform: translateX(100%);
+            }
         }
 
         /* ── Section divider ────────────────────────────────────────────── */
@@ -544,7 +568,8 @@
             margin: 0;
         }
 
-        .data-table th, .data-table td {
+        .data-table th,
+        .data-table td {
             padding: 10px 14px;
             border: 1px solid rgba(165, 180, 252, 0.2);
             text-align: left;
@@ -584,16 +609,21 @@
         <a href="../index.html" class="back-link">&#x2190; Back to Odyssey</a>
         <span class="nav-day-label">Day 3 of 20</span>
         <div class="nav-arrows">
-            <a href="../day_2/index.html" class="nav-arrow-btn prev-day" title="Previous Day: Python Basics: Plotting for Insights">&#x2190; Prev</a>
-            <a href="../day_4/index.html" class="nav-arrow-btn next-day" title="Next Day: Data Cleaning: Downsampling, Bad Channels & Segments">Next &#x2192;</a>
+            <a href="../day_2/index.html" class="nav-arrow-btn prev-day"
+                title="Previous Day: Python Basics: Plotting for Insights">&#x2190; Prev</a>
+            <a href="../day_4/index.html" class="nav-arrow-btn next-day"
+                title="Next Day: Data Cleaning: Downsampling, Bad Channels & Segments">Next &#x2192;</a>
         </div>
     </nav>
 
     <header class="hero">
-        <span class="day-pill">Day 03 &bull; Study Guide</span>
-        <h1>Tabular CSV to <span class="highlight">Array Conversion</span> &amp; <span class="highlight-teal">Relational Merging</span></h1>
+        <span class="day-pill">&#x2726; Day 03 &bull; Study Guide</span>
+        <h1>Tabular CSV to <span class="highlight">Array Conversion</span> &amp; <span class="highlight-teal">Relational
+                Merging</span></h1>
         <p class="hero-subtitle">
-            Master the real-world mechanics of merging clinical sociodemographics with electrophysiological features using composite keys, defensive Pandas validation, and reshaping tabular datasets into 2D ML matrices and 5D NumPy Signal Tensors.
+            Master the real-world mechanics of merging clinical sociodemographics with electrophysiological features
+            using composite keys, defensive Pandas validation, and reshaping tabular datasets into 2D ML matrices and 5D
+            NumPy Signal Tensors.
         </p>
         <div class="badges">
             <span class="badge">Pandas 3.0</span>
@@ -617,27 +647,30 @@
 
             <div class="glass-card">
                 <p>
-                    In clinical neuroscience, datasets are rarely recorded as a single monolithic file. Electrophysiological hardware exports high-density signal features (spectral power, band ratios), whereas clinical Electronic Health Record (EHR / REDCap) platforms track participant medical charts (Age, Sex, BMI, clinical scores).
+                    In clinical neuroscience, datasets are rarely recorded as a single monolithic file.
+                    Electrophysiological hardware exports high-density signal features (spectral power, band ratios),
+                    whereas clinical Electronic Health Record (EHR / REDCap) platforms track participant medical charts
+                    (Age, Sex, BMI, clinical scores).
                 </p>
-                
+
                 <div class="two-col">
                     <div class="concept-card">
                         <h4>1. Separation of Concerns</h4>
-                        <p>Keeping raw signal acquisition decoupled from REDCap metadata prevents data corruption and streamlines multi-site clinical trials.</p>
+                        <p>Keeping raw signal acquisition decoupled from REDCap metadata prevents data corruption and
+                            streamlines multi-site clinical trials.</p>
                     </div>
                     <div class="concept-card">
-                        <h4>2. Memory &amp; Storage Efficiency (M:1)</h4>
-                        <p>A single visit yields 192 feature rows (32 channels &times; 6 bands). Storing static demographics in every raw feature row bloats storage.</p>
-                    </div>
-                    <div class="concept-card">
-                        <h4>3. Controlling Confounders</h4>
-                        <p>Age, Sex, and BMI heavily modulate brain signals (e.g. age-related alpha slowing). Merging demographics is required for ANCOVA and LMM models.</p>
+                        <h4>2. Controlling Confounders</h4>
+                        <p>Age, Sex, and BMI heavily modulate brain signals (e.g. age-related alpha slowing). Merging
+                            demographics is required for ANCOVA and LMM models.</p>
                     </div>
                 </div>
 
                 <div class="insight-box">
                     <p>
-                        <strong>REAL-WORLD RATIONALE:</strong> Merging data tables via programmatic joins enables researchers to isolate true neurological signals from demographic covariates without inflating file sizes during recording.
+                        <strong>REAL-WORLD RATIONALE:</strong> Merging data tables via programmatic joins enables
+                        researchers to combine independently collected clinical metadata with electrophysiological
+                        feature tables for controlled statistical analysis.
                     </p>
                 </div>
             </div>
@@ -656,12 +689,17 @@
 
             <div class="glass-card">
                 <p>
-                    A common pitfall in multi-group studies is assuming <code>subject_id</code> is globally unique. In our dataset, each study group (<code>Control</code>, <code>Patient</code>, <code>Treatment</code>) labels participants as <code>Sub_01</code> through <code>Sub_30</code> across experimental timepoints (<code>Baseline</code>, <code>Task</code>, <code>Rest</code>).
+                    A common pitfall in multi-group studies is assuming <code>subject_id</code> is globally unique. In
+                    our dataset, each study group (<code>Control</code>, <code>Patient</code>, <code>Treatment</code>)
+                    labels participants as <code>Sub_01</code> through <code>Sub_30</code> across experimental
+                    timepoints (<code>Baseline</code>, <code>Task</code>, <code>Rest</code>).
                 </p>
 
                 <div class="warn-box">
                     <p>
-                        <strong>WATCH OUT FOR COMPOSITE KEYS:</strong> Because <code>Sub_01</code> appears 9 separate times across the study, joining tables requires the composite key: <code>['group', 'timepoint', 'subject_id']</code>.
+                        <strong>WATCH OUT FOR COMPOSITE KEYS:</strong> Because <code>Sub_01</code> appears 9 separate
+                        times across the study, joining tables requires the composite key:
+                        <code>['group', 'timepoint', 'subject_id']</code>.
                     </p>
                 </div>
 
@@ -681,9 +719,39 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <tr><td>Control</td><td>Baseline</td><td>Sub_01</td><td>Fp1</td><td>delta</td><td>0.397215</td><td>58</td><td>M</td><td>25.3</td></tr>
-                            <tr><td>Patient</td><td>Baseline</td><td>Sub_01</td><td>Fp1</td><td>delta</td><td>0.489120</td><td>61</td><td>F</td><td>28.1</td></tr>
-                            <tr><td>Treatment</td><td>Task</td><td>Sub_01</td><td>Cz</td><td>alpha</td><td>0.612450</td><td>44</td><td>M</td><td>22.9</td></tr>
+                            <tr>
+                                <td>Control</td>
+                                <td>Baseline</td>
+                                <td>Sub_01</td>
+                                <td>Fp1</td>
+                                <td>delta</td>
+                                <td>0.397215</td>
+                                <td>58</td>
+                                <td>M</td>
+                                <td>25.3</td>
+                            </tr>
+                            <tr>
+                                <td>Patient</td>
+                                <td>Baseline</td>
+                                <td>Sub_01</td>
+                                <td>Fp1</td>
+                                <td>delta</td>
+                                <td>0.489120</td>
+                                <td>61</td>
+                                <td>F</td>
+                                <td>28.1</td>
+                            </tr>
+                            <tr>
+                                <td>Treatment</td>
+                                <td>Task</td>
+                                <td>Sub_01</td>
+                                <td>Cz</td>
+                                <td>alpha</td>
+                                <td>0.612450</td>
+                                <td>44</td>
+                                <td>M</td>
+                                <td>22.9</td>
+                            </tr>
                         </tbody>
                     </table>
                 </div>
@@ -703,12 +771,13 @@
 
             <div class="glass-card">
                 <p>
-                    When joining relational tables in Pandas, defensive programmers enforce validation parameters such as <code>validate="many_to_one"</code> (or <code>"m:1"</code>) to guarantee that the right table contains exactly one unique row per composite key.
+                    When joining relational tables in Pandas, defensive programmers enforce validation parameters such
+                    as <code>validate="many_to_one"</code> (or <code>"m:1"</code>) to guarantee that the right table
+                    contains exactly one unique row per composite key.
                 </p>
 
                 <div class="code-block">
-                    <span class="code-tag">PYTHON / PANDAS</span>
-<pre><span class="c-keyword">import</span> pandas <span class="c-keyword">as</span> pd
+                    <pre><span class="c-keyword">import</span> pandas <span class="c-keyword">as</span> pd
 
 <span class="c-comment"># 1. Load feature mastersheet and sociodemographics CSVs</span>
 df_features = pd.<span class="c-func">read_csv</span>(<span class="c-string">"data/eeg_mastersheet.csv"</span>)
@@ -738,7 +807,8 @@ df_enriched.<span class="c-func">to_csv</span>(<span class="c-string">"data/eeg_
                     <div class="result-icon">🛡️</div>
                     <div class="result-body">
                         <h4>MERGE VALIDATION RESULT</h4>
-                        <div class="result-value">Enriched DataFrame: 51,840 rows &times; 10 columns &bull; 0 Missing Demographics</div>
+                        <div class="result-value">Enriched DataFrame: 51,840 rows &times; 10 columns &bull; 0 Missing
+                            Demographics</div>
                     </div>
                 </div>
             </div>
@@ -757,35 +827,51 @@ df_enriched.<span class="c-func">to_csv</span>(<span class="c-string">"data/eeg_
 
             <div class="glass-card">
                 <p>
-                    Downstream analytics require pivoting long tabular DataFrames into matrix and tensor formats suitable for Scikit-Learn or MNE indexing:
+                    Tabular CSV datasets loaded directly from <code>day_1/data/eeg_mastersheet.csv</code> can be
+                    converted into 5D NumPy arrays (<i>G</i> &times; <i>T</i> &times; <i>S</i> &times; <i>C</i> &times;
+                    <i>F</i> = 3 &times; 3 &times; 30 &times; 32 &times; 6) using explicit nested loops and dictionary
+                    coordinate mapping:
                 </p>
 
                 <div class="code-block">
-                    <span class="code-tag">PYTHON / SCALARS &amp; MATRICES</span>
-<pre><span class="c-comment"># A. Pivot frequency bands into 2D Feature Matrix (8,640 samples × 6 band features)</span>
-df_wide = df.<span class="c-func">pivot</span>(
-    index=[<span class="c-string">"group"</span>, <span class="c-string">"timepoint"</span>, <span class="c-string">"subject_id"</span>, <span class="c-string">"channel"</span>, <span class="c-string">"region"</span>],
-    columns=<span class="c-string">"feature"</span>,
-    values=<span class="c-string">"power_value"</span>
-).<span class="c-func">reset_index</span>()
+                    <pre><span class="c-comment"># 1. Load CSV directly from day_1/data folder</span>
+df = pd.<span class="c-func">read_csv</span>(<span class="c-string">"day_1/data/eeg_mastersheet.csv"</span>)
 
-feature_cols = [<span class="c-string">"delta"</span>, <span class="c-string">"theta"</span>, <span class="c-string">"alpha"</span>, <span class="c-string">"beta"</span>, <span class="c-string">"gamma"</span>, <span class="c-string">"broadband"</span>]
-X_2d = df_wide[feature_cols].<span class="c-func">to_numpy</span>()  <span class="c-comment"># Shape: (8640, 6)</span>
+<span class="c-comment"># 2. Extract dimension ordering for array axes</span>
+groups     = list(df[<span class="c-string">"group"</span>].<span class="c-func">unique</span>())
+timepoints = list(df[<span class="c-string">"timepoint"</span>].<span class="c-func">unique</span>())
+subjects   = list(df[<span class="c-string">"subject_id"</span>].<span class="c-func">unique</span>())
+channels   = list(df[<span class="c-string">"channel"</span>].<span class="c-func">unique</span>())
+features   = list(df[<span class="c-string">"feature"</span>].<span class="c-func">unique</span>())
 
-<span class="c-comment"># B. Convert CSV to 5D Signal Tensor Array (3 × 3 × 30 × 32 × 6)</span>
-df[<span class="c-string">"group"</span>]      = pd.<span class="c-func">Categorical</span>(df[<span class="c-string">"group"</span>], categories=groups, ordered=<span class="c-keyword">True</span>)
-df[<span class="c-string">"timepoint"</span>]  = pd.<span class="c-func">Categorical</span>(df[<span class="c-string">"timepoint"</span>], categories=timepoints, ordered=<span class="c-keyword">True</span>)
-df[<span class="c-string">"subject_id"</span>] = pd.<span class="c-func">Categorical</span>(df[<span class="c-string">"subject_id"</span>], categories=subjects, ordered=<span class="c-keyword">True</span>)
-df[<span class="c-string">"channel"</span>]    = pd.<span class="c-func">Categorical</span>(df[<span class="c-string">"channel"</span>], categories=channels, ordered=<span class="c-keyword">True</span>)
-df[<span class="c-string">"feature"</span>]    = pd.<span class="c-func">Categorical</span>(df[<span class="c-string">"feature"</span>], categories=features, ordered=<span class="c-keyword">True</span>)
+<span class="c-comment"># 3. Allocate empty 5D array initialized with NaNs</span>
+arr_5d = np.<span class="c-func">full</span>((<span class="c-number">3</span>, <span class="c-number">3</span>, <span class="c-number">30</span>, <span class="c-number">32</span>, <span class="c-number">6</span>), fill_value=np.nan, dtype=np.float32)
 
-df_sorted = df.<span class="c-func">sort_values</span>(by=[<span class="c-string">"group"</span>, <span class="c-string">"timepoint"</span>, <span class="c-string">"subject_id"</span>, <span class="c-string">"channel"</span>, <span class="c-string">"feature"</span>])
-arr_5d = df_sorted[<span class="c-string">"power_value"</span>].<span class="c-func">to_numpy</span>().<span class="c-func">reshape</span>(<span class="c-number">3</span>, <span class="c-number">3</span>, <span class="c-number">30</span>, <span class="c-number">32</span>, <span class="c-number">6</span>)</pre>
+<span class="c-comment"># 4. Build fast coordinate lookup dictionary</span>
+value_lookup = {}
+<span class="c-keyword">for</span> row <span class="c-keyword">in</span> df.<span class="c-func">itertuples</span>(index=<span class="c-keyword">False</span>):
+    key = (row.group, row.timepoint, row.subject_id, row.channel, row.feature)
+    value_lookup[key] = row.power_value
+
+<span class="c-comment"># 5. Populate 5D array via explicit 5-level nested loops</span>
+<span class="c-keyword">for</span> g_idx, g_name <span class="c-keyword">in</span> <span class="c-func">enumerate</span>(groups):
+    <span class="c-keyword">for</span> t_idx, t_name <span class="c-keyword">in</span> <span class="c-func">enumerate</span>(timepoints):
+        <span class="c-keyword">for</span> s_idx, s_name <span class="c-keyword">in</span> <span class="c-func">enumerate</span>(subjects):
+            <span class="c-keyword">for</span> c_idx, c_name <span class="c-keyword">in</span> <span class="c-func">enumerate</span>(channels):
+                <span class="c-keyword">for</span> f_idx, f_name <span class="c-keyword">in</span> <span class="c-func">enumerate</span>(features):
+                    cell_key = (g_name, t_name, s_name, c_name, f_name)
+                    arr_5d[g_idx, t_idx, s_idx, c_idx, f_idx] = value_lookup.get(cell_key, np.nan)
+
+<span class="c-comment"># 6. Save array as .npy file</span>
+np.<span class="c-func">save</span>(<span class="c-string">"day_3/data/eeg_5d_array.npy"</span>, arr_5d)</pre>
                 </div>
 
                 <div class="insight-box purple">
                     <p>
-                        <strong>ORDERED CATEGORICAL TIP:</strong> Standard string sorting arranges timepoints alphabetically (<code>'Baseline'</code> before <code>'Rest'</code>, placing <code>'Task'</code> last). Using <code>pd.Categorical(..., ordered=True)</code> forces sorting to follow your exact metadata dimension lists (<code>['Baseline', 'Task', 'Rest']</code>).
+                        <strong>NESTED LOOP &amp; DICTIONARY LOOKUP ADVANTAGE:</strong> Reconstructing multi-dimensional
+                        tensors using explicit nested loops over extracted dimension axes guarantees exact index
+                        alignment without complex sorting, pivoting, or categorical conversions, while preserving
+                        missing NaN values.
                     </p>
                 </div>
             </div>
@@ -804,31 +890,43 @@ arr_5d = df_sorted[<span class="c-string">"power_value"</span>].<span class="c-f
 
             <div class="glass-card">
                 <p>
-                    In machine learning and tabular EEG processing, data is represented as a feature matrix <b>X</b> &isin; &#x211D;<sup><i>N</i> &times; <i>P</i></sup>, where rows (<i>N</i> = 8,640) represent sample observations and columns (<i>P</i> = 6) represent frequency band features (<code>delta</code>, <code>theta</code>, <code>alpha</code>, <code>beta</code>, <code>gamma</code>, <code>broadband</code>). Selecting the appropriate deletion strategy requires balancing sample retention (<i>N</i>) against feature richness (<i>P</i>).
+                    In machine learning and tabular EEG processing, data is represented as a feature matrix <b>X</b>
+                    &isin; &#x211D;<sup><i>N</i> &times; <i>P</i></sup>, where rows (<i>N</i> = 8,640) represent sample
+                    observations and columns (<i>P</i> = 6) represent frequency band features (<code>delta</code>,
+                    <code>theta</code>, <code>alpha</code>, <code>beta</code>, <code>gamma</code>,
+                    <code>broadband</code>). Selecting the appropriate deletion strategy requires balancing sample
+                    retention (<i>N</i>) against feature richness (<i>P</i>).
                 </p>
 
                 <div class="two-col">
                     <div class="concept-card">
                         <h4>1. Sample-wise (Listwise) Row Deletion</h4>
-                        <p>Drops an entire sample row <b>x</b><sub><i>i</i></sub> if <em>any single feature</em> <i>x</i><sub><i>ij</i></sub> = NaN. Preserves all <i>P</i> features, but reduces sample size <i>N</i>. Unbiased under <strong>MCAR</strong>, but vulnerable to sample loss cascades.</p>
+                        <p>Drops an entire sample row <b>x</b><sub><i>i</i></sub> if <em>any single feature</em>
+                            <i>x</i><sub><i>ij</i></sub> = NaN. Preserves all <i>P</i> features, but reduces sample size
+                            <i>N</i>. Unbiased under <strong>MCAR</strong>, but vulnerable to sample loss cascades.
+                        </p>
                     </div>
                     <div class="concept-card">
                         <h4>2. Feature-wise (Column) Deletion</h4>
-                        <p>Drops an entire feature column <b>f</b><sub><i>j</i></sub> if missingness in that feature exceeds a threshold (e.g. &gt;5%). Preserves all <i>N</i> sample rows, but reduces feature dimension <i>P</i>.</p>
+                        <p>Drops an entire feature column <b>f</b><sub><i>j</i></sub> if missingness in that feature
+                            exceeds a threshold (e.g. &gt;5%). Preserves all <i>N</i> sample rows, but reduces feature
+                            dimension <i>P</i>.</p>
                     </div>
                     <div class="concept-card">
                         <h4>3. Pairwise Feature Analysis</h4>
-                        <p>Calculates feature-feature summary statistics (means via <code>np.nanmean</code>, Pearson correlations via <code>df.corr()</code>) over non-null sample pairs without discarding whole rows or columns.</p>
+                        <p>Calculates feature-feature summary statistics (means via <code>np.nanmean</code>, Pearson
+                            correlations via <code>df.corr()</code>) over non-null sample pairs without discarding whole
+                            rows or columns.</p>
                     </div>
                     <div class="concept-card">
                         <h4>4. Subject / Visit-wise Deletion</h4>
-                        <p>Filters out an entire participant or timepoint visit when data completeness drops below critical operational thresholds (e.g. unrecorded visits).</p>
+                        <p>Filters out an entire participant or timepoint visit when data completeness drops below
+                            critical operational thresholds (e.g. unrecorded visits).</p>
                     </div>
                 </div>
 
                 <div class="code-block">
-                    <span class="code-tag">PYTHON / NUMPY &amp; PANDAS MATRIX OPERATIONS</span>
-<pre><span class="c-comment"># 1. Feature Matrix Construction: X in R^(N x P) (8,640 samples x 6 features)</span>
+                    <pre><span class="c-comment"># 1. Feature Matrix Construction: X in R^(N x P) (8,640 samples x 6 features)</span>
 X_2d = df_wide[feature_cols].<span class="c-func">to_numpy</span>()
 
 <span class="c-comment"># 2. Sample-wise (Listwise) Row Deletion: Drops row i if ANY x_ij is NaN</span>
@@ -846,16 +944,24 @@ corr_pairwise = df_wide[feature_cols].<span class="c-func">corr</span>()  <span 
                 <div class="warn-box">
                     <p>
                         <strong>THE MULTI-FEATURE DATA LOSS CASCADE:</strong>
-                        <br>When dealing with <i>P</i> feature columns, small missingness rates per feature compound exponentially during Listwise Deletion. Even if individual features have only ~1.5–1.9% missing values, their union across 6 features causes <strong>9.03% of all sample rows (780 samples) to be deleted</strong>! Always check individual feature missingness before applying listwise row deletion.
+                        <br>When dealing with <i>P</i> feature columns, small missingness rates per feature compound
+                        exponentially during Listwise Deletion. Even if individual features have only ~1.5–1.9% missing
+                        values, their union across 6 features causes <strong>9.03% of all sample rows (780 samples) to
+                            be deleted</strong>! Always check individual feature missingness before applying listwise
+                        row deletion.
                     </p>
                 </div>
 
                 <div class="insight-box purple">
                     <p>
                         <strong>THEORETICAL GROUNDING — MISSINGNESS MECHANISMS:</strong>
-                        <br>&bull; <strong>MCAR (Missing Completely at Random):</strong> Missingness is independent of any feature values (e.g., random ADC glitch). Listwise deletion yields unbiased estimates.
-                        <br>&bull; <strong>MAR (Missing at Random):</strong> Missingness depends on observed features (e.g., higher age participants missing gamma power). Requires model covariates.
-                        <br>&bull; <strong>MNAR (Missing Not at Random):</strong> Missingness depends on unobserved values (e.g., severe artifact saturation in high-power states). Listwise deletion induces severe bias!
+                        <br>&bull; <strong>MCAR (Missing Completely at Random):</strong> Missingness is independent of
+                        any feature values (e.g., random ADC glitch). Listwise deletion yields unbiased estimates.
+                        <br>&bull; <strong>MAR (Missing at Random):</strong> Missingness depends on observed features
+                        (e.g., higher age participants missing gamma power). Requires model covariates.
+                        <br>&bull; <strong>MNAR (Missing Not at Random):</strong> Missingness depends on unobserved
+                        values (e.g., severe artifact saturation in high-power states). Listwise deletion induces severe
+                        bias!
                     </p>
                 </div>
             </div>
@@ -874,25 +980,30 @@ corr_pairwise = df_wide[feature_cols].<span class="c-func">corr</span>()  <span 
 
             <div class="glass-card">
                 <p>
-                    In scientific computing, silent failure is far more hazardous than explicit exceptions. Always check these invariants:
+                    In scientific computing, silent failure is far more hazardous than explicit exceptions. Always check
+                    these invariants:
                 </p>
 
                 <div class="two-col">
                     <div class="concept-card">
                         <h4>1. Invariant Row Count</h4>
-                        <p>Assert <code>len(df_merged) == len(df_left)</code> during left joins to catch unintended Cartesian row explosions.</p>
+                        <p>Assert <code>len(df_merged) == len(df_left)</code> during left joins to catch unintended
+                            Cartesian row explosions.</p>
                     </div>
                     <div class="concept-card">
                         <h4>2. Zero Null Merges</h4>
-                        <p>Assert <code>df_merged[new_cols].isnull().sum().sum() == 0</code> to verify 100% key matching across demographic tables.</p>
+                        <p>Assert <code>df_merged[new_cols].isnull().sum().sum() == 0</code> to verify 100% key matching
+                            across demographic tables.</p>
                     </div>
                     <div class="concept-card">
                         <h4>3. Key Uniqueness</h4>
-                        <p>Assert <code>not df.duplicated(subset=keys).any()</code> on metadata lookup tables prior to merging.</p>
+                        <p>Assert <code>not df.duplicated(subset=keys).any()</code> on metadata lookup tables prior to
+                            merging.</p>
                     </div>
                     <div class="concept-card">
                         <h4>4. Shape Invariants</h4>
-                        <p>Assert <code>X_2d.shape == (8640, 6)</code> and track <code>np.isnan(arr_5d).sum()</code> before passing features downstream.</p>
+                        <p>Assert <code>X_2d.shape == (8640, 6)</code> and track <code>np.isnan(arr_5d).sum()</code>
+                            before passing features downstream.</p>
                     </div>
                 </div>
             </div>
@@ -915,29 +1026,41 @@ corr_pairwise = df_wide[feature_cols].<span class="c-func">corr</span>()  <span 
                     Further reading
                 </h2>
             </div>
-            <ol style="color:rgba(165,180,252,0.8);font-family:'Inter',sans-serif;line-height:1.6;padding-left:1.5rem;display:flex;flex-direction:column;gap:20px;">
+            <ol
+                style="color:rgba(165,180,252,0.8);font-family:'Inter',sans-serif;line-height:1.6;padding-left:1.5rem;display:flex;flex-direction:column;gap:20px;">
                 <li style="padding-left:8px;color:#A5B4FC;font-family:'JetBrains Mono',monospace;font-weight:700;">
                     <div style="font-family:'Inter',sans-serif;">
-                        <a href="https://pandas.pydata.org/docs/user_guide/reshaping.html" target="_blank" rel="noopener"
-                            style="color:#fff;text-decoration:underline;text-decoration-color:rgba(165,180,252,0.4);font-weight:600;font-size:0.95rem;">Pandas Official User Guide: Reshaping &amp; Pivot Tables</a>
+                        <a href="https://pandas.pydata.org/docs/user_guide/reshaping.html" target="_blank"
+                            rel="noopener"
+                            style="color:#fff;text-decoration:underline;text-decoration-color:rgba(165,180,252,0.4);font-weight:600;font-size:0.95rem;">Pandas
+                            Official User Guide: Reshaping &amp; Pivot Tables</a>
                         <span style="font-size:0.9rem;margin-left:6px;">&#x1F4D6;</span><br>
-                        <span style="color:var(--text-muted);font-size:0.85rem;font-weight:400;">Complete reference for <code>pivot()</code>, <code>unstack()</code>, and <code>melt()</code> for converting long/wide tabular structures.</span>
+                        <span style="color:var(--text-muted);font-size:0.85rem;font-weight:400;">Complete reference for
+                            <code>pivot()</code>, <code>unstack()</code>, and <code>melt()</code> for converting
+                            long/wide tabular structures.</span>
                     </div>
                 </li>
                 <li style="padding-left:8px;color:#C4B5FD;font-family:'JetBrains Mono',monospace;font-weight:700;">
                     <div style="font-family:'Inter',sans-serif;">
                         <a href="https://pandas.pydata.org/docs/user_guide/merging.html" target="_blank" rel="noopener"
-                            style="color:#fff;text-decoration:underline;text-decoration-color:rgba(196,181,253,0.4);font-weight:600;font-size:0.95rem;">Pandas Official User Guide: Merge, Join &amp; Relational Validation</a>
+                            style="color:#fff;text-decoration:underline;text-decoration-color:rgba(196,181,253,0.4);font-weight:600;font-size:0.95rem;">Pandas
+                            Official User Guide: Merge, Join &amp; Relational Validation</a>
                         <span style="font-size:0.9rem;margin-left:6px;">&#x1F4D6;</span><br>
-                        <span style="color:var(--text-muted);font-size:0.85rem;font-weight:400;">Mastering <code>pd.merge()</code>, composite keys, database join mechanics, and enforcing <code>validate="many_to_one"</code> (m:1) integrity.</span>
+                        <span style="color:var(--text-muted);font-size:0.85rem;font-weight:400;">Mastering
+                            <code>pd.merge()</code>, composite keys, database join mechanics, and enforcing
+                            <code>validate="many_to_one"</code> (m:1) integrity.</span>
                     </div>
                 </li>
                 <li style="padding-left:8px;color:#5EEAD4;font-family:'JetBrains Mono',monospace;font-weight:700;">
                     <div style="font-family:'Inter',sans-serif;">
-                        <a href="https://realpython.com/python-pandas-tricks/#5-validate-data-with-pandas" target="_blank" rel="noopener"
-                            style="color:#fff;text-decoration:underline;text-decoration-color:rgba(94,234,212,0.4);font-weight:600;font-size:0.95rem;">Real Python: Defensive Data Validation &amp; Pandas Checks</a>
+                        <a href="https://realpython.com/python-pandas-tricks/#5-validate-data-with-pandas"
+                            target="_blank" rel="noopener"
+                            style="color:#fff;text-decoration:underline;text-decoration-color:rgba(94,234,212,0.4);font-weight:600;font-size:0.95rem;">Real
+                            Python: Defensive Data Validation &amp; Pandas Checks</a>
                         <span style="font-size:0.9rem;margin-left:6px;">&#x1F4D6;</span><br>
-                        <span style="color:var(--text-muted);font-size:0.85rem;font-weight:400;">Comprehensive guide on defensive programming patterns in Python data science, testing invariants, and data validation pipelines.</span>
+                        <span style="color:var(--text-muted);font-size:0.85rem;font-weight:400;">Comprehensive guide on
+                            defensive programming patterns in Python data science, testing invariants, and data
+                            validation pipelines.</span>
                     </div>
                 </li>
             </ol>
@@ -988,7 +1111,7 @@ corr_pairwise = df_wide[feature_cols].<span class="c-func">corr</span>()  <span 
         }
         window.addEventListener('resize', () => { resize(); initParticles(); });
         resize(); initParticles(); draw();
-    
+
         // Keyboard arrow key navigation (Left = Prev, Right = Next)
         document.addEventListener('keydown', (e) => {
             if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;

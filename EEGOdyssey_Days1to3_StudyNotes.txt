@@ -1,0 +1,474 @@
+                                        Day 1
+
+------------------------------------------------------------------------
+The Core Idea: Data Has Shape
+------------------------------------------------------------------------
+
+Every dataset has a shape. A simple list of numbers is 1-dimensional.
+A table with rows and columns is 2-dimensional. EEG data is richer than
+a table — it has five natural dimensions simultaneously:
+
+    Who recorded it?     (Groups: Control / Patient / Treatment)
+    When was it?         (Timepoints: Baseline / Task / Rest)
+    Which participant?   (Subjects: 30 per group)
+    Which electrode?     (Channels: 32 positions on the scalp)
+    Which frequency?     (Features: delta, theta, alpha, beta, gamma, broadband)
+
+A 5-dimensional array holds all of this at once, with each cell storing
+exactly one measurement: the spectral power at a specific electrode, for
+a specific participant, at a specific time, in a specific frequency band,
+belonging to a specific group.
+
+This is not just an organisational trick. It is a direct encoding of
+the physical reality of EEG experiments. The structure of the array
+mirrors the structure of the study design.
+
+------------------------------------------------------------------------
+Navigating the Array: Addresses and Ranges
+------------------------------------------------------------------------
+
+Think of a multi-dimensional array like a building with multiple floors,
+wings, corridors, and rooms. Every cell has a precise address — one
+number per dimension. Providing all five coordinates gets you one value.
+
+But science rarely needs a single cell. It needs slices:
+
+    All channels at a given time and frequency — a map of the brain.
+    All timepoints for a given participant — their trajectory over time.
+    All subjects in one group — the group's distribution.
+
+Slicing is how you extract these meaningful subsets. The colon operator
+is read as "all of". A range like 0:2 means "from the first up to but
+not including the second". Slicing always preserves the dimension
+(the result is still an array, just smaller). Picking a single index
+collapses that dimension entirely.
+
+Step slicing adds a third number — the stride. Stride 2 gives you every
+other element. Stride -1 reverses the order. This is useful for
+subsampling participants or reversing a temporal sequence.
+
+------------------------------------------------------------------------
+Boolean Masks: Filtering by Condition
+------------------------------------------------------------------------
+
+Instead of specifying addresses directly, you can ask a question:
+"Which cells satisfy this condition?" The result is a True/False map
+of the same shape as the original array, called a boolean mask.
+
+Applying this mask to the array returns only the values where the
+condition is True. This is powerful for identifying artifacts (values
+above a threshold), finding high-performing subjects, or flagging
+unusual timepoints — all without manually searching the data.
+
+The key insight is that the condition and the array operate element-
+wise. Every cell is tested independently, producing its own True or
+False answer.
+
+------------------------------------------------------------------------
+Shape-Preserving vs Shape-Changing Operations
+------------------------------------------------------------------------
+
+Some operations change what the data looks like but not what it means:
+
+    Transposing reorders the axes. The same data, different arrangement.
+    Reshaping collapses or splits axes. Five dimensions can become two
+    (all five axes flattened into rows and columns of a matrix).
+    Ravelling produces a single long list of all values in order.
+
+These are essential for feeding EEG data into machine learning libraries,
+which typically expect a 2D matrix of samples and features. The transition
+from a 5D neuroscience tensor to a 2D ML matrix is just a reshape — no
+data is lost, only the perspective changes.
+
+Reductions are different: they collapse an axis by computing a summary
+statistic (mean, sum, standard deviation). Taking the mean across all
+subjects produces a single value per electrode per timepoint — you lose
+the individual subject detail but gain a group-level summary.
+
+------------------------------------------------------------------------
+The Critical Gotcha: Views and Copies
+------------------------------------------------------------------------
+
+When you slice a NumPy array using basic range notation, you do not get
+a new, independent copy of the data. You get a view — a different window
+onto the same underlying memory. Editing the view edits the original.
+
+This is counterintuitive because in everyday life, taking a subset feels
+like creating something new. In NumPy, basic slices are shortcuts, not
+copies. They are fast and memory-efficient, but dangerous if you intend
+to modify the result independently.
+
+The rule of thumb:
+    Basic slicing (start:stop:step)  →  view. Same memory. Edits propagate.
+    Fancy indexing (list of indices)  →  copy. Independent. Safe to edit.
+    Explicit .copy()                  →  always a copy. Unambiguous.
+
+When in doubt, call .copy(). The cost in memory is usually worth the
+safety it guarantees.
+
+
+                                        Day 2
+
+------------------------------------------------------------------------
+Why Visualisation Matters
+------------------------------------------------------------------------
+
+Numbers in an array are invisible. A table of 51,840 floating-point
+values communicates nothing at a glance. Visualisation is the act of
+translating numerical structure into perceptible shape — lines, colours,
+positions, areas. A well-chosen plot immediately reveals patterns,
+anomalies, and group differences that would take minutes to find in raw
+numbers.
+
+In EEG research, visualisation is not decorative. It is a scientific
+instrument. The spatial distribution of power across the scalp, the
+temporal trajectory of a frequency band, the spread of individual
+differences within a group — these are not things you can read from a
+number. You need to see them.
+
+------------------------------------------------------------------------
+Building Up Complexity: From One Line to a Full Figure
+------------------------------------------------------------------------
+
+Visualisation is learnt progressively. The simplest plot is a single
+line: one electrode's alpha power measured at three timepoints. From
+there, complexity is added in layers:
+
+  One line  →  Multiple lines for multiple groups on the same axes.
+  Lines     →  Lines with uncertainty bands (standard error of the mean).
+  One plot  →  A grid of subplots, organising groups and frequency bands.
+  Lines     →  A topographic scalp map, showing spatial distribution.
+  Bar charts →  Raincloud plots, which reveal the full distribution shape.
+
+Each step adds information without replacing what came before. The final
+publication figure combines a scatter plot (individual subject positions
+in alpha-beta space) with a difference topomap (patient minus control,
+per electrode) — two complementary views of the same underlying data.
+
+------------------------------------------------------------------------
+Standard Error: Showing What You Don't Know
+------------------------------------------------------------------------
+
+A mean value is a summary. It hides the uncertainty around that summary.
+The standard error of the mean (SEM) quantifies how precisely the sample
+mean estimates the true population mean. A narrow SEM band means the
+estimate is reliable. A wide band means there is substantial uncertainty.
+
+Adding SEM bands to time-series plots turns a confident-looking line into
+an honest representation of what the data actually supports. In
+neuroscience, where sample sizes are often small, this honesty is critical
+for avoiding overinterpretation.
+
+------------------------------------------------------------------------
+Scalp Topography: The Brain's Spatial Map
+------------------------------------------------------------------------
+
+EEG electrodes are placed at known positions on the scalp according to
+a standardised grid (the 10-20 system). This means each channel has a
+physical location — and measurements across channels have spatial meaning.
+
+A topographic map (topomap) interpolates the per-channel values across
+the scalp surface and displays them as a colour gradient. Hot colours
+indicate high power; cool colours indicate low power. At a glance, the
+topomap reveals whether the effect is frontal, posterior, lateralised,
+or globally distributed.
+
+The difference topomap — patient values minus control values — shows
+where the two groups diverge most strongly. This is one of the most
+common displays in clinical EEG research.
+
+------------------------------------------------------------------------
+Raincloud Plots: Seeing the Whole Distribution
+------------------------------------------------------------------------
+
+Standard boxplots show the median and quartiles, but hide everything else.
+A distribution that is bimodal, skewed, or has a long tail looks identical
+to a symmetric one in a boxplot.
+
+Raincloud plots solve this by combining three layers:
+    Cloud    — a smoothed density curve (KDE) showing the distribution shape.
+    Umbrella — a narrow boxplot showing the median and interquartile range.
+    Rain     — individual data points scattered horizontally.
+
+Together, these three layers show the summary statistics, the shape, and
+the individual observations simultaneously. This is especially important
+in neuroscience, where small sample sizes mean every data point matters.
+
+------------------------------------------------------------------------
+Correlation Matrices: Relationships Among Features
+------------------------------------------------------------------------
+
+Frequency bands are not always independent of each other. If alpha power
+rises, does beta power also rise? Does it fall? A correlation matrix
+answers this systematically for every pair of features.
+
+Each cell in the matrix shows the Pearson correlation between two
+frequency bands, ranging from -1 (perfectly anti-correlated) to +1
+(perfectly correlated). Displaying this as a colour map — with warm
+colours for positive correlations and cool colours for negative ones —
+makes the structure of inter-band relationships immediately legible.
+
+Comparing correlation matrices across groups (Control, Patient,
+Treatment) reveals whether the disease state disrupts the normal
+coupling between frequency bands.
+
+------------------------------------------------------------------------
+The Discipline of Publication-Quality Figures
+------------------------------------------------------------------------
+
+A research figure communicates to colleagues, reviewers, and readers
+who did not generate the data. It must be legible, honest, and
+aesthetically clean. Clutter — unnecessary borders, over-saturated
+colours, inconsistent fonts — degrades trust in the science.
+
+The principles of publication-quality figures:
+    Remove redundant ink. Hide top and right axis borders.
+    Use a clear typographic hierarchy. Titles should be larger than labels.
+    Choose colour deliberately. Avoid red/green combinations (colour blindness).
+    Label everything. Every axis, every panel, every colour group.
+    Export at high resolution (300 DPI) for print reproduction.
+
+These conventions are not arbitrary. They evolved because they make
+figures easier to interpret correctly and faster to understand.
+
+
+                                        Day 3
+
+------------------------------------------------------------------------
+Why Data Is Stored as Tables
+------------------------------------------------------------------------
+
+Multi-dimensional arrays are the natural working format for computation,
+but they are a poor format for storage and sharing. A 5D array cannot be
+opened in Excel. It has no column headers. Its meaning is opaque without
+accompanying metadata.
+
+Flat tabular files — CSV format — solve this. In a CSV, every row is a
+single observation fully described by its coordinate columns. Instead of
+storing "the value at position [0, 0, 0, 0, 0]", the CSV stores a row
+with explicit labels: group=Control, timepoint=Baseline, subject=Sub_01,
+channel=Fp1, feature=delta, power_value=0.397.
+
+This long-format representation is self-describing, portable, and
+compatible with every data tool from Excel to SQL to R. The trade-off is
+size: it requires five label columns for every single value, whereas the
+array requires none. For EEG data with tens of thousands of cells, this
+is substantial.
+
+------------------------------------------------------------------------
+Long Format: One Row Per Observation
+------------------------------------------------------------------------
+
+Long format is the standard for tabular scientific data. Every row
+represents one measurement. Every column represents one attribute of
+that measurement. There are no implicit coordinates — everything is
+explicit.
+
+This is sometimes called "tidy data". It is tidy because every variable
+occupies exactly one column, every observation occupies exactly one row,
+and every table contains one kind of information. Tidy data is easy to
+filter, summarise, and merge.
+
+The alternative — wide format — would put all frequency bands as columns
+in a single row. This is more compact but harder to generalise. Long
+format scales naturally to any number of groups, timepoints, or features
+without changing the table structure.
+
+------------------------------------------------------------------------
+Reconstructing the Tensor from the Table
+------------------------------------------------------------------------
+
+Going from a flat CSV back to a 5D array requires understanding what the
+array's five axes represent and what coordinates belong on each axis.
+
+The process is straightforward in principle:
+    Extract the unique values on each axis (the list of groups,
+    timepoints, subjects, channels, features).
+    Allocate an empty 5D array, sized by those unique counts.
+    For each combination of coordinates, look up the corresponding value
+    in the CSV and place it in the correct cell of the array.
+
+The key efficiency insight is to perform the lookup using a dictionary,
+not by searching the CSV each time. The dictionary is built once with a
+full scan of the CSV. After that, every coordinate lookup is instant —
+a direct address retrieval rather than a search.
+
+Cells that have no corresponding row in the CSV remain as NaN (not a
+number). This is intentional. NaN is not zero. It is the explicit
+representation of a missing value. Initialising with NaN rather than
+zero prevents missing data from silently masquerading as a zero
+measurement.
+
+------------------------------------------------------------------------
+Missing Data: Knowing What You Don't Have
+------------------------------------------------------------------------
+
+Real datasets are never complete. Electrodes lose contact. Subjects
+miss sessions. Hardware glitches corrupt recordings. Missing values are
+unavoidable, and how they are handled determines the validity of
+downstream analysis.
+
+The first step is always identification: how many values are missing,
+which features have the most missingness, and whether the pattern is
+random or systematic.
+
+The second step is choosing a strategy:
+
+    Listwise deletion removes any row where even a single feature is
+    missing. This is simple but aggressive — missing data in any one
+    feature eliminates an entire observation across all features.
+
+    Columnwise deletion removes an entire feature if too many of its
+    values are missing. This preserves all observations but sacrifices
+    a whole measurement dimension.
+
+    Pairwise analysis computes statistics using whatever data is
+    available for each pair of features, without discarding any row or
+    column entirely.
+
+    Subject-wise deletion removes a participant entirely if their data
+    falls below a completeness threshold.
+
+There is no universally correct strategy. The choice depends on why data
+is missing, how much is missing, and what the downstream analysis requires.
+
+------------------------------------------------------------------------
+The Missing Data Cascade
+------------------------------------------------------------------------
+
+A counterintuitive property of listwise deletion is that small individual
+missingness rates can compound into large aggregate losses when multiple
+features are involved.
+
+If each of six frequency bands is independently missing ~1.5% of values,
+the probability that at least one is missing in any given row is roughly
+6 × 1.5% = 9%. Nearly one in ten observations is deleted, even though
+no single feature has more than 2% missingness.
+
+This is the missing data cascade. It is not a bug — it is mathematics.
+But it is often overlooked, and it can cause researchers to inadvertently
+discard far more data than intended. Always audit the combined missingness
+rate before applying listwise deletion.
+
+------------------------------------------------------------------------
+Why Data Are Separated and Then Merged
+------------------------------------------------------------------------
+
+EEG signal features and participant demographics are collected by
+different systems at different times. A signal acquisition system records
+electrode power values. A clinical platform records age, sex, and BMI.
+These belong in separate files.
+
+Keeping them separate prevents data corruption (demographic errors cannot
+accidentally overwrite signal data), enables independent quality checking
+of each dataset, and reflects the reality of how clinical research data
+is actually generated.
+
+Merging happens in code, not in collection. The join links each signal
+row to the corresponding participant's demographics using a shared key.
+In a multi-group longitudinal study, subject identifiers alone are not
+sufficient as join keys — the same subject label appears once per group
+and once per timepoint. The composite key must include all three
+coordinates: group, timepoint, and subject ID.
+
+------------------------------------------------------------------------
+Defensive Merging: Never Assume the Join Is Clean
+------------------------------------------------------------------------
+
+A merge that completes without errors is not the same as a merge that is
+correct. Common failure modes include:
+
+    Duplicate demographic records causing rows to multiply unexpectedly.
+    Missing demographic records leaving signal rows with empty demographics.
+    Key mismatches from encoding differences (spaces, capitalisation).
+
+Defensive merging checks for these conditions explicitly, immediately
+after the join, before the merged data is used for anything else:
+
+    The row count must be exactly the same as before the join.
+    All key demographic columns must have zero null values.
+    The lookup table must have no duplicate composite keys.
+
+These are not belt-and-suspenders caution — they are minimum necessary
+checks. Silent data corruption is more dangerous than an explicit error
+because it propagates downstream into analysis results that look correct.
+
+------------------------------------------------------------------------
+The Connection Between the Three Days
+------------------------------------------------------------------------
+
+The three days form a complete cycle:
+
+    Day 1 created structured data — a 5D NumPy array and its metadata.
+    Day 2 visualised that data — turning numbers into interpretable plots.
+    Day 3 showed the round-trip — how the same data lives in a CSV,
+          and how to reconstruct the structured array from the flat table.
+
+The underlying data stayed the same throughout. What changed was the
+representation: array for computation, plot for communication, CSV for
+storage and sharing, enriched merged table for statistical modelling.
+
+Understanding these representations — and how to move between them —
+is the foundational skill for computational neuroscience.
+
+
+================================================================================
+KEY CONCEPTS AT A GLANCE
+================================================================================
+
+  Array shape         The dimensions of a dataset, e.g. (3, 3, 30, 32, 6).
+                      Each number is the size along one axis.
+
+  Indexing            Retrieving a single value by its exact coordinates.
+
+  Slicing             Extracting a subset along one or more axes.
+                      Preserves the array structure.
+
+  Stride              The step size in a slice. Stride 2 selects every
+                      other element. Stride -1 reverses the order.
+
+  Boolean mask        A True/False array used to filter values by condition.
+
+  View                A slice that shares memory with the original array.
+                      Modifying a view modifies the source.
+
+  Copy                An independent duplicate. Safe to modify without
+                      affecting the source.
+
+  Reshape             Rearranging dimensions without changing values.
+                      Common when preparing data for ML libraries.
+
+  Transpose           Reordering the axes of an array.
+
+  Reduction           Collapsing an axis by computing a summary statistic
+                      (mean, sum, standard deviation).
+
+  Long format         A table where each row is one observation,
+                      fully described by its coordinate columns.
+
+  Wide format         A table where each variable is a column. Compact
+                      but harder to generalise.
+
+  NaN                 Not a Number. The explicit marker for a missing value.
+                      Different from zero.
+
+  Composite key       Multiple columns combined to uniquely identify a row
+                      in a dataset where no single column is sufficient.
+
+  Left join           A merge that keeps all rows from the left table and
+                      adds matching columns from the right table.
+
+  Listwise deletion   Removing rows with any missing value.
+                      Simple, but compounds across features.
+
+  SEM                 Standard Error of the Mean. Measures how precisely
+                      the sample mean estimates the true population mean.
+
+  Topomap             A colour map of electrode values interpolated across
+                      the scalp surface. Shows spatial distribution.
+
+  KDE                 Kernel Density Estimate. A smoothed representation
+                      of a distribution's shape.
+
+  Raincloud plot      A composite visualisation combining KDE density,
+                      boxplot, and individual data points.
