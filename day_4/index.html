@@ -1,462 +1,2117 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Day 4: Data Cleaning: Downsampling, Bad Channels & Segments &mdash; EEG Analysis Odyssey</title>
-    <meta name="description" content="Why we downsample, how to catch broken electrodes, and when to cut corrupted time windows &mdash; the essential quality control pipeline every EEG analysis begins with." />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --bg-deep: #05091a;
-            --text-main: #F0F4FF;
-            --text-muted: #B8C4E0;
-            --accent-solid: #A5B4FC;
-            --accent-teal-solid: #2DD4BF;
-            --glass-bg: rgba(99, 102, 241, 0.10);
-            --glass-border: rgba(165, 180, 252, 0.35);
-            --code-bg: rgba(15, 15, 58, 0.85);
-        }
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        html { scroll-behavior: smooth; }
-        body {
-            background-color: var(--bg-deep);
-            color: var(--text-main);
-            font-family: 'Inter', sans-serif;
-            line-height: 1.75;
-            overflow-x: hidden;
-            -webkit-font-smoothing: antialiased;
-        }
-        h1, h2, h3, h4 { font-family: 'Playfair Display', serif; font-weight: 400; }
-        p { text-align: justify; }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Day 4: Filtering, Nyquist and Bad Channel Detection - EEG Analysis Odyssey</title>
+  <meta name="description"
+    content="Graduate-level: digital filtering theory, Nyquist theorem, aliasing, filter order and artefacts, causal vs acausal filters, CleanRawData ASR algorithm, RANSAC intuition, spherical-spline interpolation." />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap"
+    rel="stylesheet">
+  <style>
+    :root {
+      --bg-deep: #05091a;
+      --text-main: #F0F4FF;
+      --text-muted: #B8C4E0;
+      --accent-solid: #A5B4FC;
+      --accent-teal-solid: #2DD4BF;
+      --glass-bg: rgba(99, 102, 241, 0.10);
+      --glass-border: rgba(165, 180, 252, 0.35);
+      --code-bg: rgba(10, 12, 40, 0.92);
+    }
 
-        .ambient-background {
-            position: fixed; top: 0; left: 0;
-            width: 100vw; height: 100vh;
-            background:
-                radial-gradient(ellipse at 15% 55%, rgba(99, 102, 241, 0.55), transparent 45%),
-                radial-gradient(ellipse at 85% 15%, rgba(20, 184, 166, 0.50), transparent 45%),
-                radial-gradient(ellipse at 50% 95%, rgba(167, 139, 250, 0.30), transparent 50%);
-            filter: blur(60px); z-index: -2;
-            animation: breathe 12s infinite alternate ease-in-out;
-        }
-        @keyframes breathe {
-            0% { transform: scale(1); opacity: 0.85; }
-            100% { transform: scale(1.08); opacity: 1; }
-        }
-        canvas { position: fixed; top: 0; left: 0; z-index: -1; pointer-events: none; }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
 
-        /* Nav */
-        .top-nav {
-            position: sticky; top: 0; z-index: 100;
-            display: flex; align-items: center; justify-content: space-between;
-            padding: 14px 5%;
-            background: rgba(5, 9, 26, 0.85);
-            backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
-            border-bottom: 1px solid var(--glass-border);
-        }
-        .back-link { display: flex; align-items: center; gap: 8px; color: var(--accent-solid); text-decoration: none; font-size: 0.85rem; font-weight: 600; letter-spacing: 0.5px; transition: color 0.2s, gap 0.2s; white-space: nowrap; }
-        .back-link:hover { color: #fff; gap: 12px; }
-        .nav-day-label { font-size: 0.75rem; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: var(--accent-teal-solid); text-shadow: 0 0 12px rgba(45, 212, 191, 0.7); white-space: nowrap; }
-        .nav-arrows { display: flex; align-items: center; gap: 10px; }
-        .nav-arrow-btn { padding: 6px 16px; border: 1px solid var(--glass-border); border-radius: 8px; font-size: 0.85rem; font-weight: 500; color: var(--text-muted); text-decoration: none; transition: all 0.3s ease; display: inline-flex; align-items: center; background: rgba(99, 102, 241, 0.08); white-space: nowrap; }
-        .nav-arrow-btn:hover:not(.disabled) { border-color: var(--accent-solid); color: #ffffff; box-shadow: 0 0 12px rgba(165, 180, 252, 0.4); background: rgba(99, 102, 241, 0.25); transform: translateY(-1px); }
-        .nav-arrow-btn.disabled { opacity: 0.3; cursor: not-allowed; pointer-events: none; border-color: rgba(255, 255, 255, 0.05); }
+    html {
+      scroll-behavior: smooth;
+    }
 
-        /* Hero */
-        .hero { padding: 70px 5% 50px; max-width: 960px; margin: 0 auto; text-align: center; position: relative; z-index: 2; width: 100%; }
-        .day-pill { display: inline-block; padding: 6px 20px; border-radius: 999px; background: rgba(99, 102, 241, 0.20); border: 1px solid rgba(165, 180, 252, 0.6); font-size: 0.75rem; font-weight: 800; letter-spacing: 4px; text-transform: uppercase; color: #5EEAD4; margin-bottom: 20px; text-shadow: 0 0 14px rgba(45, 212, 191, 0.8); backdrop-filter: blur(12px); }
-        .hero h1 { font-size: clamp(2.2rem, 5vw, 3.8rem); line-height: 1.1; letter-spacing: -0.02em; color: #fff; text-shadow: 0 0 40px rgba(165, 180, 252, 0.9), 0 0 80px rgba(99, 102, 241, 0.5); margin-bottom: 16px; }
-        .hero-subtitle { font-size: clamp(1rem, 2vw, 1.2rem); color: #C8D5F0; max-width: 700px; margin: 0 auto 28px; font-family: 'Inter', sans-serif; text-align: center; }
-        .highlight { color: #C4B5FD; text-shadow: 0 0 30px rgba(165, 180, 252, 1), 0 0 60px rgba(99, 102, 241, 0.6); }
-        .highlight-teal { color: #5EEAD4; text-shadow: 0 0 25px rgba(45, 212, 191, 0.9); }
-        .badges { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
-        .badge { padding: 6px 16px; border-radius: 999px; background: rgba(99, 102, 241, 0.15); border: 1px solid rgba(165, 180, 252, 0.5); font-size: 0.78rem; font-weight: 500; color: #E0E7FF; backdrop-filter: blur(8px); }
+    body {
+      background-color: var(--bg-deep);
+      color: var(--text-main);
+      font-family: Inter, sans-serif;
+      line-height: 1.78;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
 
-        /* Article */
-        article { max-width: 860px; margin: 0 auto; padding: 0 5% 80px; position: relative; z-index: 2; }
-        .section-block { margin-bottom: 56px; }
-        .phase-header { display: flex; align-items: center; gap: 16px; margin-bottom: 20px; }
-        .phase-number { width: 48px; height: 48px; border-radius: 50%; flex-shrink: 0; background: linear-gradient(135deg, #6366F1, #8B5CF6); border: 2px solid rgba(165, 180, 252, 0.5); box-shadow: 0 0 20px rgba(99, 102, 241, 0.6); display: flex; align-items: center; justify-content: center; font-family: 'Playfair Display', serif; font-size: 1.3rem; color: #fff; }
-        .phase-header h2 { font-size: clamp(1.4rem, 3vw, 1.9rem); color: #fff; text-shadow: 0 0 20px rgba(165, 180, 252, 0.4); border: none; padding: 0; margin: 0; display: block; }
+    h1,
+    h2,
+    h3,
+    h4 {
+      font-family: "Playfair Display", serif;
+      font-weight: 400;
+    }
 
-        /* Glass card */
-        .glass-card { background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: 16px; padding: 28px 32px; backdrop-filter: blur(12px); margin: 20px 0; box-shadow: 0 4px 30px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.07); transition: border-color 0.3s, box-shadow 0.3s; }
-        .glass-card:hover { border-color: rgba(165, 180, 252, 0.55); box-shadow: 0 8px 40px rgba(99, 102, 241, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1); }
-        .glass-card p + p { margin-top: 10px; }
+    p {
+      text-align: justify;
+    }
 
-        /* Code block */
-        .code-block { background: var(--code-bg); border: 1px solid rgba(165, 180, 252, 0.20); border-radius: 12px; padding: 20px 24px; margin: 16px 0; overflow-x: auto; position: relative; }
-        .code-block pre { font-family: 'JetBrains Mono', monospace; font-size: 0.84rem; color: #E0E7FF; line-height: 1.7; white-space: pre; }
-        .c-comment { color: #6B7DB3; font-style: italic; }
-        .c-keyword { color: #C4B5FD; font-weight: 500; }
-        .c-func { color: #5EEAD4; }
-        .c-string { color: #86efac; }
-        .c-number { color: #FCA5A5; }
-        .c-var { color: #A5B4FC; }
-        .code-tag { position: absolute; top: 12px; right: 16px; font-family: 'Inter', sans-serif; font-size: 0.62rem; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: rgba(165, 180, 252, 0.5); }
+    .ambient-background {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: radial-gradient(ellipse at 10% 60%, rgba(99, 102, 241, .50), transparent 45%), radial-gradient(ellipse at 88% 12%, rgba(20, 184, 166, .45), transparent 42%), radial-gradient(ellipse at 55% 90%, rgba(251, 113, 133, .22), transparent 50%);
+      filter: blur(65px);
+      z-index: -2;
+      animation: breathe 14s infinite alternate ease-in-out;
+    }
 
-        /* Insight box */
-        .insight-box { border-left: 3px solid var(--accent-teal-solid); padding: 18px 24px; margin: 24px 0; background: rgba(20, 184, 166, 0.07); border-radius: 0 12px 12px 0; }
-        .insight-box p { color: #C8D5F0; text-align: left; }
-        .insight-box strong { color: var(--accent-teal-solid); }
-        .insight-box.purple { border-left-color: #A5B4FC; background: rgba(99, 102, 241, 0.07); }
-        .insight-box.purple strong { color: #A5B4FC; }
+    @keyframes breathe {
+      0% {
+        transform: scale(1);
+        opacity: .85
+      }
 
-        /* Warning box */
-        .warn-box { border-left: 3px solid #FCA5A5; padding: 18px 24px; margin: 24px 0; background: rgba(220, 38, 38, 0.07); border-radius: 0 12px 12px 0; }
-        .warn-box p { color: #C8D5F0; text-align: left; }
-        .warn-box strong { color: #FCA5A5; }
+      100% {
+        transform: scale(1.07);
+        opacity: 1
+      }
+    }
 
-        /* Divider / Grid */
-        .section-divider { border: none; height: 1px; background: linear-gradient(90deg, transparent, var(--glass-border), transparent); margin: 48px 0; }
-        .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0; }
+    canvas.bg-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      z-index: -1;
+      pointer-events: none;
+    }
 
-        /* Footer */
-        footer { text-align: center; padding: 40px 20px; color: var(--text-muted); font-size: 0.85rem; border-top: 1px solid var(--glass-border); position: relative; z-index: 2; }
-        footer a { color: var(--accent-solid); text-decoration: none; }
-        footer a:hover { text-decoration: underline; }
+    .top-nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 5%;
+      background: rgba(5, 9, 26, .88);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--glass-border);
+    }
 
-        /* Scrollbar */
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: #050814; }
-        ::-webkit-scrollbar-thumb { background: rgba(129, 140, 248, 0.4); border-radius: 3px; }
+    .back-link {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--accent-solid);
+      text-decoration: none;
+      font-size: .85rem;
+      font-weight: 600;
+      transition: color .2s, gap .2s;
+      white-space: nowrap;
+    }
 
-        /* Inline code */
-        code { font-family: 'JetBrains Mono', monospace; font-size: 0.86em; background: var(--code-bg); padding: 2px 7px; border-radius: 5px; color: #A5B4FC; border: 1px solid rgba(165, 180, 252, 0.15); }
+    .back-link:hover {
+      color: #fff;
+      gap: 12px;
+    }
 
-        /* Responsive */
-        @media (max-width: 640px) {
-            .two-col { grid-template-columns: 1fr; }
-            .glass-card { padding: 20px; }
-        }
-    </style>
+    .nav-day-label {
+      font-size: .75rem;
+      font-weight: 700;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--accent-teal-solid);
+      text-shadow: 0 0 12px rgba(45, 212, 191, .7);
+      white-space: nowrap;
+    }
+
+    .nav-arrows {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .nav-arrow-btn {
+      padding: 6px 16px;
+      border: 1px solid var(--glass-border);
+      border-radius: 8px;
+      font-size: .85rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: all .3s ease;
+      display: inline-flex;
+      align-items: center;
+      background: rgba(99, 102, 241, .08);
+    }
+
+    .nav-arrow-btn:hover:not(.disabled) {
+      border-color: var(--accent-solid);
+      color: #fff;
+      box-shadow: 0 0 12px rgba(165, 180, 252, .4);
+      background: rgba(99, 102, 241, .25);
+      transform: translateY(-1px);
+    }
+
+    .nav-arrow-btn.disabled {
+      opacity: .3;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+
+    .hero {
+      padding: 72px 5% 52px;
+      max-width: 980px;
+      margin: 0 auto;
+      text-align: center;
+      position: relative;
+      z-index: 2;
+      width: 100%;
+    }
+
+    .day-pill {
+      display: inline-block;
+      padding: 6px 22px;
+      border-radius: 999px;
+      background: rgba(99, 102, 241, .20);
+      border: 1px solid rgba(165, 180, 252, .6);
+      font-size: .75rem;
+      font-weight: 800;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      color: #5EEAD4;
+      margin-bottom: 22px;
+      text-shadow: 0 0 14px rgba(45, 212, 191, .8);
+      backdrop-filter: blur(12px);
+    }
+
+    .hero h1 {
+      font-size: clamp(2rem, 5vw, 3.6rem);
+      line-height: 1.1;
+      letter-spacing: -.02em;
+      color: #fff;
+      text-shadow: 0 0 40px rgba(165, 180, 252, .9), 0 0 80px rgba(99, 102, 241, .5);
+      margin-bottom: 18px;
+    }
+
+    .hero-subtitle {
+      font-size: clamp(1rem, 1.8vw, 1.18rem);
+      color: #C8D5F0;
+      max-width: 720px;
+      margin: 0 auto 30px;
+      text-align: center;
+    }
+
+    .highlight {
+      color: #C4B5FD;
+      text-shadow: 0 0 30px rgba(165, 180, 252, 1), 0 0 60px rgba(99, 102, 241, .6);
+    }
+
+    .highlight-teal {
+      color: #5EEAD4;
+      text-shadow: 0 0 25px rgba(45, 212, 191, .9);
+    }
+
+    .badges {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    .badge {
+      padding: 6px 16px;
+      border-radius: 999px;
+      background: rgba(99, 102, 241, .15);
+      border: 1px solid rgba(165, 180, 252, .45);
+      font-size: .78rem;
+      font-weight: 500;
+      color: #E0E7FF;
+      backdrop-filter: blur(8px);
+    }
+
+    .toc-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 12px;
+      margin: 24px 0;
+    }
+
+    .toc-item {
+      background: rgba(99, 102, 241, .08);
+      border: 1px solid var(--glass-border);
+      border-radius: 12px;
+      padding: 14px 18px;
+      transition: all .25s;
+      text-decoration: none;
+      display: block;
+    }
+
+    .toc-item:hover {
+      background: rgba(99, 102, 241, .18);
+      border-color: var(--accent-solid);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 24px rgba(99, 102, 241, .25);
+    }
+
+    .toc-num {
+      font-family: "JetBrains Mono", monospace;
+      font-size: .7rem;
+      color: var(--accent-teal-solid);
+      font-weight: 600;
+      margin-bottom: 4px;
+      letter-spacing: 1px;
+    }
+
+    .toc-label {
+      font-size: .88rem;
+      color: var(--text-main);
+      font-weight: 500;
+    }
+
+    article {
+      max-width: 880px;
+      margin: 0 auto;
+      padding: 0 5% 100px;
+      position: relative;
+      z-index: 2;
+    }
+
+    .section-block {
+      margin-bottom: 64px;
+    }
+
+    /* ── Phase Header & Section Numbers (Day 1, 2, 3 Signature Style) ───────────── */
+    .phase-header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .phase-number {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      background: linear-gradient(135deg, #6366F1, #8B5CF6);
+      border: 2px solid rgba(165, 180, 252, .5);
+      box-shadow: 0 0 20px rgba(99, 102, 241, .6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Playfair Display', serif;
+      font-size: 1.3rem;
+      color: #fff;
+    }
+
+    .phase-header h2 {
+      font-size: clamp(1.4rem, 3vw, 1.9rem);
+      color: #fff;
+      text-shadow: 0 0 20px rgba(165, 180, 252, .4);
+      border: none;
+      padding: 0;
+      margin: 0;
+      display: block;
+    }
+
+    .glass-card {
+      background: var(--glass-bg);
+      border: 1px solid var(--glass-border);
+      border-radius: 16px;
+      padding: 28px 32px;
+      backdrop-filter: blur(12px);
+      margin: 20px 0;
+      box-shadow: 0 4px 30px rgba(0, 0, 0, .35), inset 0 1px 0 rgba(255, 255, 255, .07);
+      transition: border-color .3s, box-shadow .3s;
+    }
+
+    .glass-card:hover {
+      border-color: rgba(165, 180, 252, .55);
+      box-shadow: 0 8px 40px rgba(99, 102, 241, .2), inset 0 1px 0 rgba(255, 255, 255, .1);
+    }
+
+    .glass-card p+p {
+      margin-top: 12px;
+    }
+
+    .glass-card h4 {
+      color: var(--accent-solid);
+      margin: 20px 0 8px;
+      font-size: 1rem;
+      font-family: Inter, sans-serif;
+      font-weight: 600;
+    }
+
+    .glass-card ul,
+    .glass-card ol {
+      padding-left: 22px;
+      margin-top: 10px;
+    }
+
+    .glass-card li {
+      margin-bottom: 8px;
+      color: var(--text-muted);
+    }
+
+    .glass-card li strong {
+      color: var(--text-main);
+    }
+
+    .code-block {
+      background: var(--code-bg);
+      border: 1px solid rgba(165, 180, 252, .18);
+      border-radius: 14px;
+      padding: 22px 26px;
+      margin: 18px 0;
+      overflow-x: auto;
+      position: relative;
+    }
+
+    .code-block pre {
+      font-family: "JetBrains Mono", monospace;
+      font-size: .84rem;
+      color: #E0E7FF;
+      line-height: 1.72;
+      white-space: pre;
+    }
+
+    .c-comment {
+      color: #6B7DB3;
+      font-style: italic;
+    }
+
+    .c-keyword {
+      color: #C4B5FD;
+      font-weight: 500;
+    }
+
+    .c-func {
+      color: #5EEAD4;
+    }
+
+    .c-string {
+      color: #86efac;
+    }
+
+    .c-number {
+      color: #FCA5A5;
+    }
+
+    .c-var {
+      color: #A5B4FC;
+    }
+
+    .code-tag {
+      position: absolute;
+      top: 12px;
+      right: 16px;
+      font-family: Inter, sans-serif;
+      font-size: .62rem;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: rgba(165, 180, 252, .5);
+    }
+
+    .insight-box {
+      border-left: 3px solid var(--accent-teal-solid);
+      padding: 18px 24px;
+      margin: 24px 0;
+      background: rgba(20, 184, 166, .07);
+      border-radius: 0 12px 12px 0;
+    }
+
+    .insight-box p {
+      color: #C8D5F0;
+      text-align: left;
+    }
+
+    .insight-box p+p {
+      margin-top: 8px;
+    }
+
+    .insight-box strong {
+      color: var(--accent-teal-solid);
+    }
+
+    .insight-box.purple {
+      border-left-color: #A5B4FC;
+      background: rgba(99, 102, 241, .07);
+    }
+
+    .insight-box.purple strong {
+      color: #A5B4FC;
+    }
+
+    .insight-box.amber {
+      border-left-color: #FCD34D;
+      background: rgba(252, 211, 77, .06);
+    }
+
+    .insight-box.amber strong {
+      color: #FCD34D;
+    }
+
+    .insight-box.rose {
+      border-left-color: #FB7185;
+      background: rgba(251, 113, 133, .06);
+    }
+
+    .insight-box.rose strong {
+      color: #FB7185;
+    }
+
+    .warn-box {
+      border-left: 3px solid #FCA5A5;
+      padding: 18px 24px;
+      margin: 24px 0;
+      background: rgba(220, 38, 38, .07);
+      border-radius: 0 12px 12px 0;
+    }
+
+    .warn-box p {
+      color: #C8D5F0;
+      text-align: left;
+    }
+
+    .warn-box strong {
+      color: #FCA5A5;
+    }
+
+    .math-box {
+      background: rgba(10, 12, 40, .90);
+      border: 1px solid rgba(165, 180, 252, .22);
+      border-radius: 14px;
+      padding: 22px 28px;
+      margin: 20px 0;
+      text-align: center;
+    }
+
+    .math-box .formula {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 1.1rem;
+      color: #A5B4FC;
+      letter-spacing: .5px;
+    }
+
+    .math-box .formula-label {
+      font-size: .8rem;
+      color: var(--text-muted);
+      margin-top: 8px;
+    }
+
+    .canvas-wrap {
+      background: rgba(6, 10, 30, .92);
+      border: 1px solid var(--glass-border);
+      border-radius: 16px;
+      padding: 20px;
+      margin: 20px 0;
+      overflow: hidden;
+    }
+
+    .canvas-wrap canvas {
+      display: block;
+      width: 100%;
+      height: auto;
+      border-radius: 8px;
+    }
+
+    .canvas-label {
+      font-size: .8rem;
+      color: var(--text-muted);
+      text-align: center;
+      margin-top: 10px;
+      line-height: 1.5;
+    }
+
+    .demo-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      align-items: center;
+      margin: 16px 0;
+    }
+
+    .demo-controls label {
+      font-size: .82rem;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .demo-controls select,
+    .demo-controls input[type=range] {
+      background: rgba(15, 18, 60, .8);
+      border: 1px solid var(--glass-border);
+      border-radius: 8px;
+      color: var(--text-main);
+      padding: 6px 12px;
+      font-size: .82rem;
+      cursor: pointer;
+    }
+
+    .demo-controls input[type=range] {
+      padding: 0;
+      width: 120px;
+      accent-color: var(--accent-solid);
+    }
+
+    .val-display {
+      font-family: "JetBrains Mono", monospace;
+      font-size: .8rem;
+      color: var(--accent-solid);
+      min-width: 60px;
+    }
+
+    .demo-btn {
+      padding: 8px 18px;
+      border-radius: 8px;
+      border: 1px solid var(--glass-border);
+      background: rgba(99, 102, 241, .08);
+      color: var(--accent-solid);
+      font-size: .84rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all .3s ease;
+      font-family: Inter, sans-serif;
+    }
+
+    .demo-btn:hover:not(.disabled) {
+      border-color: var(--accent-solid);
+      color: #fff;
+      box-shadow: 0 0 12px rgba(165, 180, 252, .4);
+      background: rgba(99, 102, 241, .25);
+      transform: translateY(-1px);
+    }
+
+    .demo-btn.active {
+      background: rgba(99, 102, 241, .35);
+      color: #fff;
+      border-color: var(--accent-solid);
+      box-shadow: 0 0 16px rgba(165, 180, 252, .5);
+    }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin: 20px 0;
+    }
+
+    .step-row {
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+      margin: 12px 0;
+    }
+
+    .step-badge {
+      min-width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, rgba(99, 102, 241, .5), rgba(139, 92, 246, .5));
+      border: 1px solid rgba(165, 180, 252, .4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: "JetBrains Mono", monospace;
+      font-size: .82rem;
+      font-weight: 700;
+      color: #A5B4FC;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .step-content {
+      font-size: .92rem;
+      color: var(--text-muted);
+    }
+
+    .step-content strong {
+      color: var(--text-main);
+    }
+
+    .compare-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+      font-size: .88rem;
+    }
+
+    .compare-table th {
+      background: rgba(99, 102, 241, .25);
+      color: var(--accent-solid);
+      padding: 12px 16px;
+      text-align: left;
+      font-weight: 600;
+      border-bottom: 2px solid rgba(165, 180, 252, .3);
+    }
+
+    .compare-table td {
+      padding: 11px 16px;
+      border-bottom: 1px solid rgba(165, 180, 252, .1);
+      color: var(--text-muted);
+      vertical-align: top;
+    }
+
+    .compare-table tr:hover td {
+      background: rgba(99, 102, 241, .06);
+    }
+
+    .compare-table td:first-child {
+      color: var(--text-main);
+      font-weight: 500;
+    }
+
+    .good {
+      color: #34d399;
+    }
+
+    .bad {
+      color: #FB7185;
+    }
+
+    .demo-link-card {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      background: linear-gradient(135deg, rgba(99, 102, 241, .18), rgba(45, 212, 191, .12));
+      border: 1px solid rgba(165, 180, 252, .45);
+      border-radius: 16px;
+      padding: 22px 28px;
+      margin: 24px 0;
+      text-decoration: none;
+      transition: all .3s;
+    }
+
+    .demo-link-card:hover {
+      border-color: var(--accent-solid);
+      box-shadow: 0 0 30px rgba(99, 102, 241, .3);
+      transform: translateY(-2px);
+    }
+
+    .demo-link-card .icon {
+      font-size: 2.4rem;
+    }
+
+    .demo-link-card .demo-text h4 {
+      font-family: Inter, sans-serif;
+      font-weight: 600;
+      font-size: 1rem;
+      color: #fff;
+      margin-bottom: 4px;
+    }
+
+    .demo-link-card .demo-text p {
+      font-size: .84rem;
+      color: var(--text-muted);
+      text-align: left;
+    }
+
+    .section-divider {
+      border: none;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--glass-border), transparent);
+      margin: 56px 0;
+    }
+
+    footer {
+      text-align: center;
+      padding: 44px 20px;
+      color: var(--text-muted);
+      font-size: .85rem;
+      border-top: 1px solid var(--glass-border);
+      position: relative;
+      z-index: 2;
+    }
+
+    footer a {
+      color: var(--accent-solid);
+      text-decoration: none;
+    }
+
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #050814;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: rgba(129, 140, 248, .4);
+      border-radius: 3px;
+    }
+
+    code {
+      font-family: "JetBrains Mono", monospace;
+      font-size: .86em;
+      background: rgba(15, 15, 58, .85);
+      padding: 2px 7px;
+      border-radius: 5px;
+      color: #A5B4FC;
+      border: 1px solid rgba(165, 180, 252, .15);
+    }
+
+    @media(max-width:640px) {
+      .two-col {
+        grid-template-columns: 1fr;
+      }
+
+      .glass-card {
+        padding: 20px;
+      }
+
+      .demo-link-card {
+        flex-direction: column;
+      }
+    }
+  </style>
 </head>
+
 <body>
-    <div class="ambient-background"></div>
-    <canvas id="neural-canvas"></canvas>
+  <div class="ambient-background"></div>
+  <canvas class="bg-canvas" id="neural-canvas"></canvas>
+  <nav class="top-nav">
+    <a href="../index.html" class="back-link">&#8592; Back to Odyssey</a>
+    <span class="nav-day-label">Day 4 of 20</span>
+    <div class="nav-arrows">
+      <a href="../day_3/index.html" class="nav-arrow-btn prev-day">&#8592; Prev</a>
+      <a href="../day_5/index.html" class="nav-arrow-btn next-day">Next &#8594;</a>
+    </div>
+  </nav>
+  <header class="hero">
+    <div class="day-pill">&#10022; Day 04 &middot; Signal Conditioning</div>
+    <h1><span class="highlight">Filtering</span>, Nyquist &amp;<br><span class="highlight-teal">Bad Channel
+        Detection</span></h1>
+    <p class="hero-subtitle">From convolution kernels and phase distortion to the CleanRawData algorithm,
+      spherical-spline interpolation, and the elegant logic of RANSAC &mdash; the rigorous signal processing foundations
+      every EEG analyst must master.</p>
+    <div class="badges">
+      <span class="badge">&#128202; Nyquist Theorem</span>
+      <span class="badge">&#9888; Aliasing</span>
+      <span class="badge">&#129518; Filter Order</span>
+      <span class="badge">&#8987; Causal vs Acausal</span>
+      <span class="badge">&#129529; CleanRawData / ASR</span>
+      <span class="badge">&#127919; RANSAC Intuition</span>
+      <span class="badge">&#127760; Spherical Splines</span>
+    </div>
+  </header>
+  <article>
+    <div class="section-block">
+      <div class="glass-card">
+        <p>Today we go deep. Digital signal processing is not just a preprocessing chore &mdash; it encodes fundamental
+          assumptions about your data that propagate silently into every downstream analysis. We will build genuine
+          intuition for what a filter <em>does</em> to a signal in both time and frequency domains, understand why naive
+          downsampling is catastrophic, and dissect the automated bad-channel detection machinery that modern EEG
+          pipelines rely on.</p>
+      </div>
+      <div class="toc-grid" style="margin-top:24px;">
+        <a class="toc-item" href="#filtering">
+          <div class="toc-num">01 &mdash;</div>
+          <div class="toc-label">The Mathematics of Filtering</div>
+        </a>
+        <a class="toc-item" href="#nyquist">
+          <div class="toc-num">02 &mdash;</div>
+          <div class="toc-label">Nyquist &amp; Aliasing</div>
+        </a>
+        <a class="toc-item" href="#order">
+          <div class="toc-num">03 &mdash;</div>
+          <div class="toc-label">Filter Order &amp; Artefacts</div>
+        </a>
+        <a class="toc-item" href="#causal">
+          <div class="toc-num">04 &mdash;</div>
+          <div class="toc-label">Causal vs. Acausal Filters</div>
+        </a>
+        <a class="toc-item" href="#badchan">
+          <div class="toc-num">05 &mdash;</div>
+          <div class="toc-label">Bad Channel Detection (ASR)</div>
+        </a>
+        <a class="toc-item" href="#ransac">
+          <div class="toc-num">06 &mdash;</div>
+          <div class="toc-label">RANSAC Intuition</div>
+        </a>
+        <a class="toc-item" href="#interp">
+          <div class="toc-num">07 &mdash;</div>
+          <div class="toc-label">Interpolation</div>
+        </a>
+      </div>
+    </div>
+    <hr class="section-divider">
 
-    <nav class="top-nav">
-        <a href="../index.html" class="back-link">&#x2190; Back to Odyssey</a>
-        <span class="nav-day-label">Day 4 of 20</span>
-        <div class="nav-arrows">
-            <a href="../day_3/index.html" class="nav-arrow-btn prev-day" title="Previous Day: Python Basics: Dataframes to Arrays">&#x2190; Prev</a>
-            <a href="../day_5/index.html" class="nav-arrow-btn next-day" title="Next Day: Data Cleaning: ASR">Next &#x2192;</a>
+    <!-- SECTION 1: FILTERING -->
+    <div class="section-block" id="filtering">
+      <div class="phase-header">
+        <div class="phase-number">1</div>
+        <h2>The Mathematics of Filtering<br><small
+            style="font-size:.6em;font-family:Inter,sans-serif;color:var(--text-muted);font-weight:400;">Convolution,
+            Transfer Functions &amp; the Frequency Domain</small></h2>
+      </div>
+      <div class="glass-card">
+        <p>A <strong>digital filter</strong> is an operation that selectively attenuates or passes frequencies in a
+          discrete-time signal. At its core, linear time-invariant (LTI) filtering is implemented as
+          <strong>convolution</strong> between the input signal <em>x[n]</em> and the filter impulse response
+          <em>h[n]</em>. Convolution in time is equivalent to <strong>multiplication in the frequency domain</strong>
+          (the Convolution Theorem) &mdash; which is why we describe filters using their <strong>frequency
+            response</strong> H(f).</p>
+        <h4>The Four Classic Filter Types</h4>
+        <ul>
+          <li><strong>Low-pass filter (LPF):</strong> Passes frequencies below cutoff f<sub>c</sub>. Used for
+            anti-aliasing before downsampling and noise removal.</li>
+          <li><strong>High-pass filter (HPF):</strong> Passes frequencies above f<sub>c</sub>. Removes slow DC drift and
+            skin-potential artefacts. The most debated filter in EEG (&gt;0.1 Hz vs 1 Hz wars).</li>
+          <li><strong>Band-pass filter:</strong> HPF + LPF combined. Isolates a frequency band of interest, e.g.,
+            4&ndash;8 Hz theta.</li>
+          <li><strong>Band-stop / Notch:</strong> Attenuates a narrow band &mdash; typically 50/60 Hz powerline noise
+            and harmonics.</li>
+        </ul>
+        <h4>Two Implementation Families</h4>
+        <ul>
+          <li><strong>FIR (Finite Impulse Response):</strong> Always stable, achieves exact linear phase (zero phase
+            shift), but requires more coefficients for steep roll-off. MNE defaults to windowed-sinc FIR design.</li>
+          <li><strong>IIR (Infinite Impulse Response):</strong> Uses feedback, more computationally efficient with
+            steeper roll-off, but has non-linear phase and can become unstable. Types: Butterworth (maximally flat),
+            Chebyshev (steeper, passband ripple), Elliptic (steepest, ripple in both bands).</li>
+        </ul>
+      </div>
+      <div class="math-box">
+        <div class="formula">y[n] = (x * h)[n] = &sum;<sub>k</sub> x[k] &middot; h[n &minus; k]</div>
+        <div class="formula-label">Time-domain convolution &equiv; frequency-domain multiplication: Y(f) = X(f) &times;
+          H(f)</div>
+      </div>
+      <div class="canvas-wrap">
+        <div class="demo-controls">
+          <label>Filter Type: <select id="filt-type">
+              <option value="lowpass">Low-pass</option>
+              <option value="highpass">High-pass</option>
+              <option value="bandpass">Band-pass</option>
+              <option value="notch">Notch (60 Hz)</option>
+            </select></label>
+          <label>Cutoff Hz: <input type="range" id="filt-cutoff" min="1" max="120" value="40" step="1"><span
+              class="val-display" id="cutoff-val">40 Hz</span></label>
+          <label>Order: <select id="filt-order">
+              <option value="1">1st</option>
+              <option value="2" selected>2nd</option>
+              <option value="4">4th</option>
+              <option value="8">8th</option>
+            </select></label>
         </div>
-    </nav>
+        <canvas id="filter-canvas" height="260"></canvas>
+        <div class="canvas-label">Frequency response (magnitude in dB). Note how filter order controls roll-off
+          steepness and transition bandwidth.</div>
+      </div>
+      <div class="insight-box">
+        <p><strong>Key insight:</strong> The frequency response tells you exactly how much each frequency component of
+          your EEG will be amplified or attenuated. A flat passband (0 dB) means faithful reproduction. The transition
+          band between passband and stopband narrows as order increases &mdash; but at the cost of temporal ringing.</p>
+      </div>
+      <div class="code-block"><span class="code-tag">Python / MNE</span>
+        <pre><span class="c-keyword">import</span> mne
 
-    <header class="hero">
-        <div class="day-pill">&#x2726; Day 04 &middot; Preprocessing</div>
-        <h1><span class='highlight'>Downsampling</span>, Bad Channels<br><span class='highlight-teal'>&amp; Segment Rejection</span></h1>
-        <p class="hero-subtitle">Why we downsample, how to catch broken electrodes, and when to cut corrupted time windows &mdash; the essential quality control pipeline every EEG analysis begins with.</p>
-                <div class="badges">
-            <span class="badge">&#x1F50D; Visual Inspection</span>
-            <span class="badge">&#x1F4C9; Nyquist Theorem</span>
-            <span class="badge">&#x1F6E0; raw.resample()</span>
-            <span class="badge">&#x1F9F9; Interpolation</span>
-            <span class="badge">&#x1F4CA; Peak-to-Peak Rejection</span>
+<span class="c-comment"># 1. High-pass to remove DC drift (0.1 Hz is conservative; avoids ringing artefacts in ERP)</span>
+raw.filter(l_freq=<span class="c-number">0.1</span>, h_freq=<span class="c-keyword">None</span>,
+           method=<span class="c-string">"fir"</span>, fir_window=<span class="c-string">"hamming"</span>, fir_design=<span class="c-string">"firwin"</span>)
+
+<span class="c-comment"># 2. Low-pass anti-alias filter BEFORE downsampling (critical!)</span>
+raw.filter(l_freq=<span class="c-keyword">None</span>, h_freq=<span class="c-number">100</span>)
+
+<span class="c-comment"># 3. Notch filter for powerline interference</span>
+raw.notch_filter(freqs=<span class="c-number">60</span>, method=<span class="c-string">"fir"</span>, trans_bandwidth=<span class="c-number">0.5</span>)
+
+<span class="c-comment"># Always inspect the filter kernel before committing!</span>
+mne.viz.plot_filter(raw.info, <span class="c-string">"fir"</span>, l_freq=<span class="c-number">0.1</span>, h_freq=<span class="c-number">100</span>)</pre>
+      </div>
+    </div>
+    <hr class="section-divider">
+
+    <!-- SECTION 2: NYQUIST & ALIASING -->
+    <div class="section-block" id="nyquist">
+      <div class="phase-header">
+        <div class="phase-number">2</div>
+        <h2>Nyquist Theorem &amp; Aliasing<br><small
+            style="font-size:.6em;font-family:Inter,sans-serif;color:var(--text-muted);font-weight:400;">Why Sampling
+            Rate Is Not Just a Storage Decision</small></h2>
+      </div>
+      <div class="glass-card">
+        <p>The <strong>Nyquist&ndash;Shannon Sampling Theorem</strong> (1928/1949) states: a continuous band-limited
+          signal can be perfectly reconstructed from its samples if and only if the sampling rate f<sub>s</sub> exceeds
+          twice the highest frequency component f<sub>max</sub>. The <strong>Nyquist frequency</strong> is the maximum
+          faithfully representable frequency:</p>
+      </div>
+      <div class="math-box">
+        <div class="formula">f<sub>s</sub> &gt; 2 &times; f<sub>max</sub> &nbsp;&nbsp; &rArr; &nbsp;&nbsp;
+          f<sub>Nyquist</sub> = f<sub>s</sub> / 2</div>
+        <div class="formula-label">At 250 Hz sampling rate: Nyquist = 125 Hz. Any EEG energy above 125 Hz will alias if
+          not removed first.</div>
+      </div>
+      <div class="glass-card">
+        <p><strong>Aliasing</strong> occurs when frequencies above the Nyquist limit are present in the signal before
+          sampling. They "fold back" into the representable range and appear as phantom low-frequency signals that are
+          <em>mathematically indistinguishable</em> from genuine neural oscillations. The alias frequency of a signal at
+          frequency f sampled at rate f<sub>s</sub> is:</p>
+      </div>
+      <div class="math-box">
+        <div class="formula">f<sub>alias</sub> = | f &minus; round(f / f<sub>s</sub>) &times; f<sub>s</sub> |</div>
+        <div class="formula-label">Example: A 300 Hz tone sampled at 250 Hz &rarr; f<sub>alias</sub> = |300 -
+          1&times;250| = 50 Hz &mdash; indistinguishable from gamma!</div>
+      </div>
+      <a class="demo-link-card" href="aliasing_demo.html" target="_blank">
+        <div class="icon">&#127925;</div>
+        <div class="demo-text">
+          <h4>&#128640; Interactive Aliasing Demo &rarr;</h4>
+          <p>Open the standalone interactive visualizer: drag the sampling-rate slider and watch high-frequency tones
+            fold into the baseband as aliased ghost signals. Anti-aliasing filter toggle included.</p>
         </div>
-    </header>
+      </a>
+      <div class="glass-card">
+        <h4>The Anti-Aliasing Filter: Your Mandatory Insurance Policy</h4>
+        <p>Before any downsampling step, apply a low-pass filter with cutoff at or below the new Nyquist frequency. This
+          removes energy at frequencies that would alias. Hardware EEG amplifiers include an analog anti-aliasing
+          filter, but its cutoff may not match your downsampling target &mdash; a software anti-aliasing filter is still
+          required.</p>
+        <p>MNE&rsquo;s <code>raw.resample()</code> automatically applies an anti-aliasing FIR filter before decimating.
+          But when filtering and downsampling separately, the order is critical: <strong>filter first, downsample
+            second</strong>.</p>
+      </div>
+      <div class="warn-box">
+        <p><strong>Concrete EEG disaster:</strong> Record at 1024 Hz, downsample directly to 128 Hz without filtering.
+          Muscle EMG energy at 200&ndash;400 Hz aliases down to 24&ndash;128 Hz &mdash; right into your beta and gamma
+          bands. Your "gamma oscillations" are aliased muscle artefacts. This cannot be corrected post-hoc. Irreversible
+          data contamination.</p>
+      </div>
+    </div>
+    <hr class="section-divider">
 
-    <article>
-        <div class="section-block">
-            <div class="glass-card">
-                <p>
-                    Before any analysis, raw EEG data is almost always contaminated &mdash; noisy channels, movement artifacts,
-                    and often sampled at rates far higher than necessary. This day covers the three foundational cleaning operations
-                    that every preprocessing pipeline begins with. Think of it as <strong>quality control</strong> for your neural data:
-                    reduce redundancy (downsample), identify broken sensors (bad channels), and excise corrupted time windows (bad segments).
-                </p>
-            </div>
+    <!-- SECTION 3: FILTER ORDER -->
+    <div class="section-block" id="order">
+      <div class="phase-header">
+        <div class="phase-number">3</div>
+        <h2>Filter Order &amp; Filter Artefacts<br><small
+            style="font-size:.6em;font-family:Inter,sans-serif;color:var(--text-muted);font-weight:400;">Roll-off,
+            Ringing, and the Gibbs Phenomenon</small></h2>
+      </div>
+      <div class="glass-card">
+        <p>The <strong>filter order</strong> determines how steeply the filter transitions from passband to stopband. A
+          first-order Butterworth HPF rolls off at &minus;20 dB/decade; an eighth-order version rolls off at &minus;160
+          dB/decade. Higher order sounds better &mdash; but it comes with serious costs in EEG analysis.</p>
+        <h4>Trade-offs of Higher Filter Order</h4>
+        <ul>
+          <li><strong>Ringing (Gibbs phenomenon):</strong> Any abrupt transition in the frequency domain corresponds to
+            a sinc-like function spreading infinitely in time. A high-order filter applied near a sharp transient
+            creates oscillatory artefacts that spread before and after the event. This is entirely artificial.</li>
+          <li><strong>Increased group delay (IIR only):</strong> Higher-order IIR filters introduce more
+            frequency-dependent phase delay. Different frequency bands arrive at different times, distorting temporal
+            relationships in the EEG.</li>
+          <li><strong>Filter length (FIR):</strong> More taps = more temporal smearing. A 3000-tap FIR at 1000 Hz smears
+            3 seconds of data around every transient.</li>
+        </ul>
+        <h4>The Pre-Stimulus Ringing Artefact: A Critical EEG Pitfall</h4>
+        <p>In ERP research, a 1 Hz high-pass filter with steep roll-off and zero-phase design can create a
+          <em>pre-stimulus</em> negative deflection that mimics a genuine neural prediction response. This is pure
+          ringing &mdash; a filter artefact. Kappenman &amp; Luck (2010) demonstrated how inappropriate high-pass
+          filtering creates spurious ERP components that have been published as real findings.</p>
+      </div>
+      <div class="canvas-wrap">
+        <div class="demo-controls">
+          <span style="font-size:.82rem;color:var(--text-muted);">Ringing Demo: Apply HPF to a step function (simulates
+            large ERP transient)</span>
+          <label>HPF Cutoff: <input type="range" id="ring-cutoff" min="0.1" max="5" value="1" step="0.1"><span
+              class="val-display" id="ring-val">1.0 Hz</span></label>
+          <label>Order: <select id="ring-order">
+              <option value="1">1st (mild)</option>
+              <option value="2" selected>2nd (moderate)</option>
+              <option value="4">4th (aggressive)</option>
+            </select></label>
         </div>
+        <canvas id="ringing-canvas" height="240"></canvas>
+        <div class="canvas-label">Red = original step. Blue = filtered output. Pink zone = pre-stimulus artefact zone.
+          Oscillations here are 100% artificial &mdash; pure filter ringing growing with order.</div>
+      </div>
+      <div class="glass-card">
+        <h4>Practical Filter Order Guidelines for EEG</h4>
+        <ul>
+          <li><strong>High-pass (drift removal):</strong> 0.1&ndash;0.5 Hz cutoff. Use gentle roll-off (2nd order
+            Butterworth or long FIR). Avoid 1 Hz+ HPF with steep roll-off in ERP studies.</li>
+          <li><strong>Low-pass (anti-alias):</strong> 100&ndash;200 Hz cutoff before downsampling. Steeper is acceptable
+            here since the transition band is far from signals of interest.</li>
+          <li><strong>Notch filter:</strong> Very narrow band &mdash; avoid IIR notch filters as they introduce severe
+            ringing. Prefer FIR or spectrum interpolation.</li>
+          <li><strong>MNE default:</strong> FIR with firwin design, Hamming window, order chosen to give &minus;6 dB at
+            the specified cutoff. Conservative and well-motivated.</li>
+        </ul>
+      </div>
+      <div class="insight-box amber">
+        <p><strong>Rule of thumb (Cohen ANTS):</strong> FIR filter length / sampling rate = temporal smearing in
+          seconds. Always check the "filter length" warning MNE prints. If it says "3001 samples at 1000 Hz", your
+          filter smears 3 seconds of data around every transient event.</p>
+      </div>
+    </div>
+    <hr class="section-divider">
 
-        <hr class="section-divider">
-
-        <div class="section-block">
-            <div class="phase-header">
-                <div class="phase-number">1</div>
-                <h2>Why Downsample?<br><small>Nyquist, Aliasing &amp; the Anti-Alias Filter</small></h2>
-            </div>
-
-            <div class="glass-card">
-                <p>
-                    Most EEG amplifiers record at 500&ndash;2048 Hz, but neural oscillations of interest rarely exceed 100 Hz.
-                    Carrying all those extra samples wastes memory and slows every downstream computation. <strong>Downsampling</strong>
-                    reduces the sampling rate &mdash; but there is a critical catch.
-                </p>
-                <p>
-                    The <strong>Nyquist theorem</strong> states that you can only faithfully represent frequencies up to half
-                    the sampling rate (<em>f<sub>s</sub>/2</em>). If you downsample from 1000 Hz to 250 Hz without first removing
-                    frequencies above 125 Hz, those high-frequency components &ldquo;fold back&rdquo; into your signal as phantom
-                    oscillations &mdash; this is <strong>aliasing</strong>, and it is irreversible.
-                </p>
-            </div>
-
-            <div class="code-block">
-                <span class="code-tag">Python</span>
-                <pre><span class="c-comment"># ALWAYS low-pass filter BEFORE downsampling</span>
-raw.load_data()
-raw.filter(l_freq=<span class="c-number">None</span>, h_freq=<span class="c-number">100</span>)    <span class="c-comment"># anti-alias: remove &gt;100 Hz</span>
-raw.resample(sfreq=<span class="c-number">250</span>)                   <span class="c-comment"># safe to downsample now</span>
-
-<span class="c-comment"># Check the new sampling rate</span>
-<span class="c-keyword">print</span>(f<span class="c-string">"New sfreq: {raw.info['sfreq']} Hz"</span>)
-<span class="c-keyword">print</span>(f<span class="c-string">"Nyquist:   {raw.info['sfreq'] / 2} Hz"</span>)</pre>
-            </div>
-
-            <div class="insight-box">
-                <p>
-                    <strong>Cohen&rsquo;s intuition (ANTS Ch. 6):</strong> Think of aliasing like a wagon wheel
-                    in a movie &mdash; when the camera&rsquo;s frame rate is too low, the wheel appears to spin backward.
-                    The anti-alias filter is your insurance policy: apply it <em>before</em> you reduce the frame rate.
-                </p>
-            </div>
+    <!-- SECTION 4: CAUSAL vs ACAUSAL -->
+    <div class="section-block" id="causal">
+      <div class="phase-header">
+        <div class="phase-number">4</div>
+        <h2>Causal vs. Acausal Filters<br><small
+            style="font-size:.6em;font-family:Inter,sans-serif;color:var(--text-muted);font-weight:400;">Phase
+            Distortion, Zero-Phase Filtering &amp; the ERP Trap</small></h2>
+      </div>
+      <div class="glass-card">
+        <p>A filter is <strong>causal</strong> if its output at time t depends only on input at times &le;t &mdash; it
+          cannot look into the future. A filter is <strong>acausal</strong> (non-causal) if it uses future samples. In
+          real-time EEG (BCI, neurofeedback) you must use causal filters. In offline analysis, acausal filtering is
+          almost always preferable because it eliminates phase distortion entirely.</p>
+      </div>
+      <table class="compare-table">
+        <thead>
+          <tr>
+            <th>Property</th>
+            <th>Causal Filter</th>
+            <th>Acausal (Zero-Phase)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Phase response</td>
+            <td class="bad">Non-linear phase delay; different frequencies time-shifted differently</td>
+            <td class="good">Zero phase distortion; peaks preserved at their true latency</td>
+          </tr>
+          <tr>
+            <td>Pre-stimulus artefact</td>
+            <td class="good">Only post-stimulus ringing</td>
+            <td class="bad">Ringing spreads symmetrically BEFORE AND AFTER transients</td>
+          </tr>
+          <tr>
+            <td>Real-time use</td>
+            <td class="good">Yes &mdash; only option for BCI</td>
+            <td class="bad">No &mdash; requires the entire signal</td>
+          </tr>
+          <tr>
+            <td>Temporal precision</td>
+            <td class="bad">Peak latencies distorted (frequency-dependent shift)</td>
+            <td class="good">Peak latencies preserved; component timing trustworthy</td>
+          </tr>
+          <tr>
+            <td>MNE default (offline)</td>
+            <td>&mdash;</td>
+            <td class="good">Yes &mdash; MNE applies filtfilt: forward then backward pass</td>
+          </tr>
+          <tr>
+            <td>Effective order</td>
+            <td>N</td>
+            <td>2N (forward + backward doubles the effective order)</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="glass-card">
+        <h4>Zero-Phase Filtering (filtfilt): How MNE Does It</h4>
+        <ol style="padding-left:22px;margin-top:10px;">
+          <li style="margin-bottom:8px;color:var(--text-muted);">Apply filter <strong>forward</strong> in time &rarr;
+            correct magnitude response, but introduces phase shift.</li>
+          <li style="margin-bottom:8px;color:var(--text-muted);">Reverse the output and filter <strong>again</strong>
+            &rarr; phase shift is applied in the opposite direction, cancelling exactly.</li>
+          <li style="color:var(--text-muted);">Reverse again &rarr; final output has zero phase distortion and doubled
+            effective order.</li>
+        </ol>
+        <p style="margin-top:12px;">Consequence: with <code>phase="zero"</code> (MNE default), a 2nd-order Butterworth
+          becomes a 4th-order zero-phase filter. The steeper effective roll-off means stronger ringing potential around
+          sharp transients.</p>
+        <h4>When to Choose Causal Filtering</h4>
+        <ul>
+          <li><strong>Real-time BCI / neurofeedback:</strong> No alternative exists.</li>
+          <li><strong>When pre-stimulus baseline must be truly flat:</strong> If zero-phase filtering creates suspicious
+            pre-stimulus activity, switch to <code>phase="minimum"</code> and correct for the known phase delay.</li>
+          <li><strong>Time-frequency analysis at gamma+:</strong> Even zero-phase FIR filters introduce substantial time
+            smearing. Morlet wavelets (Day 9) handle this more gracefully via the Heisenberg uncertainty principle.</li>
+        </ul>
+      </div>
+      <div class="canvas-wrap">
+        <div class="demo-controls">
+          <button class="demo-btn active" id="btn-acausal">Acausal (Zero-Phase)</button>
+          <button class="demo-btn" id="btn-causal">Causal (Forward-only)</button>
+          <label>HPF Cutoff: <input type="range" id="phase-cutoff" min="0.5" max="10" value="2" step="0.5"><span
+              class="val-display" id="phase-val">2.0 Hz</span></label>
         </div>
+        <canvas id="phase-canvas" height="240"></canvas>
+        <div class="canvas-label">Gray = original signal with sharp transient. Colored = filtered output. Toggle modes
+          to compare symmetric vs. one-sided ringing and phase delay.</div>
+      </div>
+      <div class="insight-box purple">
+        <p><strong>The pre-stimulus negativity trap:</strong> A 1 Hz HPF with zero-phase design applied to data
+          containing a large P300 will produce a visible negative deflection ~200 ms <em>before</em> the stimulus. This
+          is pure filter ringing. Reviewers unfamiliar with filtering will mistake it for a pre-stimulus prediction
+          response. Always use <code>mne.viz.plot_filter()</code> to inspect your filter impulse response before
+          trusting any ERP component.</p>
+      </div>
+    </div>
+    <hr class="section-divider">
 
-        <hr class="section-divider">
-
-        <div class="section-block">
-            <div class="phase-header">
-                <div class="phase-number">2</div>
-                <h2>Identifying Bad Channels<br><small>Flat, Noisy &amp; Bridged Electrodes</small></h2>
-            </div>
-
-            <div class="glass-card">
-                <p>
-                    A &ldquo;bad&rdquo; channel is any electrode whose signal no longer reflects the underlying neural activity.
-                    Common culprits: <strong>flat channels</strong> (dead amplifier, dried gel), <strong>noisy channels</strong>
-                    (broken wire, excessive impedance), and <strong>bridged channels</strong> (conductive gel connecting two
-                    electrodes, making them nearly identical).
-                </p>
-                <p>
-                    Bad channels propagate errors into every subsequent step &mdash; re-referencing, ICA, source localization &mdash;
-                    so catching them early is critical. MNE lets you mark them manually or use automated detection.
-                </p>
-            </div>
-
-            <div class="code-block">
-                <span class="code-tag">Python</span>
-                <pre><span class="c-comment"># Manual marking after visual inspection</span>
-raw.info[<span class="c-string">'bads'</span>] = [<span class="c-string">'Fp1'</span>, <span class="c-string">'T8'</span>]
-
-<span class="c-comment"># Automated: RANSAC-based detection (requires autoreject)</span>
-<span class="c-keyword">from</span> autoreject <span class="c-keyword">import</span> Ransac
-ransac = Ransac(verbose=<span class="c-number">False</span>, n_jobs=<span class="c-number">1</span>)
-ransac.fit(epochs)
-<span class="c-keyword">print</span>(f<span class="c-string">"Bad channels detected: {ransac.bad_chs_}"</span>)
-
-<span class="c-comment"># Interpolate: reconstruct from neighbours using spherical splines</span>
-raw.interpolate_bads(reset_bads=<span class="c-number">True</span>)</pre>
-            </div>
-
-            <div class="insight-box">
-                <p>
-                    <strong>Mental model:</strong> Interpolation replaces the bad channel&rsquo;s data with a weighted
-                    average of its spatial neighbours &mdash; imagine filling a hole in a topographic map by smoothly
-                    blending the surrounding elevation contours. It recovers the <em>spatial pattern</em> but not
-                    the original unique neural information at that site.
-                </p>
-            </div>
-
-            <div class="warn-box">
-                <p>
-                    <strong>Pitfall:</strong> If you interpolate <em>too many</em> channels (&gt;10&ndash;15% of your montage),
-                    your data becomes a smooth spatial average rather than genuine EEG. Consider whether the recording
-                    should simply be excluded.
-                </p>
-            </div>
+    <!-- SECTION 5: BAD CHANNEL DETECTION -->
+    <div class="section-block" id="badchan">
+      <div class="phase-header">
+        <div class="phase-number">5</div>
+        <h2>Bad Channel Detection<br><small
+            style="font-size:.6em;font-family:Inter,sans-serif;color:var(--text-muted);font-weight:400;">CleanRawData
+            from ASR Algorithm &amp; Quantitative Criteria</small></h2>
+      </div>
+      <div class="glass-card">
+        <p>A <strong>bad channel</strong> is any electrode whose signal no longer faithfully represents the underlying
+          cortical field potential. Bad channels corrupt every downstream step: re-referencing spreads their noise
+          across all channels, ICA decomposes their artefacts into multiple components, and source localization is
+          systematically biased. Early, automated detection is essential.</p>
+        <h4>Taxonomy of Bad Channel Types</h4>
+        <ul>
+          <li><strong>Flat / Dead channels:</strong> Amplifier failure, broken lead, dried gel. Signal is near-constant
+            (variance near zero). PSD is dominated by the noise floor.</li>
+          <li><strong>High-noise / High-variance channels:</strong> Poor electrode-skin contact, high impedance, broken
+            wire. Variance or RMS far exceeds that of neighbouring channels.</li>
+          <li><strong>Bridged channels:</strong> Conductive gel shorting two electrodes. Signals become near-identical
+            (correlation &gt;0.995). Undermines spatial specificity.</li>
+          <li><strong>Intermittently bad channels:</strong> Fine for most of the recording but fail during specific
+            periods. Detected on a sliding-window basis by ASR.</li>
+          <li><strong>Excessive line noise channels:</strong> Power at 50/60 Hz far exceeds surrounding band &mdash;
+            usually grounding or shielding failure at that specific electrode.</li>
+        </ul>
+      </div>
+      <div class="glass-card">
+        <h4>Quantitative Criteria Used by Automated Algorithms</h4>
+        <div class="step-row" style="margin-top:12px;">
+          <div class="step-badge">&#963;</div>
+          <div class="step-content"><strong>Variance / RMS deviation:</strong> Flag if variance is outside the robust
+            distribution (e.g., z-score &gt; 5 or &lt; &minus;3) of all channels. Flat channels: near-zero variance.
+            Noisy channels: orders-of-magnitude higher. Robust statistics (median, MAD) are preferred over mean/SD to
+            avoid circular dependency on other bad channels.</div>
         </div>
-
-        <hr class="section-divider">
-
-        <div class="section-block">
-            <div class="phase-header">
-                <div class="phase-number">3</div>
-                <h2>Marking Bad Segments<br><small>Annotations &amp; reject_by_annotation</small></h2>
-            </div>
-
-            <div class="glass-card">
-                <p>
-                    Even after fixing bad channels, stretches of the continuous recording can be corrupted by movement,
-                    muscle clenching, or equipment bumps. MNE uses the <strong>Annotations</strong> system &mdash; any
-                    annotation whose description starts with <code>"bad"</code> is treated as a bad segment and automatically
-                    excluded from epoching, filtering, and ICA fitting.
-                </p>
-            </div>
-
-            <div class="code-block">
-                <span class="code-tag">Python</span>
-                <pre><span class="c-keyword">import</span> mne
-
-<span class="c-comment"># Interactive: click-drag in the raw plot to mark bad segments</span>
-raw.plot(block=<span class="c-number">True</span>)
-
-<span class="c-comment"># Programmatic: mark a 5-second artifact starting at t=42s</span>
-annot = mne.Annotations(onset=[<span class="c-number">42.0</span>], duration=[<span class="c-number">5.0</span>],
-                        description=[<span class="c-string">'bad_muscle'</span>])
-raw.set_annotations(raw.annotations + annot)
-
-<span class="c-comment"># Later, epoching will automatically skip bad segments</span>
-epochs = mne.Epochs(raw, events, reject_by_annotation=<span class="c-number">True</span>)</pre>
-            </div>
-
-            <div class="insight-box">
-                <p>
-                    <strong>Why &ldquo;bad_&rdquo; prefix?</strong> MNE treats the description prefix as a semantic tag.
-                    <code>bad_blink</code>, <code>bad_muscle</code>, <code>bad_movement</code> &mdash; all are excluded automatically,
-                    but their distinct names let you audit <em>why</em> data was rejected later.
-                </p>
-            </div>
+        <div class="step-row">
+          <div class="step-badge">r</div>
+          <div class="step-content"><strong>Neighbour correlation:</strong> Genuine EEG has strong spatial
+            autocorrelation. Compute max absolute correlation of each channel with any spatial neighbour on a sliding
+            window. If persistently below threshold (default 0.4&ndash;0.75), the channel is not tracking the local
+            field. Bridges flagged if correlation &gt; 0.995 between two channels.</div>
         </div>
-
-        <hr class="section-divider">
-
-        <div class="section-block">
-            <div class="phase-header">
-                <div class="phase-number">4</div>
-                <h2>Peak-to-Peak Epoch Rejection<br><small>Amplitude Thresholds for Quality Control</small></h2>
-            </div>
-
-            <div class="glass-card">
-                <p>
-                    After epoching, the simplest artifact rejection strategy is <strong>peak-to-peak (PTP) thresholding</strong>:
-                    if any channel in an epoch swings more than a defined voltage range, the entire epoch is dropped.
-                    Typical thresholds: ~100&ndash;150 &micro;V for EEG, ~250 &micro;V for EOG.
-                </p>
-                <p>
-                    This is a blunt instrument &mdash; it catches large artifacts but misses subtle ones and wastes data
-                    by rejecting entire epochs when only one channel is bad. More sophisticated approaches (ICA, autoreject)
-                    are covered in later days.
-                </p>
-            </div>
-
-            <div class="code-block">
-                <span class="code-tag">Python</span>
-                <pre><span class="c-comment"># Define PTP amplitude thresholds (in Volts)</span>
-reject = <span class="c-keyword">dict</span>(eeg=<span class="c-number">150e-6</span>,    <span class="c-comment"># 150 uV</span>
-               eog=<span class="c-number">250e-6</span>)    <span class="c-comment"># 250 uV</span>
-
-<span class="c-comment"># Also define minimum thresholds to catch flat channels</span>
-flat = <span class="c-keyword">dict</span>(eeg=<span class="c-number">1e-6</span>)       <span class="c-comment"># 1 uV (practically flat)</span>
-
-epochs = mne.Epochs(raw, events, tmin=<span class="c-number">-0.2</span>, tmax=<span class="c-number">0.5</span>,
-                    reject=reject, flat=flat, preload=<span class="c-number">True</span>)
-
-<span class="c-comment"># See how many epochs survived</span>
-<span class="c-keyword">print</span>(epochs.drop_log_stats())</pre>
-            </div>
-
-            <div class="insight-box purple">
-                <p>
-                    <strong>Rule of thumb:</strong> If you are rejecting more than ~25% of your epochs, your thresholds
-                    may be too aggressive, or the recording quality needs addressing upstream (bad channels, filtering).
-                </p>
-            </div>
+        <div class="step-row">
+          <div class="step-badge">HF</div>
+          <div class="step-content"><strong>High-frequency noise ratio:</strong> Power in 50&ndash;(f<sub>s</sub>/2) Hz
+            band vs. power in 1&ndash;50 Hz band. Genuine EEG has a 1/f power spectrum; bad channels driven by HF noise
+            have an elevated HF portion. Threshold: ratio &gt; 0.25 flags the channel (configurable).</div>
         </div>
-
-        <hr class="section-divider">
-
-        <div class="section-block">
-            <div class="phase-header">
-                <div class="phase-number">5</div>
-                <h2>The Preprocessing Pipeline Order<br><small>When to Do What</small></h2>
-            </div>
-
-            <div class="glass-card">
-                <p>
-                    Order matters enormously in preprocessing. Here is the canonical pipeline that most EEG labs follow:
-                </p>
-            </div>
-
-            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;margin:20px 0;">
-                <div style="border-radius:12px;padding:18px;text-align:center;background:rgba(99,102,241,0.14);border:1px solid rgba(165,180,252,0.35);">
-                    <p style="font-family:'JetBrains Mono',monospace;font-size:1.3rem;font-weight:700;color:#A5B4FC;">Step 1</p>
-                    <p style="font-size:0.8rem;color:var(--text-muted);margin-top:4px;">Import &amp;<br>Montage</p>
-                </div>
-                <div style="border-radius:12px;padding:18px;text-align:center;background:rgba(20,184,166,0.12);border:1px solid rgba(45,212,191,0.30);">
-                    <p style="font-family:'JetBrains Mono',monospace;font-size:1.3rem;font-weight:700;color:#2DD4BF;">Step 2</p>
-                    <p style="font-size:0.8rem;color:var(--text-muted);margin-top:4px;">Mark Bad<br>Channels</p>
-                </div>
-                <div style="border-radius:12px;padding:18px;text-align:center;background:rgba(167,139,250,0.12);border:1px solid rgba(196,181,253,0.30);">
-                    <p style="font-family:'JetBrains Mono',monospace;font-size:1.3rem;font-weight:700;color:#C4B5FD;">Step 3</p>
-                    <p style="font-size:0.8rem;color:var(--text-muted);margin-top:4px;">Filter<br>(HP + LP)</p>
-                </div>
-                <div style="border-radius:12px;padding:18px;text-align:center;background:rgba(134,239,172,0.10);border:1px solid rgba(134,239,172,0.28);">
-                    <p style="font-family:'JetBrains Mono',monospace;font-size:1.3rem;font-weight:700;color:#86efac;">Step 4</p>
-                    <p style="font-size:0.8rem;color:var(--text-muted);margin-top:4px;">Downsample</p>
-                </div>
-                <div style="border-radius:12px;padding:18px;text-align:center;background:rgba(252,165,165,0.10);border:1px solid rgba(252,165,165,0.28);">
-                    <p style="font-family:'JetBrains Mono',monospace;font-size:1.3rem;font-weight:700;color:#fca5a5;">Step 5</p>
-                    <p style="font-size:0.8rem;color:var(--text-muted);margin-top:4px;">ICA / ASR<br>Artifact Fix</p>
-                </div>
-            </div>
-
-            <div class="insight-box">
-                <p>
-                    <strong>Key dependencies:</strong> Filter <em>before</em> downsampling (anti-alias). Mark bad channels
-                    <em>before</em> ICA (bad channels corrupt unmixing). Interpolate <em>after</em> ICA (preserve rank for decomposition).
-                </p>
-            </div>
+        <div class="step-row">
+          <div class="step-badge">SNR</div>
+          <div class="step-content"><strong>RANSAC spatial prediction error:</strong> How well can the channel be
+            predicted from a random sample of other channels? If prediction fails consistently across iterations, the
+            channel is anomalous. This is the most powerful criterion and is covered in detail in Section 6.</div>
         </div>
-    </article>
+      </div>
+      <div class="glass-card">
+        <h4>The CleanRawData Algorithm (EEGLAB / PyPREP Implementation)</h4>
+        <p>CleanRawData is the automated pipeline in EEGLAB, wrapped in Python via PyPREP. It operates in sequential
+          passes:</p><br>
+        <div class="step-row">
+          <div class="step-badge">1</div>
+          <div class="step-content"><strong>Flat channel removal:</strong> Any channel with RMS amplitude below a
+            threshold (default: 5 &mu;V or relative to dataset noise floor) for more than a critical fraction of the
+            recording is immediately marked bad.</div>
+        </div>
+        <div class="step-row">
+          <div class="step-badge">2</div>
+          <div class="step-content"><strong>High-frequency noise detection:</strong> Per-channel ratio of power in the
+            50&ndash;(f<sub>s</sub>/2) Hz band to power in 1&ndash;50 Hz. Channels exceeding 0.25 are flagged as
+            noise-dominated &mdash; they have more high-frequency power than is typical of scalp EEG.</div>
+        </div>
+        <div class="step-row">
+          <div class="step-badge">3</div>
+          <div class="step-content"><strong>Correlation-based detection:</strong> On multiple short windows, compute the
+            maximum absolute correlation of each channel with any of its spatial neighbours. If persistently below
+            threshold (default 0.75), the channel is not tracking the local field and is flagged.</div>
+        </div>
+        <div class="step-row">
+          <div class="step-badge">4</div>
+          <div class="step-content"><strong>RANSAC-based spatial prediction:</strong> For each channel, trains a spatial
+            predictor using random subsets of other channels and measures the prediction error. Consistently high error
+            across iterations &rarr; anomalous channel. See Section 6 for full walkthrough.</div>
+        </div>
+        <div class="step-row">
+          <div class="step-badge">5</div>
+          <div class="step-content"><strong>Conservative union:</strong> Any channel flagged by <em>any</em> criterion
+            is marked bad. Errs on the side of caution: better to interpolate a marginal channel than let its noise
+            corrupt ICA decomposition.</div>
+        </div>
+      </div>
+      <div class="canvas-wrap">
+        <div style="font-size:.85rem;color:var(--text-muted);margin-bottom:12px;">Simulated 8-channel EEG &mdash; three
+          channels with different failure modes (animated, 2.5s refresh)</div>
+        <canvas id="badchan-canvas" height="320"></canvas>
+        <div class="canvas-label">Ch1=Normal &bull; <span style="color:#FB7185;">Ch2=Flat/Dead (variance &asymp;
+            0)</span> &bull; Ch3=Normal &bull; <span style="color:#FCD34D;">Ch4=High Variance (noisy)</span> &bull;
+          Ch5=Normal &bull; Ch6=Normal &bull; <span style="color:#C4B5FD;">Ch7=HF Noise dominated</span> &bull;
+          Ch8=Normal</div>
+      </div>
+      <div class="code-block"><span class="code-tag">Python / PyPREP</span>
+        <pre><span class="c-keyword">from</span> pyprep.find_noisy_channels <span class="c-keyword">import</span> NoisyChannels
 
-    <footer>
-        <p>Day 4 &mdash; Data Cleaning: Downsampling, Bad Channels &amp; Segments</p>
-    </footer>
+<span class="c-comment"># Initialize on MNE Raw object (montage must be set)</span>
+nd = NoisyChannels(raw, do_detrend=<span class="c-keyword">True</span>)
 
-    <script>
-        const canvas = document.getElementById('neural-canvas');
-        const ctx = canvas.getContext('2d');
-        let W, H, particles;
-        function resize() { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
-        function initParticles() {
-            particles = Array.from({ length: 100 }, () => ({
-                x: Math.random() * W, y: Math.random() * H,
-                vx: (Math.random() - 0.5) * 0.4, vy: (Math.random() - 0.5) * 0.4,
-                r: Math.random() * 2 + 0.8
-            }));
+<span class="c-comment"># Run all detection criteria sequentially</span>
+nd.find_bad_by_nan_flat()       <span class="c-comment"># Flat / NaN channels</span>
+nd.find_bad_by_deviation()      <span class="c-comment"># Amplitude deviation from robust median</span>
+nd.find_bad_by_hfnoise()        <span class="c-comment"># High-frequency noise ratio</span>
+nd.find_bad_by_correlation()    <span class="c-comment"># Neighbour correlation (windowed)</span>
+nd.find_bad_by_ransac()         <span class="c-comment"># RANSAC spatial prediction error</span>
+
+<span class="c-comment"># Retrieve per-criterion results for auditing</span>
+bads = nd.get_bads(as_dict=<span class="c-keyword">True</span>)
+<span class="c-keyword">for</span> criterion, channels <span class="c-keyword">in</span> bads.items():
+    <span class="c-keyword">if</span> channels:
+        <span class="c-keyword">print</span>(f<span class="c-string">"Bad by {criterion}: {channels}"</span>)
+
+<span class="c-comment"># Apply and interpolate</span>
+raw.info[<span class="c-string">"bads"</span>] = nd.get_bads()
+raw.interpolate_bads(reset_bads=<span class="c-keyword">True</span>)</pre>
+      </div>
+      <div class="insight-box">
+        <p><strong>Why not just visual inspection?</strong> Visual inspection of 64&ndash;256 channel datasets across
+          hours of recording is impractical and subjective. Two raters marking bad channels from the same data agree on
+          perhaps 70&ndash;80%. Automated algorithms provide reproducibility and a documented decision trail. Always do
+          a sanity check after automation &mdash; never blindly trust any algorithm.</p>
+      </div>
+      <div class="warn-box">
+        <p><strong>The 10% rule:</strong> If more than ~10&ndash;15% of channels are detected as bad, reconsider the
+          recording entirely. Interpolating that many channels creates a spatially over-smoothed dataset. Topographies
+          look clean but spatial resolution is severely compromised. Consider excluding the participant from the study.
+        </p>
+      </div>
+    </div>
+    <hr class="section-divider">
+
+    <!-- SECTION 6: RANSAC -->
+    <div class="section-block" id="ransac">
+      <div class="phase-header">
+        <div class="phase-number">6</div>
+        <h2>RANSAC: Random Sample Consensus<br><small
+            style="font-size:.6em;font-family:Inter,sans-serif;color:var(--text-muted);font-weight:400;">Outlier-Robust
+            Spatial Prediction for Bad Channel Detection</small></h2>
+      </div>
+      <div class="glass-card">
+        <p><strong>RANSAC</strong> (Random Sample Consensus, Fischler &amp; Bolles 1981) was originally developed for
+          computer vision to fit models to data containing outliers. In EEG, it is repurposed as the gold-standard
+          method for detecting channels whose signal cannot be explained by the surrounding electrode array.</p>
+        <p>The key insight: <strong>good EEG channels are spatially redundant</strong>. Activity at any electrode is a
+          weighted spatial mixture of underlying cortical sources also captured by neighbouring electrodes. A good
+          channel should be well-predictable from its neighbours &mdash; a bad channel fails this test consistently
+          regardless of which random neighbour subset is used as predictor.</p>
+      </div>
+      <div class="glass-card">
+        <h4>The RANSAC Algorithm for EEG &mdash; Step by Step</h4>
+        <div class="step-row" style="margin-top:12px;">
+          <div class="step-badge">1</div>
+          <div class="step-content"><strong>Segment the data:</strong> Divide the continuous recording into short
+            overlapping windows (typically 4&ndash;5 seconds). Windowed analysis allows detection of channels that are
+            only intermittently bad &mdash; a key advantage over global statistics.</div>
+        </div>
+        <div class="step-row">
+          <div class="step-badge">2</div>
+          <div class="step-content"><strong>For each target channel c, repeat ~50 iterations:</strong> Randomly sample a
+            small subset of <em>other</em> channels (e.g., 25 out of 63 remaining). This is the "random sample" step
+            &mdash; crucial for robustness since we do not know a priori which other channels are bad.</div>
+        </div>
+        <div class="step-row">
+          <div class="step-badge">3</div>
+          <div class="step-content"><strong>Fit a spatial predictor:</strong> Using the selected subset, compute the
+            spherical-spline weights that best map their signals onto the location of channel c. Then predict channel c
+            signal from these weights. The same spherical spline mathematics used for interpolation is used here for
+            prediction.</div>
+        </div>
+        <div class="step-row">
+          <div class="step-badge">4</div>
+          <div class="step-content"><strong>Measure prediction error:</strong> Compute the Pearson correlation between
+            the predicted and actual signal of channel c in this window. A good channel correlates highly (r &gt; 0.85)
+            with predictions from almost any random neighbour subset.</div>
+        </div>
+        <div class="step-row">
+          <div class="step-badge">5</div>
+          <div class="step-content"><strong>Aggregate across iterations:</strong> Compute the fraction of windows where
+            channel c prediction correlation fell below a threshold (default r = 0.75). If this fraction exceeds 40% of
+            windows, channel c is flagged as bad.</div>
+        </div>
+        <div class="step-row">
+          <div class="step-badge">&#10003;</div>
+          <div class="step-content"><strong>Why "consensus"?</strong> Using many random subsets and looking for
+            agreement makes the algorithm robust. Even if some predictor subsets include other bad channels, most will
+            consist of good channels and successfully predict a good target. The consensus vote over iterations is the
+            key insight that gives RANSAC its power and robustness.</div>
+        </div>
+      </div>
+      <div class="canvas-wrap">
+        <div class="demo-controls">
+          <button class="demo-btn active" id="ransac-run">&#9654; Run RANSAC Simulation</button>
+          <label>Target Channel:
+            <select id="ransac-target">
+              <option value="0">Ch 1</option>
+              <option value="1">Ch 2</option>
+              <option value="2">Ch 3</option>
+              <option value="3">Ch 4</option>
+              <option value="4">Ch 5</option>
+              <option value="5">Ch 6</option>
+              <option value="6">Ch 7</option>
+              <option value="7" selected>Ch 8 (Target)</option>
+              <option value="8">Ch 9</option>
+              <option value="9">Ch 10</option>
+              <option value="10">Ch 11</option>
+              <option value="11">Ch 12</option>
+              <option value="12">Ch 13</option>
+              <option value="13">Ch 14</option>
+              <option value="14">Ch 15</option>
+              <option value="15">Ch 16</option>
+            </select>
+          </label>
+          <label>Bad Channels: <input type="range" id="ransac-bad" min="0" max="6" value="1" step="1"><span
+              class="val-display" id="ransac-bad-val">1 bad</span></label>
+        </div>
+        <canvas id="ransac-canvas" height="340" style="cursor:pointer;"></canvas>
+        <div class="canvas-label">RANSAC spatial prediction simulation: green = good channel (predictable), red = bad channel (fails prediction). Target channel shown with glow.<br><span style="color:#5EEAD4;font-weight:600;">&#9757; Tip: Click any channel node directly on the canvas (or use the dropdown) to set it as Target!</span>
+        </div>
+      </div>
+      <div class="glass-card">
+        <h4>RANSAC vs. Simple Threshold Methods</h4>
+        <ul>
+          <li><strong>Variance thresholding alone</strong> misses channels with normal overall variance but uncorrelated
+            activity.</li>
+          <li><strong>Neighbour correlation alone</strong> fails when multiple adjacent channels are all bad &mdash;
+            they correlate with each other and appear normal.</li>
+          <li><strong>RANSAC</strong> is robust to clustered bad channels because it samples from the full array. It is
+            also robust to transient artefacts because of windowed analysis. It can identify channels bad only 40% of
+            the time.</li>
+        </ul>
+        <p style="margin-top:12px;">Computational cost: O(n_channels &times; n_iterations &times; n_windows) with matrix
+          solve at each step. For 256 channels this can take minutes &mdash; acceptable for offline analysis.</p>
+      </div>
+      <div class="insight-box rose">
+        <p><strong>PyPREP implementation:</strong> RANSAC uses spherical spline interpolation matrices precomputed for
+          all channel pairs. A channel is flagged if its RANSAC correlation falls below <code>corr_thresh</code>
+          (default 0.75) for more than <code>frac_bad</code> (default 0.4) of windows. Both are configurable for your
+          dataset.</p>
+      </div>
+    </div>
+    <hr class="section-divider">
+
+    <!-- SECTION 7: INTERPOLATION -->
+    <div class="section-block" id="interp">
+      <div class="phase-header">
+        <div class="phase-number">7</div>
+        <h2>Interpolation of Bad Channels<br><small
+            style="font-size:.6em;font-family:Inter,sans-serif;color:var(--text-muted);font-weight:400;">Spherical
+            Splines &amp; What You Are Actually Getting</small></h2>
+      </div>
+      <div class="glass-card">
+        <p>Once bad channels are identified, you either <strong>exclude</strong> them or <strong>interpolate</strong>
+          them. Exclusion is conservative but reduces spatial resolution and can break algorithms requiring a complete
+          channel set. Interpolation reconstructs a plausible estimate from spatial neighbours using spherical spline
+          mathematics.</p>
+        <h4>Spherical Spline Interpolation (Perrin et al., 1989)</h4>
+        <ul style="margin-top:10px;">
+          <li>Project all electrode locations onto a unit sphere (head approximated as spherical).</li>
+          <li>Interpolation is a linear combination of radial basis functions (Green functions of the surface Laplacian)
+            centred at each good electrode location.</li>
+          <li>Weights are solved by minimising the squared norm of the surface Laplacian &mdash; finding the smoothest
+            function consistent with the observed data.</li>
+          <li>The interpolated value at the bad electrode location is read off from the fitted smooth surface.</li>
+        </ul>
+      </div>
+      <div class="math-box">
+        <div class="formula">V(r) = &sum;<sub>j=1</sub><sup>N</sup> &lambda;<sub>j</sub> &times; G(r &middot;
+          r<sub>j</sub>) + &mu;</div>
+        <div class="formula-label">V(r) = interpolated potential at location r. G = Green function of the surface
+          Laplacian. &lambda;<sub>j</sub> = fitted weights. &mu; = constant offset (monopole term).</div>
+      </div>
+      <div class="glass-card">
+        <h4>What Interpolation Gives You &mdash; and What It Does Not</h4>
+        <ul>
+          <li style="color:#34d399;"><strong>Gives:</strong> A spatially smooth estimate consistent with surrounding
+            voltages. Topographic maps look complete; channel can be included in ICA and source localization without
+            gaps.</li>
+          <li style="margin-top:8px;color:#FB7185;"><strong>Does NOT give:</strong> The original unique neural
+            information. The interpolated signal has zero independent information &mdash; entirely determined by
+            neighbours. Effective spatial degrees of freedom are reduced by the number of interpolated channels.</li>
+        </ul>
+        <h4>Implications for ICA: The Rank Deficiency Problem</h4>
+        <p>Interpolated channels introduce <strong>spatial rank deficiency</strong>. With 64 channels and 4
+          interpolated, your data matrix has rank 60. ICA algorithms assuming a full-rank covariance matrix will fail or
+          produce spurious components. Always set the rank parameter explicitly when fitting ICA after interpolation.
+        </p>
+      </div>
+      <div class="canvas-wrap">
+        <div style="font-size:.85rem;color:var(--text-muted);margin-bottom:12px;">Spherical spline interpolation &mdash;
+          reconstructing a missing electrode from the surrounding field</div>
+        <canvas id="interp-canvas" height="320"></canvas>
+        <div class="canvas-label">Colour gradient = interpolated potential field on the scalp surface. Gray ring =
+          bad/missing channel (Fp2). Teal rings = good electrodes driving the spherical spline interpolation.</div>
+      </div>
+      <div class="two-col">
+        <div class="insight-box" style="margin:0;">
+          <p><strong>Before or after ICA?</strong> Interpolate <em>after</em> ICA. Interpolated channels confuse ICA
+            &mdash; it finds a component that perfectly explains the interpolated channel because it is a linear mixture
+            of others by construction. Exclude bads during ICA fitting, then interpolate afterwards.</p>
+        </div>
+        <div class="warn-box" style="margin:0;">
+          <p><strong>Max interpolation limit:</strong> At &gt;5% of channels, spatial resolution is noticeably reduced.
+            At &gt;10%, seriously reconsider. At &gt;15&ndash;20%, the participant data may be scientifically unusable
+            for topographic or source-level analysis.</p>
+        </div>
+      </div>
+    </div>
+    <hr class="section-divider">
+
+    <!-- PIPELINE SUMMARY -->
+    <div class="section-block">
+      <div class="glass-card">
+        <h4 style="font-size:1.1rem;margin-bottom:18px;">&#129517; The Day 4 Canonical Pipeline Order</h4>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;">
+          <div
+            style="border-radius:10px;padding:14px;text-align:center;background:rgba(99,102,241,.14);border:1px solid rgba(165,180,252,.30);">
+            <p style="font-family:JetBrains Mono,monospace;font-size:1.1rem;font-weight:700;color:#A5B4FC;">1</p>
+            <p style="font-size:.75rem;color:var(--text-muted);margin-top:4px;">Import &amp;<br>Set Montage</p>
+          </div>
+          <div
+            style="border-radius:10px;padding:14px;text-align:center;background:rgba(20,184,166,.10);border:1px solid rgba(45,212,191,.25);">
+            <p style="font-family:JetBrains Mono,monospace;font-size:1.1rem;font-weight:700;color:#2DD4BF;">2</p>
+            <p style="font-size:.75rem;color:var(--text-muted);margin-top:4px;">HP Filter<br>(0.1+ Hz)</p>
+          </div>
+          <div
+            style="border-radius:10px;padding:14px;text-align:center;background:rgba(252,211,77,.10);border:1px solid rgba(252,211,77,.25);">
+            <p style="font-family:JetBrains Mono,monospace;font-size:1.1rem;font-weight:700;color:#FCD34D;">3</p>
+            <p style="font-size:.75rem;color:var(--text-muted);margin-top:4px;">LP / Notch<br>Anti-alias</p>
+          </div>
+          <div
+            style="border-radius:10px;padding:14px;text-align:center;background:rgba(251,113,133,.10);border:1px solid rgba(251,113,133,.25);">
+            <p style="font-family:JetBrains Mono,monospace;font-size:1.1rem;font-weight:700;color:#FB7185;">4</p>
+            <p style="font-size:.75rem;color:var(--text-muted);margin-top:4px;">Downsample<br>(safe now)</p>
+          </div>
+          <div
+            style="border-radius:10px;padding:14px;text-align:center;background:rgba(52,211,153,.10);border:1px solid rgba(52,211,153,.25);">
+            <p style="font-family:JetBrains Mono,monospace;font-size:1.1rem;font-weight:700;color:#34d399;">5</p>
+            <p style="font-size:.75rem;color:var(--text-muted);margin-top:4px;">Detect Bad<br>Channels</p>
+          </div>
+          <div
+            style="border-radius:10px;padding:14px;text-align:center;background:rgba(196,181,253,.10);border:1px solid rgba(196,181,253,.25);">
+            <p style="font-family:JetBrains Mono,monospace;font-size:1.1rem;font-weight:700;color:#C4B5FD;">6</p>
+            <p style="font-size:.75rem;color:var(--text-muted);margin-top:4px;">ICA / ASR<br>(Day 5)</p>
+          </div>
+          <div
+            style="border-radius:10px;padding:14px;text-align:center;background:rgba(165,180,252,.10);border:1px solid rgba(165,180,252,.25);">
+            <p style="font-family:JetBrains Mono,monospace;font-size:1.1rem;font-weight:700;color:#A5B4FC;">7</p>
+            <p style="font-size:.75rem;color:var(--text-muted);margin-top:4px;">Interpolate<br>Bads</p>
+          </div>
+          <div
+            style="border-radius:10px;padding:14px;text-align:center;background:rgba(45,212,191,.10);border:1px solid rgba(45,212,191,.25);">
+            <p style="font-family:JetBrains Mono,monospace;font-size:1.1rem;font-weight:700;color:#5EEAD4;">8</p>
+            <p style="font-size:.75rem;color:var(--text-muted);margin-top:4px;">Re-reference<br>(Day 5)</p>
+          </div>
+        </div>
+        <div class="insight-box" style="margin-top:20px;margin-bottom:0;">
+          <p><strong>Key ordering constraints:</strong> Filter BEFORE downsample (Nyquist). Detect bads BEFORE ICA (bads
+            corrupt decomposition). Interpolate AFTER ICA (preserve rank). Re-reference AFTER interpolation (complete
+            channel set required).</p>
+        </div>
+      </div>
+    </div>
+  </article>
+  <footer>
+    <p>Day 4 &mdash; Filtering, Nyquist, Aliasing, Bad Channel Detection &amp; RANSAC &mdash; EEG Analysis Odyssey</p>
+    <p style="margin-top:6px;"><a href="aliasing_demo.html">&#127925; Open Interactive Aliasing Demo</a></p>
+  </footer>
+  <script>
+    // Neural background canvas
+    const bgC = document.getElementById("neural-canvas"), bgX = bgC.getContext("2d");
+    let W, H, pts;
+    function rBg() { W = bgC.width = window.innerWidth; H = bgC.height = window.innerHeight; }
+    function iPts() { pts = Array.from({ length: 80 }, () => ({ x: Math.random() * W, y: Math.random() * H, vx: (Math.random() - .5) * .35, vy: (Math.random() - .5) * .35, r: Math.random() * 1.8 + .6 })); }
+    function dBg() { bgX.clearRect(0, 0, W, H); for (let i = 0; i < pts.length; i++) { for (let j = i + 1; j < pts.length; j++) { const dx = pts[i].x - pts[j].x, dy = pts[i].y - pts[j].y, d = Math.sqrt(dx * dx + dy * dy); if (d < 120) { bgX.beginPath(); bgX.strokeStyle = "rgba(165,180,252," + (0.22 * (1 - d / 120)) + ")"; bgX.lineWidth = .7; bgX.moveTo(pts[i].x, pts[i].y); bgX.lineTo(pts[j].x, pts[j].y); bgX.stroke(); } } } pts.forEach(p => { bgX.beginPath(); bgX.arc(p.x, p.y, p.r, 0, Math.PI * 2); bgX.fillStyle = "rgba(165,180,252,.65)"; bgX.fill(); p.x += p.vx; p.y += p.vy; if (p.x < 0 || p.x > W) p.vx *= -1; if (p.y < 0 || p.y > H) p.vy *= -1; }); requestAnimationFrame(dBg); }
+    window.addEventListener("resize", () => { rBg(); iPts(); }); rBg(); iPts(); dBg();
+
+    // Keyboard navigation
+    document.addEventListener("keydown", e => { if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return; if (e.key === "ArrowLeft") { const b = document.querySelector(".prev-day:not(.disabled)"); if (b) b.click(); } if (e.key === "ArrowRight") { const b = document.querySelector(".next-day:not(.disabled)"); if (b) b.click(); } });
+
+    function drawGrid(ctx, w, h, cols, rows) {
+      ctx.save();
+      ctx.strokeStyle = "rgba(165,180,252,.08)";
+      ctx.lineWidth = .7;
+      for (let i = 1; i < cols; i++) { const x = w * i / cols; ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke(); }
+      for (let i = 1; i < rows; i++) { const y = h * i / rows; ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); }
+      ctx.restore();
+    }
+
+    // High-DPI / Retina Canvas Sizing Helper
+    function cSize(canvas, targetHeight) {
+      const rect = canvas.parentElement.getBoundingClientRect();
+      const cssW = Math.min(840, Math.max(300, rect.width - 40));
+      const cssH = targetHeight || 260;
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = cssW * dpr;
+      canvas.height = cssH * dpr;
+      canvas.style.width = cssW + "px";
+      canvas.style.height = cssH + "px";
+      const ctx = canvas.getContext("2d");
+      if (ctx.resetTransform) ctx.resetTransform();
+      else ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.scale(dpr, dpr);
+      return { w: cssW, h: cssH, ctx: ctx };
+    }
+
+    // FILTER FREQUENCY RESPONSE
+    const fC = document.getElementById("filter-canvas");
+    function bwMag(f, fc, ord, type) {
+      if (type === "lowpass") return 1 / Math.sqrt(1 + Math.pow(f / fc, 2 * ord));
+      if (type === "highpass") return 1 / Math.sqrt(1 + Math.pow(fc / Math.max(f, .01), 2 * ord));
+      if (type === "bandpass") {
+        const fcH = fc * 1.4, fcL = fc * .6;
+        return (1 / Math.sqrt(1 + Math.pow(f / fcH, 2 * ord))) * (1 / Math.sqrt(1 + Math.pow(fcL / Math.max(f, .01), 2 * ord)));
+      }
+      if (type === "notch") {
+        const bw = 3, d2 = Math.pow((f * f - 3600) / (f * bw + .001), 2);
+        return Math.sqrt(d2 / (d2 + 1));
+      }
+      return 1;
+    }
+
+    function drawFilt() {
+      const type = document.getElementById("filt-type").value;
+      const fc = parseFloat(document.getElementById("filt-cutoff").value);
+      const ord = parseInt(document.getElementById("filt-order").value);
+      document.getElementById("cutoff-val").textContent = fc + " Hz";
+
+      const { w, h, ctx: fX } = cSize(fC, 260);
+      fX.fillStyle = "#05081c";
+      fX.fillRect(0, 0, w, h);
+      drawGrid(fX, w, h, 10, 5);
+
+      const fMax = 150, N = w, pts2 = [];
+      for (let i = 0; i < N; i++) {
+        const f = .1 + (i / N) * fMax;
+        const mag = bwMag(f, fc, ord, type);
+        const dB = 20 * Math.log10(Math.max(mag, 1e-6));
+        const y = h * Math.min(1, Math.max(0, (0 - dB) / 80));
+        pts2.push({ x: i, y });
+      }
+
+      const grad = fX.createLinearGradient(0, 0, 0, h);
+      grad.addColorStop(0, "rgba(99,102,241,.35)");
+      grad.addColorStop(1, "rgba(99,102,241,0)");
+
+      fX.beginPath();
+      pts2.forEach((p, i) => { if (i === 0) fX.moveTo(p.x, p.y); else fX.lineTo(p.x, p.y); });
+      fX.lineTo(w, h); fX.lineTo(0, h); fX.closePath();
+      fX.fillStyle = grad; fX.fill();
+
+      fX.beginPath();
+      pts2.forEach((p, i) => { if (i === 0) fX.moveTo(p.x, p.y); else fX.lineTo(p.x, p.y); });
+      fX.strokeStyle = "#A5B4FC";
+      fX.lineWidth = 2.5;
+      fX.stroke();
+
+      if (type !== "notch") {
+        const cx = (fc / fMax) * w;
+        fX.save();
+        fX.setLineDash([4, 4]);
+        fX.beginPath();
+        fX.moveTo(cx, 0); fX.lineTo(cx, h);
+        fX.strokeStyle = "rgba(252,211,77,.7)";
+        fX.lineWidth = 1.5;
+        fX.stroke();
+        fX.restore();
+
+        // Dark background pill for label so it doesn't collide
+        fX.fillStyle = "rgba(5,9,26,0.85)";
+        fX.fillRect(cx + 4, 10, 96, 20);
+        fX.fillStyle = "#FCD34D";
+        fX.font = "bold 11px Inter";
+        fX.textAlign = "left";
+        fX.fillText("-3dB @ " + fc + "Hz", cx + 8, 24);
+      }
+
+      // Header Title Pill
+      fX.fillStyle = "rgba(5,9,26,0.85)";
+      fX.fillRect(w / 2 - 70, 8, 140, 22);
+      fX.fillStyle = "rgba(184,196,224,.9)";
+      fX.font = "bold 11px Inter";
+      fX.textAlign = "center";
+      fX.fillText(type.toUpperCase() + " Order " + ord, w / 2, 23);
+
+      // X Axis
+      fX.fillStyle = "rgba(184,196,224,.7)";
+      fX.font = "500 10px Inter";
+      for (let f = 0; f <= fMax; f += 25) {
+        const x = (f / fMax) * w;
+        fX.fillText(f + "Hz", x, h - 6);
+      }
+    }
+    ["filt-type", "filt-order"].forEach(id => document.getElementById(id).addEventListener("change", drawFilt));
+    document.getElementById("filt-cutoff").addEventListener("input", drawFilt);
+    setTimeout(drawFilt, 100);
+
+    // RINGING ARTEFACT
+    const rC = document.getElementById("ringing-canvas");
+    function drawRing() {
+      const cutoff = parseFloat(document.getElementById("ring-cutoff").value);
+      const ord = parseInt(document.getElementById("ring-order").value);
+      document.getElementById("ring-val").textContent = cutoff.toFixed(1) + " Hz";
+
+      const { w, h, ctx: rX } = cSize(rC, 240);
+      rX.fillStyle = "#05081c";
+      rX.fillRect(0, 0, w, h);
+      drawGrid(rX, w, h, 12, 4);
+
+      const N = w, t0 = 0.42, mid = h / 2, sc = h * .36;
+      const orig = Array.from({ length: N }, (_, i) => i / N < t0 ? 0 : .8);
+      const kLen = Math.min(Math.floor(500 / cutoff), N / 3);
+      const ring_f = cutoff * 4;
+      const kernel = [];
+      for (let i = -kLen; i <= kLen; i++) {
+        const t = i / 500, sigma = 1 / (cutoff * 2 * Math.PI * .5);
+        const g = Math.exp(-.5 * (t / sigma) * (t / sigma));
+        const osc = Math.cos(2 * Math.PI * ring_f * t) * g;
+        kernel.push(osc * (ord / 4) * .65);
+      }
+
+      const filtered = orig.map((v, i) => {
+        let s = 0;
+        for (let ki = 0; ki < kernel.length; ki++) {
+          const si = i - kLen + ki;
+          const sv = (si >= 0 && si < N) ? orig[si] : 0;
+          s += sv * kernel[ki];
         }
-        function draw() {
-            ctx.clearRect(0, 0, W, H);
-            for (let i = 0; i < particles.length; i++) {
-                for (let j = i + 1; j < particles.length; j++) {
-                    const dx = particles[i].x - particles[j].x;
-                    const dy = particles[i].y - particles[j].y;
-                    const dist = Math.sqrt(dx * dx + dy * dy);
-                    if (dist < 130) {
-                        ctx.beginPath();
-                        ctx.strokeStyle = 'rgba(165,180,252,' + (0.25 * (1 - dist / 130)) + ')';
-                        ctx.lineWidth = 0.8;
-                        ctx.moveTo(particles[i].x, particles[i].y);
-                        ctx.lineTo(particles[j].x, particles[j].y);
-                        ctx.stroke();
-                    }
-                }
-            }
-            particles.forEach(p => {
-                ctx.beginPath();
-                ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-                ctx.fillStyle = 'rgba(165,180,252,0.7)';
-                ctx.fill();
-                p.x += p.vx; p.y += p.vy;
-                if (p.x < 0 || p.x > W) p.vx *= -1;
-                if (p.y < 0 || p.y > H) p.vy *= -1;
-            });
-            requestAnimationFrame(draw);
-        }
-        window.addEventListener('resize', () => { resize(); initParticles(); });
-        resize(); initParticles(); draw();
+        return orig[i] * .92 + s;
+      });
 
-        document.addEventListener('keydown', (e) => {
-            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-            if (e.key === 'ArrowLeft') {
-                const prevBtn = document.querySelector('.nav-arrow-btn.prev-day:not(.disabled)');
-                if (prevBtn) prevBtn.click();
-            } else if (e.key === 'ArrowRight') {
-                const nextBtn = document.querySelector('.nav-arrow-btn.next-day:not(.disabled)');
-                if (nextBtn) nextBtn.click();
-            }
-        });
-    </script>
+      // Pre-stimulus region highlight
+      rX.fillStyle = "rgba(251,113,133,.1)";
+      rX.fillRect(t0 * w - kLen * .8, 0, kLen * .8, h);
+
+      // Original curve
+      rX.beginPath();
+      orig.forEach((v, i) => {
+        const y = mid - v * sc;
+        if (i === 0) rX.moveTo(i, y); else rX.lineTo(i, y);
+      });
+      rX.strokeStyle = "rgba(251,113,133,.6)";
+      rX.lineWidth = 2;
+      rX.stroke();
+
+      // Filtered curve
+      rX.beginPath();
+      filtered.forEach((v, i) => {
+        const y = mid - v * sc;
+        if (i === 0) rX.moveTo(i, y); else rX.lineTo(i, y);
+      });
+      rX.strokeStyle = "#5EEAD4";
+      rX.lineWidth = 2.2;
+      rX.stroke();
+
+      // Zero line
+      rX.beginPath(); rX.moveTo(0, mid); rX.lineTo(w, mid);
+      rX.strokeStyle = "rgba(165,180,252,.2)";
+      rX.lineWidth = 1; rX.stroke();
+
+      // Stimulus onset vertical dashed line
+      const sx = t0 * w;
+      rX.save();
+      rX.setLineDash([4, 4]);
+      rX.beginPath(); rX.moveTo(sx, 0); rX.lineTo(sx, h);
+      rX.strokeStyle = "rgba(252,211,77,.6)";
+      rX.lineWidth = 1.5; rX.stroke();
+      rX.restore();
+
+      // Legend pill at top left
+      rX.fillStyle = "rgba(5,9,26,0.85)";
+      rX.fillRect(10, 8, 220, 22);
+      rX.fillStyle = "rgba(251,113,133,.8)";
+      rX.fillRect(16, 18, 16, 3);
+      rX.fillStyle = "rgba(184,196,224,.9)";
+      rX.font = "500 10px Inter";
+      rX.textAlign = "left";
+      rX.fillText("Original", 36, 21);
+
+      rX.fillStyle = "rgba(94,234,212,.9)";
+      rX.fillRect(88, 18, 16, 3);
+      rX.fillStyle = "rgba(184,196,224,.9)";
+      rX.fillText("Filtered (ringing)", 108, 21);
+
+      // Stimulus onset label at bottom
+      rX.fillStyle = "rgba(5,9,26,0.85)";
+      rX.fillRect(sx + 4, h - 26, 90, 18);
+      rX.fillStyle = "#FCD34D";
+      rX.font = "bold 10px Inter";
+      rX.fillText("Stimulus onset", sx + 8, h - 13);
+
+      // Pre-stim zone label
+      rX.fillStyle = "rgba(251,113,133,.8)";
+      rX.font = "9px Inter";
+      rX.textAlign = "center";
+      rX.fillText("pre-stim artefact zone", t0 * w - kLen * .4, h - 8);
+    }
+    document.getElementById("ring-cutoff").addEventListener("input", drawRing);
+    document.getElementById("ring-order").addEventListener("change", drawRing);
+    setTimeout(drawRing, 100);
+
+    // CAUSAL vs ACAUSAL
+    const pC = document.getElementById("phase-canvas");
+    let phMode = "acausal";
+    function drawPhase() {
+      const cutoff = parseFloat(document.getElementById("phase-cutoff").value);
+      document.getElementById("phase-val").textContent = cutoff.toFixed(1) + " Hz";
+
+      const { w, h, ctx: pX } = cSize(pC, 240);
+      pX.fillStyle = "#05081c";
+      pX.fillRect(0, 0, w, h);
+      drawGrid(pX, w, h, 12, 4);
+
+      const N = w, mid = h / 2, sc = h * .35;
+      const sig = Array.from({ length: N }, (_, i) => {
+        const t = i / N;
+        return .4 * Math.sin(2 * Math.PI * 2 * t) + (t > .43 && t < .53 ? .85 : 0);
+      });
+
+      const wLen = Math.max(3, Math.floor(N / (cutoff * 3)));
+      const causal = sig.map((_, i) => {
+        let s = 0, c = 0;
+        for (let k = Math.max(0, i - wLen); k <= i; k++) { s += sig[k]; c++; }
+        return s / c * .82 + sig[i] * .18;
+      });
+      const acausal = sig.map((_, i) => {
+        let s = 0, c = 0;
+        const half = Math.floor(wLen / 2);
+        for (let k = Math.max(0, i - half); k <= Math.min(N - 1, i + half); k++) { s += sig[k]; c++; }
+        return s / c * .82 + sig[i] * .18;
+      });
+
+      // Original
+      pX.beginPath();
+      sig.forEach((v, i) => {
+        const y = mid - v * sc;
+        if (i === 0) pX.moveTo(i, y); else pX.lineTo(i, y);
+      });
+      pX.strokeStyle = "rgba(165,180,252,.3)";
+      pX.lineWidth = 1.5; pX.stroke();
+
+      // Filtered
+      const filtered = phMode === "acausal" ? acausal : causal;
+      const col = phMode === "acausal" ? "#5EEAD4" : "#FCD34D";
+      pX.beginPath();
+      filtered.forEach((v, i) => {
+        const y = mid - v * sc;
+        if (i === 0) pX.moveTo(i, y); else pX.lineTo(i, y);
+      });
+      pX.strokeStyle = col;
+      pX.lineWidth = 2.5; pX.stroke();
+
+      // Zero line
+      pX.beginPath(); pX.moveTo(0, mid); pX.lineTo(w, mid);
+      pX.strokeStyle = "rgba(165,180,252,.15)";
+      pX.lineWidth = 1; pX.stroke();
+
+      // Header status badge
+      const txt = phMode === "acausal" ? "Zero-Phase (Acausal) -- symmetric ringing" : "Causal -- one-sided ringing + phase delay";
+      pX.fillStyle = "rgba(5,9,26,0.88)";
+      pX.fillRect(w - 300, 8, 290, 22);
+      pX.fillStyle = col;
+      pX.font = "bold 11px Inter";
+      pX.textAlign = "right";
+      pX.fillText(txt, w - 16, 23);
+    }
+    document.getElementById("btn-acausal").addEventListener("click", () => { phMode = "acausal"; document.getElementById("btn-acausal").classList.add("active"); document.getElementById("btn-causal").classList.remove("active"); drawPhase(); });
+    document.getElementById("btn-causal").addEventListener("click", () => { phMode = "causal"; document.getElementById("btn-causal").classList.add("active"); document.getElementById("btn-acausal").classList.remove("active"); drawPhase(); });
+    document.getElementById("phase-cutoff").addEventListener("input", drawPhase);
+    setTimeout(drawPhase, 100);
+
+    // BAD CHANNEL VISUALIZER
+    const bcC = document.getElementById("badchan-canvas");
+    function drawBC() {
+      const { w, h, ctx: bcX } = cSize(bcC, 320);
+      bcX.fillStyle = "#05081c";
+      bcX.fillRect(0, 0, w, h);
+
+      const nCh = 8, chH = h / nCh;
+      const types = ["normal", "flat", "normal", "noisy", "normal", "normal", "hfnoise", "normal"];
+      const labels = ["Ch1 (Normal)", "Ch2 (Flat/Dead)", "Ch3 (Normal)", "Ch4 (High Variance)", "Ch5 (Normal)", "Ch6 (Normal)", "Ch7 (HF Noise)", "Ch8 (Normal)"];
+      const colors = ["#A5B4FC", "#FB7185", "#A5B4FC", "#FCD34D", "#A5B4FC", "#A5B4FC", "#C4B5FD", "#A5B4FC"];
+
+      types.forEach((type, ci) => {
+        const y0 = ci * chH, mid = y0 + chH / 2, amp = chH * .35, col = colors[ci];
+        if (type !== "normal") {
+          const bg = type === "flat" ? "rgba(251,113,133,.08)" : type === "noisy" ? "rgba(252,211,77,.08)" : "rgba(196,181,253,.08)";
+          bcX.fillStyle = bg;
+          bcX.fillRect(0, y0, w, chH);
+        }
+        bcX.strokeStyle = "rgba(165,180,252,.1)";
+        bcX.lineWidth = .5;
+        bcX.beginPath(); bcX.moveTo(0, y0); bcX.lineTo(w, y0); bcX.stroke();
+
+        // Waveform
+        bcX.beginPath();
+        for (let i = 0; i < w; i++) {
+          const t = i / w * 20;
+          let v = 0;
+          if (type === "normal") v = .5 * Math.sin(2 * Math.PI * 10 * t / 20) + .25 * Math.sin(2 * Math.PI * 4 * t / 20) + .06 * (Math.random() - .5);
+          else if (type === "flat") v = .012 * (Math.random() - .5);
+          else if (type === "noisy") v = .45 * Math.sin(2 * Math.PI * 10 * t / 20) + 3.2 * (Math.random() - .5);
+          else if (type === "hfnoise") v = .25 * Math.sin(2 * Math.PI * 10 * t / 20) + .9 * Math.sin(2 * Math.PI * 120 * t / 20) + .4 * (Math.random() - .5);
+          const py = mid - v * amp;
+          if (i === 0) bcX.moveTo(i, py); else bcX.lineTo(i, py);
+        }
+        bcX.strokeStyle = col;
+        bcX.lineWidth = 1.3;
+        bcX.stroke();
+
+        // Dark background badge behind text so text is 100% readable over wave spikes
+        bcX.fillStyle = "rgba(5, 8, 28, 0.85)";
+        bcX.fillRect(4, y0 + 4, 135, 18);
+        bcX.fillStyle = col;
+        bcX.font = "bold 10px Inter";
+        bcX.textAlign = "left";
+        bcX.fillText(labels[ci], 8, y0 + 17);
+      });
+    }
+    setTimeout(drawBC, 100); setInterval(drawBC, 2500);
+
+    // RANSAC VISUALIZER (DYNAMIC TARGET & INTERACTIVE ANIMATION)
+    const rnC = document.getElementById("ransac-canvas");
+    let ransacAnimating = false;
+    let selectedTargetCh = 7;
+
+    function getTargetChannel() {
+      const el = document.getElementById("ransac-target");
+      return el ? parseInt(el.value, 10) : selectedTargetCh;
+    }
+
+    function drawRansacFrame(currentStep) {
+      const nBad = parseInt(document.getElementById("ransac-bad").value, 10);
+      document.getElementById("ransac-bad-val").textContent = nBad + " bad";
+      const targetCh = getTargetChannel();
+
+      const { w, h, ctx: rnX } = cSize(rnC, 340);
+      rnX.fillStyle = "#05081c";
+      rnX.fillRect(0, 0, w, h);
+
+      const cols = 8, rows = 2, cW = w / cols, cH = (h - 60) / rows, chPos = [];
+      for (let r = 0; r < rows; r++)
+        for (let c = 0; c < cols; c++)
+          chPos.push({ x: cW * (c + .5), y: cH * (r + .6) + 15, idx: r * cols + c });
+
+      const badIdx = new Set();
+      for (let i = 0; i < nBad; i++) badIdx.add((i * 3 + 2) % 16);
+
+      // Store node positions on canvas for click detection
+      rnC._chPos = chPos;
+
+      // Select predictor subset based on current step or static
+      const goodCandidates = chPos.filter(p => p.idx !== targetCh && !badIdx.has(p.idx));
+      const offset = (currentStep || 0) * 2;
+      const preds = goodCandidates.slice(offset % goodCandidates.length, (offset + 5) % goodCandidates.length || 5);
+      if (preds.length < 3 && goodCandidates.length >= 3) {
+        for (let k = 0; k < goodCandidates.length && preds.length < 5; k++) {
+          if (!preds.includes(goodCandidates[k])) preds.push(goodCandidates[k]);
+        }
+      }
+
+      // Draw predictor connection lines
+      preds.forEach(p => {
+        const tgt = chPos[targetCh];
+        if (!tgt) return;
+        rnX.beginPath();
+        rnX.moveTo(p.x, p.y); rnX.lineTo(tgt.x, tgt.y);
+        rnX.strokeStyle = "rgba(94,234,212,.55)";
+        rnX.lineWidth = 2.0;
+        rnX.stroke();
+      });
+
+      // Draw channel nodes
+      chPos.forEach(p => {
+        const isBad = badIdx.has(p.idx), isTarget = p.idx === targetCh, r = isTarget ? 18 : 12;
+        if (isTarget) {
+          const grd = rnX.createRadialGradient(p.x, p.y, 0, p.x, p.y, r * 2.2);
+          grd.addColorStop(0, "rgba(165,180,252,.45)");
+          grd.addColorStop(1, "rgba(165,180,252,0)");
+          rnX.beginPath(); rnX.arc(p.x, p.y, r * 2.2, 0, Math.PI * 2);
+          rnX.fillStyle = grd; rnX.fill();
+        }
+        rnX.beginPath(); rnX.arc(p.x, p.y, r, 0, Math.PI * 2);
+        const col = isTarget ? "#A5B4FC" : isBad ? "#FB7185" : "#34d399";
+        rnX.fillStyle = col + "33"; rnX.fill();
+        rnX.strokeStyle = col; rnX.lineWidth = isTarget ? 2.8 : 1.8; rnX.stroke();
+
+        rnX.fillStyle = col;
+        rnX.font = "bold " + (isTarget ? 10 : 9) + "px Inter";
+        rnX.textAlign = "center";
+        rnX.fillText(isTarget ? "TARGET" : isBad ? "BAD" : "OK", p.x, p.y + 3.5);
+
+        // Subtext channel number
+        rnX.fillStyle = "rgba(184,196,224,.75)";
+        rnX.font = "9px Inter";
+        rnX.fillText("Ch" + (p.idx + 1), p.x, p.y + (isTarget ? 28 : 22));
+      });
+
+      const predicted = !badIdx.has(targetCh);
+
+      // Consensus Box
+      rnX.fillStyle = "rgba(5,9,26,0.92)";
+      rnX.fillRect(w - 230, 10, 220, 60);
+      rnX.strokeStyle = predicted ? "rgba(52,211,153,.6)" : "rgba(251,113,133,.6)";
+      rnX.lineWidth = 1.5;
+      rnX.strokeRect(w - 230, 10, 220, 60);
+
+      rnX.fillStyle = predicted ? "#34d399" : "#FB7185";
+      rnX.font = "bold 11px Inter";
+      rnX.textAlign = "center";
+      rnX.fillText(predicted ? "Consensus: GOOD CHANNEL" : "Consensus: BAD CHANNEL", w - 120, 28);
+
+      rnX.fillStyle = "rgba(184,196,224,.85)";
+      rnX.font = "10px Inter";
+      const targetLabel = "Ch" + (targetCh + 1);
+      const stepText = currentStep > 0 ? "Subset " + currentStep + "/5 (r=" + (predicted ? (0.85 + Math.random() * 0.1).toFixed(2) : (0.2 + Math.random() * 0.2).toFixed(2)) + ")" : "Target " + targetLabel + " Consensus";
+      rnX.fillText(stepText, w - 120, 44);
+      rnX.fillText(nBad + " bad channel(s) in array", w - 120, 58);
+
+      // Bottom Legend Panel
+      rnX.fillStyle = "rgba(5,9,26,0.85)";
+      rnX.fillRect(10, h - 38, w - 20, 28);
+      const lx = 16, ly = h - 20;
+      [["#34d399", "OK Good channel (predictor)"], ["#A5B4FC", "TARGET Channel under test"], ["#FB7185", "BAD Anomalous channel"]].forEach(([col, lbl], i) => {
+        rnX.fillStyle = col;
+        rnX.beginPath(); rnX.arc(lx + i * 240 + 8, ly - 4, 5, 0, Math.PI * 2); rnX.fill();
+        rnX.fillStyle = "rgba(184,196,224,.9)";
+        rnX.font = "500 10px Inter";
+        rnX.textAlign = "left";
+        rnX.fillText(lbl, lx + i * 240 + 18, ly);
+      });
+    }
+
+    function runRansacSimulation() {
+      if (ransacAnimating) return;
+      ransacAnimating = true;
+      let step = 1;
+      const interval = setInterval(() => {
+        drawRansacFrame(step);
+        step++;
+        if (step > 5) {
+          clearInterval(interval);
+          ransacAnimating = false;
+          setTimeout(() => drawRansacFrame(0), 1000);
+        }
+      }, 400);
+    }
+
+    function drawRansac() { drawRansacFrame(0); }
+
+    // Canvas Click Listener to select Target Channel directly by clicking on any node
+    rnC.addEventListener("click", function (e) {
+      if (!rnC._chPos) return;
+      const rect = rnC.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const clickY = e.clientY - rect.top;
+
+      let closest = null, minDist = 30;
+      rnC._chPos.forEach(p => {
+        const dx = clickX - p.x;
+        const dy = clickY - p.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < minDist) {
+          minDist = dist;
+          closest = p;
+        }
+      });
+
+      if (closest !== null) {
+        selectedTargetCh = closest.idx;
+        const targetSelect = document.getElementById("ransac-target");
+        if (targetSelect) targetSelect.value = closest.idx;
+        runRansacSimulation();
+      }
+    });
+
+    document.getElementById("ransac-run").addEventListener("click", runRansacSimulation);
+    document.getElementById("ransac-bad").addEventListener("input", drawRansac);
+    document.getElementById("ransac-target").addEventListener("change", function () {
+      selectedTargetCh = parseInt(this.value, 10);
+      runRansacSimulation();
+    });
+    setTimeout(drawRansac, 100);
+
+    // INTERPOLATION CANVAS
+    const inC = document.getElementById("interp-canvas");
+    function drawInterp() {
+      const { w, h, ctx: inX } = cSize(inC, 320);
+      inX.fillStyle = "#05081c";
+      inX.fillRect(0, 0, w, h);
+
+      const cx = w / 2, cy = h / 2 + 8, R = Math.min(w, h) * .38;
+      inX.beginPath(); inX.arc(cx, cy, R, 0, Math.PI * 2);
+      inX.strokeStyle = "rgba(165,180,252,.3)"; inX.lineWidth = 1.5; inX.stroke();
+
+      const img = inX.createImageData(w, h);
+      for (let py = 0; py < h; py++) {
+        for (let px = 0; px < w; px++) {
+          const dx = px - cx, dy = py - cy;
+          if (dx * dx + dy * dy < R * R) {
+            const ang = Math.atan2(dy, dx);
+            const v = .5 * Math.cos(ang * 2) + .3 * Math.sin(ang * 3) + .15 * Math.cos(ang);
+            const rv = (v + 1) / 2;
+            const idx = (py * w + px) * 4;
+            img.data[idx] = Math.round(rv * 160 + 70);
+            img.data[idx + 1] = Math.round(60 + (1 - Math.abs(v)) * 80);
+            img.data[idx + 2] = Math.round((1 - rv) * 160 + 70);
+            img.data[idx + 3] = 75;
+          }
+        }
+      }
+      inX.putImageData(img, 0, 0);
+
+      const electrodes = [
+        { a: 0, r: .0, n: "Cz" }, { a: 90, r: .5, n: "Fp1" }, { a: 270, r: .5, n: "Oz" },
+        { a: 0, r: .5, n: "T8" }, { a: 180, r: .5, n: "T7" }, { a: 45, r: .7, n: "F4" },
+        { a: 135, r: .7, n: "F3" }, { a: 315, r: .7, n: "P4" }, { a: 225, r: .7, n: "P3" },
+        { a: 30, r: .85, n: "Fp2", bad: true }, { a: 0, r: .3, n: "C4" }, { a: 180, r: .3, n: "C3" }
+      ];
+
+      electrodes.forEach(e => {
+        const rad = e.a * Math.PI / 180, ex = cx + Math.cos(rad) * R * e.r, ey = cy + Math.sin(rad) * R * e.r;
+        if (e.bad) {
+          inX.beginPath(); inX.arc(ex, ey, 11, 0, Math.PI * 2);
+          inX.fillStyle = "rgba(251,113,133,.2)"; inX.fill();
+          inX.strokeStyle = "#FB7185"; inX.lineWidth = 2;
+          inX.setLineDash([3, 2]); inX.stroke(); inX.setLineDash([]);
+
+          // Label pill
+          inX.fillStyle = "rgba(5, 8, 28, 0.85)";
+          inX.fillRect(ex - 16, ey + 12, 32, 14);
+          inX.fillStyle = "#FB7185"; inX.font = "bold 9px Inter";
+          inX.textAlign = "center"; inX.fillText(e.n, ex, ey + 23);
+        } else {
+          inX.beginPath(); inX.arc(ex, ey, 7, 0, Math.PI * 2);
+          inX.fillStyle = "rgba(94,234,212,.25)"; inX.fill();
+          inX.strokeStyle = "rgba(94,234,212,.95)"; inX.lineWidth = 1.8; inX.stroke();
+
+          // Label pill
+          inX.fillStyle = "rgba(5, 8, 28, 0.85)";
+          inX.fillRect(ex - 14, ey + 10, 28, 14);
+          inX.fillStyle = "rgba(240,244,255,.9)"; inX.font = "500 9px Inter";
+          inX.textAlign = "center"; inX.fillText(e.n, ex, ey + 21);
+        }
+      });
+
+      // Top Legend Panel
+      inX.fillStyle = "rgba(5,9,26,0.88)";
+      inX.fillRect(10, 10, 310, 36);
+      inX.fillStyle = "rgba(94,234,212,.9)";
+      inX.font = "500 10px Inter"; inX.textAlign = "left";
+      inX.fillText("Good electrodes (drive spherical spline)", 16, 24);
+      inX.fillStyle = "rgba(251,113,133,.9)";
+      inX.fillText("Bad electrode Fp2 (reconstructed via splines)", 16, 38);
+    }
+    setTimeout(drawInterp, 100);
+    window.addEventListener("resize", () => setTimeout(() => { drawFilt(); drawRing(); drawPhase(); drawBC(); drawRansac(); drawInterp(); }, 100));
+  </script>
 </body>
+
 </html>

@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Aliasing Demo &mdash; Interactive Sampling Rate Visualizer</title>
+<meta name="description" content="Interactive demonstration of the Nyquist theorem and aliasing: drag sliders, zoom time windows, and observe how sampling rates fold high-frequency signals."/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg-deep: #05091a;
+  --text-main: #F0F4FF;
+  --text-muted: #B8C4E0;
+  --accent-solid: #A5B4FC;
+  --accent-teal-solid: #2DD4BF;
+  --amber: #FCD34D;
+  --rose: #FB7185;
+  --green: #34d399;
+  --glass-bg: rgba(99, 102, 241, 0.10);
+  --glass-border: rgba(165, 180, 252, 0.35);
+  --code-bg: rgba(10, 12, 40, 0.92);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background-color: var(--bg-deep);
+  color: var(--text-main);
+  font-family: 'Inter', sans-serif;
+  line-height: 1.75;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+h1, h2, h3, h4 { font-family: 'Playfair Display', serif; font-weight: 400; }
+
+.ambient {
+  position: fixed; top: 0; left: 0;
+  width: 100vw; height: 100vh;
+  background:
+    radial-gradient(ellipse at 15% 50%, rgba(99,102,241,0.55), transparent 45%),
+    radial-gradient(ellipse at 85% 15%, rgba(20,184,166,0.45), transparent 42%),
+    radial-gradient(ellipse at 50% 90%, rgba(251,113,133,0.20), transparent 50%);
+  filter: blur(60px);
+  z-index: -2;
+  animation: breathe 12s infinite alternate ease-in-out;
+}
+@keyframes breathe {
+  0%   { transform: scale(1);    opacity: 0.85; }
+  100% { transform: scale(1.08); opacity: 1; }
+}
+
+.top-nav {
+  position: sticky; top: 0; z-index: 100;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 5%;
+  background: rgba(5,9,26,0.88);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--glass-border);
+}
+.back-link {
+  display: flex; align-items: center; gap: 8px;
+  color: var(--accent-solid); text-decoration: none;
+  font-size: 0.85rem; font-weight: 600;
+  letter-spacing: 0.5px;
+  transition: color 0.2s, gap 0.2s;
+  white-space: nowrap;
+}
+.back-link:hover { color: #fff; gap: 12px; }
+.demo-title {
+  font-size: 0.75rem; font-weight: 700;
+  letter-spacing: 3px; text-transform: uppercase;
+  color: var(--accent-teal-solid);
+  text-shadow: 0 0 12px rgba(45,212,191,0.7);
+  white-space: nowrap;
+}
+
+.container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 40px 5% 80px;
+  position: relative; z-index: 2;
+}
+
+.hero-section { text-align: center; margin-bottom: 28px; }
+.hero-section h1 {
+  font-size: clamp(1.8rem, 4vw, 3rem);
+  color: #fff;
+  text-shadow: 0 0 40px rgba(165,180,252,0.9), 0 0 80px rgba(99,102,241,0.5);
+  margin-bottom: 10px;
+}
+.hero-section p { font-size: 1rem; color: #C8D5F0; max-width: 660px; margin: 0 auto; }
+.highlight      { color: #C4B5FD; text-shadow: 0 0 30px rgba(165,180,252,1); }
+.highlight-teal { color: #5EEAD4; text-shadow: 0 0 25px rgba(45,212,191,0.9); }
+
+.panel {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  padding: 24px 28px;
+  backdrop-filter: blur(12px);
+  margin: 20px 0;
+  box-shadow: 0 4px 30px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.07);
+}
+.panel h3 {
+  font-family: Inter, sans-serif; font-weight: 600;
+  font-size: 1rem; color: var(--accent-solid);
+  margin-bottom: 16px; letter-spacing: 0.3px;
+}
+
+.controls-grid {
+  display: grid; grid-template-columns: 1fr 1fr 1fr;
+  gap: 16px; margin-bottom: 20px;
+}
+@media (max-width: 768px) { .controls-grid { grid-template-columns: 1fr; } }
+
+.ctrl-group { display: flex; flex-direction: column; gap: 8px; }
+.ctrl-label  { font-size: 0.8rem; color: var(--text-muted); font-weight: 500; }
+.ctrl-row    { display: flex; align-items: center; gap: 10px; }
+.ctrl-row input[type="range"] {
+  flex: 1;
+  accent-color: var(--accent-solid);
+  cursor: pointer;
+  height: 6px;
+  background: rgba(15,18,60,0.8);
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+}
+.val-badge {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.82rem; color: var(--accent-solid);
+  background: rgba(165,180,252,0.12);
+  border: 1px solid rgba(165,180,252,0.25);
+  border-radius: 8px; padding: 4px 8px;
+  min-width: 72px; text-align: center;
+}
+
+.preset-row {
+  display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px;
+  padding-bottom: 16px; border-bottom: 1px solid rgba(165,180,252,0.15);
+}
+
+/* ── Day 3 Button Styles ───────────────────────────────────────── */
+.preset-btn, .toggle-btn {
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--glass-border);
+  background: rgba(99, 102, 241, 0.08);
+  color: var(--accent-solid);
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-family: Inter, sans-serif;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.preset-btn:hover, .toggle-btn:hover {
+  border-color: var(--accent-solid);
+  color: #ffffff;
+  box-shadow: 0 0 12px rgba(165, 180, 252, 0.4);
+  background: rgba(99, 102, 241, 0.25);
+  transform: translateY(-1px);
+}
+.toggle-btn.on, .preset-btn.active {
+  background: rgba(99, 102, 241, 0.35);
+  color: #ffffff;
+  border-color: var(--accent-solid);
+  box-shadow: 0 0 16px rgba(165, 180, 252, 0.5);
+}
+.toggle-btn.teal-on {
+  background: rgba(45, 212, 191, 0.25);
+  color: #5EEAD4;
+  border-color: var(--accent-teal-solid);
+  box-shadow: 0 0 16px rgba(45, 212, 191, 0.4);
+}
+
+.toggle-row { display: flex; gap: 10px; flex-wrap: wrap; }
+
+.canvas-section { margin: 20px 0; }
+.canvas-label   { font-size: 0.82rem; color: var(--text-muted); text-align: center; margin-top: 10px; line-height: 1.5; }
+.canvas-wrap {
+  background: rgba(5,8,28,0.92);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px; padding: 20px; overflow: hidden;
+}
+.canvas-wrap canvas { display: block; width: 100%; height: auto; border-radius: 8px; }
+
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 14px; margin: 20px 0;
+}
+.info-card {
+  background: rgba(99,102,241,0.08);
+  border: 1px solid rgba(165,180,252,0.2);
+  border-radius: 12px; padding: 14px 16px;
+}
+.info-card .ic-label {
+  font-size: 0.7rem; color: var(--text-muted);
+  letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 4px;
+}
+.info-card .ic-val {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 1.08rem; font-weight: 700;
+}
+.alias-warn { color: var(--rose); }
+.alias-ok   { color: var(--green); }
+
+.explanation {
+  border-left: 3px solid var(--accent-teal-solid);
+  padding: 18px 22px;
+  background: rgba(20,184,166,0.07);
+  border-radius: 0 12px 12px 0;
+  margin: 20px 0;
+  transition: background 0.4s, border-left-color 0.4s;
+}
+.explanation p { color: #C8D5F0; font-size: 0.92rem; text-align: left; }
+.explanation strong { color: var(--accent-teal-solid); }
+
+.annotated-grid {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 16px; margin: 20px 0;
+}
+@media (max-width: 640px) { .annotated-grid { grid-template-columns: 1fr; } }
+
+.anno-card {
+  background: rgba(99,102,241,0.06);
+  border: 1px solid rgba(165,180,252,0.2);
+  border-radius: 12px; padding: 18px 20px;
+}
+.anno-card h4 { font-family: Inter, sans-serif; font-size: 0.92rem; font-weight: 600; margin-bottom: 8px; }
+.anno-card p { font-size: 0.85rem; color: var(--text-muted); line-height: 1.6; text-align: left; }
+
+.section-divider {
+  border: none; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--glass-border), transparent);
+  margin: 36px 0;
+}
+code {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.86em;
+  background: rgba(15,15,58,0.85);
+  padding: 2px 7px; border-radius: 5px;
+  color: #A5B4FC; border: 1px solid rgba(165,180,252,0.15);
+}
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: #050814; }
+::-webkit-scrollbar-thumb { background: rgba(129,140,248,0.4); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<div class="ambient"></div>
+
+<nav class="top-nav">
+  <a href="index.html" class="back-link">&#8592; Back to Day 4</a>
+  <span class="demo-title">Interactive Aliasing Demo</span>
+</nav>
+
+<div class="container">
+  <div class="hero-section">
+    <h1>The <span class="highlight">Nyquist Theorem</span><br>&amp; <span class="highlight-teal">Aliasing</span> Visualised</h1>
+    <p>Watch how discrete sampling measures a continuous analog wave. Drag the <strong>Time Window Zoom</strong> slider to space out individual sample points and observe how phantom aliased waves emerge when the Nyquist limit is violated.</p>
+  </div>
+
+  <!-- PRESETS & CONTROLS -->
+  <div class="panel">
+    <h3>&#127899; Guided Presets &amp; Controls</h3>
+    
+    <div class="preset-row">
+      <span style="font-size:0.8rem;color:var(--text-muted);display:flex;align-items:center;font-weight:600;">Presets:</span>
+      <button class="preset-btn active" id="preset-normal">&#10003; 1. Normal Sampling (50 Hz @ 250 Hz)</button>
+      <button class="preset-btn" id="preset-aliasing">&#9888; 2. Severe Aliasing (180 Hz @ 200 Hz)</button>
+      <button class="preset-btn" id="preset-filter">&#128737; 3. Anti-Aliasing Filter ON</button>
+    </div>
+
+    <div class="controls-grid">
+      <div class="ctrl-group">
+        <div class="ctrl-label">Signal Frequency (Hz) &mdash; analog tone</div>
+        <div class="ctrl-row">
+          <input type="range" id="sig-freq" min="1" max="500" value="50" step="1">
+          <span class="val-badge" id="sig-freq-val">50 Hz</span>
+        </div>
+      </div>
+      <div class="ctrl-group">
+        <div class="ctrl-label">Sampling Rate (Hz) &mdash; ADC clock speed</div>
+        <div class="ctrl-row">
+          <input type="range" id="samp-rate" min="10" max="500" value="250" step="5">
+          <span class="val-badge" id="samp-rate-val">250 Hz</span>
+        </div>
+      </div>
+      <div class="ctrl-group">
+        <div class="ctrl-label">Time Window Zoom (sec) &mdash; point spacing</div>
+        <div class="ctrl-row">
+          <input type="range" id="time-win" min="0.02" max="0.30" value="0.08" step="0.01">
+          <span class="val-badge" id="time-win-val">0.08 s</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="toggle-row">
+      <button class="toggle-btn" id="btn-antialias">Anti-alias Filter: OFF</button>
+      <button class="toggle-btn on" id="btn-show-orig">Show Blue Wave</button>
+      <button class="toggle-btn on" id="btn-show-samples">Show Yellow Dots</button>
+      <button class="toggle-btn on" id="btn-show-alias">Show Red Alias</button>
+    </div>
+  </div>
+
+  <!-- INFO CARDS -->
+  <div class="info-grid">
+    <div class="info-card">
+      <div class="ic-label">Signal Frequency</div>
+      <div class="ic-val alias-ok" id="ic-sigfreq">50 Hz</div>
+    </div>
+    <div class="info-card">
+      <div class="ic-label">Sampling Rate</div>
+      <div class="ic-val" id="ic-srate" style="color:#A5B4FC">250 Hz</div>
+    </div>
+    <div class="info-card">
+      <div class="ic-label">Nyquist Limit (fs/2)</div>
+      <div class="ic-val" id="ic-nyq" style="color:#FCD34D">125 Hz</div>
+    </div>
+    <div class="info-card">
+      <div class="ic-label">Perceived Alias Freq</div>
+      <div class="ic-val alias-ok" id="ic-alias">None</div>
+    </div>
+    <div class="info-card">
+      <div class="ic-label">Nyquist Status</div>
+      <div class="ic-val alias-ok" id="ic-status">OK &#10003;</div>
+    </div>
+  </div>
+
+  <!-- MAIN CANVAS -->
+  <div class="canvas-section">
+    <div class="canvas-wrap">
+      <canvas id="alias-canvas" height="340"></canvas>
+    </div>
+    <div class="canvas-label">
+      <span style="color:#A5B4FC;font-weight:600;">&#9644; Blue Solid: True Continuous Signal</span>
+      &nbsp;&bull;&nbsp;
+      <span style="color:#FCD34D;font-weight:600;">&#9679; Yellow Dots &amp; Stems: ADC Samples Taken</span>
+      &nbsp;&bull;&nbsp;
+      <span style="color:#FB7185;font-weight:600;">- - Red Dashed: Reconstructed Phantom Alias</span>
+    </div>
+  </div>
+
+  <!-- SPECTRUM CANVAS -->
+  <div class="canvas-section">
+    <div class="canvas-wrap">
+      <canvas id="spectrum-canvas" height="200"></canvas>
+    </div>
+    <div class="canvas-label">
+      Frequency Domain Spectrum &mdash;
+      <span style="color:#A5B4FC;font-weight:600;">Blue Peak: Input Frequency</span>,
+      <span style="color:#FB7185;font-weight:600;">Red Peak: Folded Alias Peak</span>,
+      <span style="color:#FCD34D;font-weight:600;">Dashed Line: Nyquist Cutoff ($f_s / 2$)</span>
+    </div>
+  </div>
+
+  <hr class="section-divider">
+
+  <!-- STATUS DYNAMIC EXPLANATION BOX -->
+  <div class="explanation" id="exp-main">
+    <p><strong>Nyquist criterion satisfied.</strong> Signal frequency (50&nbsp;Hz) is below Nyquist (125&nbsp;Hz). Sampling faithfully captures the original signal.</p>
+  </div>
+
+  <!-- ANNOTATED EXPLANATION CARDS -->
+  <div class="annotated-grid">
+    <div class="anno-card">
+      <h4 style="color:#A5B4FC;">1. Point Spacing &amp; Time Window</h4>
+      <p>By zooming the time window to <strong id="anno-win-txt">0.08 seconds (80 ms)</strong>, we are magnifying a tiny slice of time. At 250 Hz, one sample is recorded every 4 ms ($1 / 250\text{ s}$). The vertical yellow stems show the exact instant and voltage recorded by the analog-to-digital converter (ADC).</p>
+    </div>
+
+    <div class="anno-card">
+      <h4 style="color:#FB7185;">2. How the Red Phantom Alias Form</h4>
+      <p>When the signal moves faster than half the sampling clock ($f > f_s / 2$), the yellow sample dots are too sparse to capture the rapid blue waves. The ADC only "sees" the yellow dots &mdash; and the simplest smooth curve passing through those exact yellow dots is the <strong>red dashed slow wave</strong> ($f_{\text{alias}} = |f - \text{round}(f/f_s) \cdot f_s|$).</p>
+    </div>
+
+    <div class="anno-card">
+      <h4 style="color:#FCD34D;">3. The Fundamental Ambiguity of Sampling</h4>
+      <p>Notice how the yellow sample dots lie <em>simultaneously</em> on both the fast blue wave and the slow red wave! Once sampled, a computer cannot distinguish whether those numbers came from a 180 Hz signal or a 20 Hz signal. This is why aliasing is permanent and uncorrectable after sampling.</p>
+    </div>
+
+    <div class="anno-card">
+      <h4 style="color:#5EEAD4;">4. How the Anti-Aliasing Filter Protects Data</h4>
+      <p>Hardware EEG amplifiers use an analog low-pass filter <em>before</em> the ADC to block all frequencies above $f_s / 2$. Try toggling the <strong>Anti-alias Filter: ON</strong> button: high frequencies above Nyquist are attenuated to near-zero before sampling, ensuring no phantom red waves ever corrupt your recordings.</p>
+    </div>
+  </div>
+
+  <!-- THEORY PANEL -->
+  <div class="panel" style="margin-top:20px;">
+    <h3>&#128218; Mathematical Foundations</h3>
+    <p style="color:var(--text-muted);font-size:.9rem;margin-bottom:12px;">
+      The <strong style="color:#fff;">Nyquist&ndash;Shannon Theorem</strong> proves that an analog signal $x(t)$ with maximum frequency $f_{\text{max}}$ can be perfectly reconstructed without loss if sampled at:
+    </p>
+    <div style="text-align:center;padding:12px;background:rgba(10,12,40,0.9);border-radius:10px;margin:12px 0;border:1px solid rgba(165,180,252,0.15);">
+      <code style="font-size:1.05rem;color:#A5B4FC;">f_s > 2 &times; f_max &nbsp;&nbsp;&rArr;&nbsp;&nbsp; f_Nyquist = f_s / 2</code>
+    </div>
+    <p style="color:var(--text-muted);font-size:.9rem;margin-top:12px;">
+      When $f > f_{\text{Nyquist}}$, the frequency component folds back into the passband $[0, f_s/2]$ according to:
+    </p>
+    <div style="text-align:center;padding:12px;background:rgba(10,12,40,0.9);border-radius:10px;margin:12px 0;border:1px solid rgba(165,180,252,0.15);">
+      <code style="font-size:1.05rem;color:#FB7185;">f_alias = | f &minus; round(f / f_s) &times; f_s |</code>
+    </div>
+  </div>
+</div>
+
+<script>
+// State
+var sigFreq   = 50;
+var sampRate  = 250;
+var timeWin   = 0.08;
+var showOrig  = true;
+var showSamp  = true;
+var showAlias = true;
+var antiAlias = false;
+
+function nyquist(fs)      { return fs / 2; }
+function isAliased(f, fs) { return f > nyquist(fs); }
+function aliasFreq(f, fs) { return Math.abs(f - Math.round(f / fs) * fs); }
+
+// High-DPI Canvas Sizing Helper for Retina/High-DPI Display Crispness
+function cSize(canvas, targetHeight) {
+  var parent = canvas.parentElement;
+  var cssW = parent ? Math.max(300, parent.clientWidth - 40) : 840;
+  var cssH = targetHeight || 340;
+  var dpr = window.devicePixelRatio || 1;
+  canvas.width = cssW * dpr;
+  canvas.height = cssH * dpr;
+  canvas.style.width = cssW + "px";
+  canvas.style.height = cssH + "px";
+  var ctx = canvas.getContext("2d");
+  if(ctx.resetTransform) ctx.resetTransform();
+  else ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.scale(dpr, dpr);
+  return { w: cssW, h: cssH, ctx: ctx };
+}
+
+function drawGrid(ctx, w, h, cols, rows) {
+  ctx.save();
+  ctx.strokeStyle = 'rgba(165,180,252,0.08)';
+  ctx.lineWidth   = 0.7;
+  for (var c = 1; c < cols; c++) {
+    var x = w * c / cols;
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+  }
+  for (var r = 1; r < rows; r++) {
+    var y = h * r / rows;
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function updateInfo() {
+  var nyq     = nyquist(sampRate);
+  var aliased = isAliased(sigFreq, sampRate);
+  var af      = aliasFreq(sigFreq, sampRate);
+
+  document.getElementById('ic-sigfreq').textContent = sigFreq + ' Hz';
+  document.getElementById('ic-srate').textContent   = sampRate + ' Hz';
+  document.getElementById('ic-nyq').textContent     = nyq + ' Hz';
+  document.getElementById('anno-win-txt').textContent = timeWin.toFixed(2) + ' s (' + Math.round(timeWin*1000) + ' ms)';
+
+  var expBox = document.getElementById('exp-main');
+
+  if (aliased) {
+    if (antiAlias) {
+      document.getElementById('ic-alias').textContent  = 'Filtered';
+      document.getElementById('ic-alias').className    = 'ic-val alias-ok';
+      document.getElementById('ic-status').textContent = 'PROTECTED \u2713';
+      document.getElementById('ic-status').className   = 'ic-val alias-ok';
+      expBox.style.borderLeftColor = '#2DD4BF';
+      expBox.style.background      = 'rgba(20,184,166,0.07)';
+      expBox.innerHTML = '<p><strong style="color:#5EEAD4;">ANTI-ALIASING FILTER ACTIVE!</strong> '
+        + 'The signal (' + sigFreq + ' Hz) exceeds Nyquist (' + nyq + ' Hz), but the pre-sampling low-pass filter '
+        + 'attenuates its amplitude to near-zero before the ADC clock measures it. '
+        + 'No phantom aliased wave is created in the sampled data.</p>';
+    } else {
+      document.getElementById('ic-alias').textContent  = af.toFixed(1) + ' Hz';
+      document.getElementById('ic-alias').className    = 'ic-val alias-warn';
+      document.getElementById('ic-status').textContent = 'ALIASING! \u26A0';
+      document.getElementById('ic-status').className   = 'ic-val alias-warn';
+      expBox.style.borderLeftColor = '#FB7185';
+      expBox.style.background      = 'rgba(251,113,133,0.07)';
+      expBox.innerHTML = '<p><strong style="color:#FB7185;">ALIASING IN ACTION!</strong> '
+        + 'Signal (' + sigFreq + ' Hz) is higher than Nyquist (' + nyq + ' Hz). '
+        + 'Look closely at the yellow dots: they fall <strong style="color:#FB7185;">EXACTLY</strong> on the red dashed '
+        + af.toFixed(1) + ' Hz wave. The computer cannot tell the difference between ' + sigFreq + ' Hz and ' + af.toFixed(1) + ' Hz!</p>';
+    }
+  } else {
+    document.getElementById('ic-alias').textContent  = 'None';
+    document.getElementById('ic-alias').className    = 'ic-val alias-ok';
+    document.getElementById('ic-status').textContent = 'OK \u2713';
+    document.getElementById('ic-status').className   = 'ic-val alias-ok';
+    expBox.style.borderLeftColor = '#2DD4BF';
+    expBox.style.background      = 'rgba(20,184,166,0.07)';
+    expBox.innerHTML = '<p><strong>Nyquist criterion satisfied.</strong> '
+      + 'Signal frequency (' + sigFreq + ' Hz) is below Nyquist (' + nyq + ' Hz). '
+      + 'Sampling rate is fast enough: yellow sample dots trace the blue wave cleanly with no ambiguity.</p>';
+  }
+}
+
+function drawAlias() {
+  var canvas = document.getElementById('alias-canvas');
+  var dim = cSize(canvas, 340);
+  var w = dim.w, h = dim.h, ctx = dim.ctx;
+
+  ctx.fillStyle = '#05081c';
+  ctx.fillRect(0, 0, w, h);
+  drawGrid(ctx, w, h, 10, 4);
+
+  var mid     = h / 2;
+  var amp     = h * 0.36;
+  var dur     = timeWin;
+  var N       = w * 2;
+  var aliased = isAliased(sigFreq, sampRate);
+  var effAmp  = (antiAlias && aliased) ? 0.03 : 1;
+
+  // Zero axis line
+  ctx.save();
+  ctx.strokeStyle = 'rgba(165,180,252,0.2)';
+  ctx.lineWidth   = 1;
+  ctx.beginPath(); ctx.moveTo(0, mid); ctx.lineTo(w, mid); ctx.stroke();
+  ctx.restore();
+
+  // 1. Blue solid continuous wave
+  if (showOrig) {
+    ctx.save();
+    ctx.beginPath();
+    for (var i = 0; i <= N; i++) {
+      var t  = (i / N) * dur;
+      var v  = effAmp * Math.sin(2 * Math.PI * sigFreq * t);
+      var px = (i / N) * w;
+      var py = mid - v * amp;
+      if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    }
+    ctx.strokeStyle = '#A5B4FC';
+    ctx.lineWidth   = 2.2;
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // 2. Red dashed alias wave
+  if (showAlias && aliased && !antiAlias) {
+    var af = aliasFreq(sigFreq, sampRate);
+    ctx.save();
+    ctx.beginPath();
+    ctx.setLineDash([8, 5]);
+    for (var ai = 0; ai <= N; ai++) {
+      var at  = (ai / N) * dur;
+      var av  = Math.sin(2 * Math.PI * af * at);
+      var apx = (ai / N) * w;
+      var apy = mid - av * amp;
+      if (ai === 0) ctx.moveTo(apx, apy); else ctx.lineTo(apx, apy);
+    }
+    ctx.strokeStyle = '#FB7185';
+    ctx.lineWidth   = 3;
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+  }
+
+  // 3. Discrete yellow sample dots and stems
+  if (showSamp) {
+    var nSamp = Math.floor(sampRate * dur) + 1;
+    ctx.save();
+    for (var s = 0; s < nSamp; s++) {
+      var st = s / sampRate;
+      var sv = effAmp * Math.sin(2 * Math.PI * sigFreq * st);
+      var sx = (st / dur) * w;
+      var sy = mid - sv * amp;
+
+      // Vertical Stem
+      ctx.beginPath();
+      ctx.moveTo(sx, mid); ctx.lineTo(sx, sy);
+      ctx.strokeStyle = 'rgba(252,211,77,0.5)';
+      ctx.lineWidth   = 1.8;
+      ctx.stroke();
+
+      // Outer glow circle
+      ctx.beginPath();
+      ctx.arc(sx, sy, 7, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(252,211,77,0.25)';
+      ctx.fill();
+
+      // Solid yellow dot
+      ctx.beginPath();
+      ctx.arc(sx, sy, 4.5, 0, Math.PI * 2);
+      ctx.fillStyle = '#FCD34D';
+      ctx.fill();
+      ctx.strokeStyle = '#05081c';
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  // Canvas Header Overlay Pill Badges (no text collision)
+  ctx.save();
+  ctx.fillStyle = "rgba(5,9,26,0.88)";
+  ctx.fillRect(8, 8, 380, 24);
+  ctx.font      = 'bold 11px Inter';
+  ctx.fillStyle = '#C8D5F0';
+  ctx.textAlign = 'left';
+  var pointDistMs = (1000 / sampRate).toFixed(1);
+  ctx.fillText('Window: ' + Math.round(dur*1000) + 'ms  |  Interval: ' + pointDistMs + 'ms  |  Signal: ' + sigFreq + ' Hz', 14, 24);
+
+  if (aliased) {
+    if (antiAlias) {
+      ctx.fillStyle = "rgba(5,9,26,0.88)";
+      ctx.fillRect(w - 240, 8, 232, 24);
+      ctx.fillStyle = '#5EEAD4';
+      ctx.textAlign = 'right';
+      ctx.fillText('ANTI-ALIAS FILTER ON (Attenuated)', w - 14, 24);
+    } else {
+      ctx.fillStyle = "rgba(5,9,26,0.88)";
+      ctx.fillRect(w - 290, 8, 282, 24);
+      ctx.fillStyle = '#FB7185';
+      ctx.textAlign = 'right';
+      ctx.fillText('ALIASING (Phantom Alias = ' + aliasFreq(sigFreq, sampRate).toFixed(1) + ' Hz)', w - 14, 24);
+    }
+  } else {
+    ctx.fillStyle = "rgba(5,9,26,0.88)";
+    ctx.fillRect(w - 180, 8, 172, 24);
+    ctx.fillStyle = '#34d399';
+    ctx.textAlign = 'right';
+    ctx.fillText('NO ALIASING (Nyquist OK)', w - 14, 24);
+  }
+  ctx.restore();
+}
+
+function drawSpectrum() {
+  var canvas = document.getElementById('spectrum-canvas');
+  var dim = cSize(canvas, 200);
+  var w = dim.w, h = dim.h, ctx = dim.ctx;
+
+  ctx.fillStyle = '#05081c';
+  ctx.fillRect(0, 0, w, h);
+  drawGrid(ctx, w, h, 10, 4);
+
+  var nyq     = nyquist(sampRate);
+  var aliased = isAliased(sigFreq, sampRate);
+  var af      = aliasFreq(sigFreq, sampRate);
+  var fMax    = Math.max(sampRate, sigFreq + 40);
+
+  // Nyquist line
+  var nyqX = (nyq / fMax) * w;
+  ctx.save();
+  ctx.setLineDash([5, 4]);
+  ctx.strokeStyle = '#FCD34D';
+  ctx.lineWidth   = 1.8;
+  ctx.beginPath(); ctx.moveTo(nyqX, 0); ctx.lineTo(nyqX, h); ctx.stroke();
+  ctx.setLineDash([]);
+  
+  ctx.fillStyle = "rgba(5,9,26,0.85)";
+  ctx.fillRect(nyqX - 65, 4, 130, 20);
+  ctx.fillStyle = '#FCD34D';
+  ctx.font      = 'bold 11px Inter';
+  ctx.textAlign = 'center';
+  ctx.fillText('Nyquist Cutoff (' + nyq + ' Hz)', nyqX, 18);
+  ctx.restore();
+
+  // True signal bar
+  var sigX    = Math.min((sigFreq / fMax) * w, w - 6);
+  var barH    = h * 0.65;
+  var effAmp  = (antiAlias && aliased) ? 0.04 : 1;
+  var barEffH = barH * effAmp;
+
+  ctx.save();
+  ctx.fillStyle = '#A5B4FC';
+  ctx.fillRect(sigX - 4, h - barEffH - 22, 8, barEffH);
+  ctx.fillStyle = "rgba(5,9,26,0.85)";
+  ctx.fillRect(sigX - 35, h - barEffH - 22, 70, 18);
+  ctx.fillStyle = '#A5B4FC';
+  ctx.font      = 'bold 11px Inter';
+  ctx.textAlign = 'center';
+  ctx.fillText(sigFreq + ' Hz', sigX, h - barEffH - 9);
+  ctx.restore();
+
+  // Alias bar
+  if (aliased && !antiAlias && af > 0.5) {
+    var afX = (af / fMax) * w;
+    ctx.save();
+    ctx.fillStyle = '#FB7185';
+    ctx.fillRect(afX - 4, h - barH - 22, 8, barH);
+    ctx.fillStyle = "rgba(5,9,26,0.85)";
+    ctx.fillRect(afX - 55, h - barH - 22, 110, 18);
+    ctx.fillStyle = '#FB7185';
+    ctx.font      = 'bold 11px Inter';
+    ctx.textAlign = 'center';
+    ctx.fillText(af.toFixed(1) + ' Hz (alias)', afX, h - barH - 9);
+    ctx.restore();
+  }
+
+  // X Axis labels
+  ctx.save();
+  ctx.fillStyle = 'rgba(184,196,224,0.65)';
+  ctx.font      = '500 10px Inter';
+  var step = Math.round(fMax / 8);
+  for (var f = 0; f <= fMax; f += step) {
+    var x = (f / fMax) * w;
+    ctx.textAlign = 'center';
+    ctx.fillText(f + ' Hz', x, h - 4);
+  }
+  ctx.restore();
+}
+
+function update() {
+  updateInfo();
+  drawAlias();
+  drawSpectrum();
+}
+
+// Bind sliders
+var sfInput = document.getElementById('sig-freq');
+var srInput = document.getElementById('samp-rate');
+var twInput = document.getElementById('time-win');
+
+sfInput.addEventListener('input', function() {
+  sigFreq = parseInt(this.value, 10);
+  document.getElementById('sig-freq-val').textContent = sigFreq + ' Hz';
+  update();
+});
+
+srInput.addEventListener('input', function() {
+  sampRate = parseInt(this.value, 10);
+  document.getElementById('samp-rate-val').textContent = sampRate + ' Hz';
+  update();
+});
+
+twInput.addEventListener('input', function() {
+  timeWin = parseFloat(this.value);
+  document.getElementById('time-win-val').textContent = timeWin.toFixed(2) + ' s';
+  update();
+});
+
+// Presets
+function setPresetActive(activeBtnId) {
+  ['preset-normal', 'preset-aliasing', 'preset-filter'].forEach(function(id) {
+    var btn = document.getElementById(id);
+    if(btn) btn.classList.toggle('active', id === activeBtnId);
+  });
+}
+
+document.getElementById('preset-normal').addEventListener('click', function() {
+  sigFreq = 50; sampRate = 250; timeWin = 0.08; antiAlias = false;
+  sfInput.value = 50; srInput.value = 250; twInput.value = 0.08;
+  document.getElementById('sig-freq-val').textContent = '50 Hz';
+  document.getElementById('samp-rate-val').textContent = '250 Hz';
+  document.getElementById('time-win-val').textContent = '0.08 s';
+  document.getElementById('btn-antialias').textContent = 'Anti-alias Filter: OFF';
+  document.getElementById('btn-antialias').classList.remove('teal-on');
+  setPresetActive('preset-normal');
+  update();
+});
+
+document.getElementById('preset-aliasing').addEventListener('click', function() {
+  sigFreq = 180; sampRate = 200; timeWin = 0.08; antiAlias = false;
+  sfInput.value = 180; srInput.value = 200; twInput.value = 0.08;
+  document.getElementById('sig-freq-val').textContent = '180 Hz';
+  document.getElementById('samp-rate-val').textContent = '200 Hz';
+  document.getElementById('time-win-val').textContent = '0.08 s';
+  document.getElementById('btn-antialias').textContent = 'Anti-alias Filter: OFF';
+  document.getElementById('btn-antialias').classList.remove('teal-on');
+  setPresetActive('preset-aliasing');
+  update();
+});
+
+document.getElementById('preset-filter').addEventListener('click', function() {
+  sigFreq = 180; sampRate = 200; timeWin = 0.08; antiAlias = true;
+  sfInput.value = 180; srInput.value = 200; twInput.value = 0.08;
+  document.getElementById('sig-freq-val').textContent = '180 Hz';
+  document.getElementById('samp-rate-val').textContent = '200 Hz';
+  document.getElementById('time-win-val').textContent = '0.08 s';
+  document.getElementById('btn-antialias').textContent = 'Anti-alias Filter: ON';
+  document.getElementById('btn-antialias').classList.add('teal-on');
+  setPresetActive('preset-filter');
+  update();
+});
+
+// Bind buttons
+document.getElementById('btn-antialias').addEventListener('click', function() {
+  antiAlias = !antiAlias;
+  this.textContent = 'Anti-alias Filter: ' + (antiAlias ? 'ON' : 'OFF');
+  this.classList.toggle('teal-on', antiAlias);
+  update();
+});
+
+document.getElementById('btn-show-orig').addEventListener('click', function() {
+  showOrig = !showOrig;
+  this.textContent = showOrig ? 'Show Blue Wave' : 'Hide Blue Wave';
+  this.classList.toggle('on', showOrig);
+  update();
+});
+
+document.getElementById('btn-show-samples').addEventListener('click', function() {
+  showSamp = !showSamp;
+  this.textContent = showSamp ? 'Show Yellow Dots' : 'Hide Yellow Dots';
+  this.classList.toggle('on', showSamp);
+  update();
+});
+
+document.getElementById('btn-show-alias').addEventListener('click', function() {
+  showAlias = !showAlias;
+  this.textContent = showAlias ? 'Show Red Alias' : 'Hide Red Alias';
+  this.classList.toggle('on', showAlias);
+  update();
+});
+
+window.addEventListener('resize', function() { update(); });
+window.addEventListener('DOMContentLoaded', function() { update(); });
+setTimeout(update, 50);
+setTimeout(update, 200);
+</script>
+</body>
+</html>
