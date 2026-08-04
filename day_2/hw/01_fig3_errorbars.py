@@ -7,30 +7,12 @@ import os
 import pickle
 import numpy as np
 import matplotlib
-matplotlib.use("Agg")
+# Interactive backend enabled by default so pop-up figure windows display for students
 import matplotlib.pyplot as plt
 
-# Dynamic file path loading
-script_dir = os.path.dirname(os.path.abspath(__file__))
-day2_dir = os.path.dirname(script_dir)
-workspace_dir = os.path.dirname(day2_dir)
-
-data_candidates = [
-    os.path.join(workspace_dir, "day_1", "data", "neural_data.npy"),
-    os.path.join(day2_dir, "..", "day_1", "data", "neural_data.npy"),
-    "day_1/data/neural_data.npy",
-]
-meta_candidates = [
-    os.path.join(workspace_dir, "day_1", "data", "metadata.pkl"),
-    os.path.join(day2_dir, "..", "day_1", "data", "metadata.pkl"),
-    "day_1/data/metadata.pkl",
-]
-
-data_path = next((p for p in data_candidates if os.path.exists(p)), "day_1/data/neural_data.npy")
-meta_path = next((p for p in meta_candidates if os.path.exists(p)), "day_1/data/metadata.pkl")
-
-data = np.load(data_path)
-with open(meta_path, "rb") as fh:
+# Load neural dataset and metadata directly using relative path
+data = np.load("day_1/data/neural_data.npy")
+with open("day_1/data/metadata.pkl", "rb") as fh:
     meta = pickle.load(fh)
 
 G, T, S, C, F = data.shape
@@ -39,9 +21,8 @@ t_names = ["Baseline", "Task", "Rest"]
 COLORS = ["#2196F3", "#F44336", "#4CAF50"]   # Blue, Red, Green
 t_axis = np.arange(T)
 
-# Ensure hw/plots directory exists inside the hw folder
-output_dir = os.path.join(script_dir, "plots")
-os.makedirs(output_dir, exist_ok=True)
+# Ensure output directory exists
+os.makedirs("day_2/hw/plots", exist_ok=True)
 
 # Helper: mean and SEM calculation
 def _mean_sem(g, fi=2):
@@ -75,8 +56,9 @@ ax.spines["top"].set_visible(False)
 ax.spines["right"].set_visible(False)
 
 fig.tight_layout()
-save_path = os.path.join(output_dir, "hw_fig3_errorbars.png")
+save_path = "day_2/hw/plots/hw_fig3_errorbars.png"
 fig.savefig(save_path, dpi=150, bbox_inches="tight")
+plt.show()
 plt.close(fig)
 
 print(f"[HW 1 Solution] Figure saved successfully to: {save_path}")

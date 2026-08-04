@@ -6,6 +6,16 @@
 <title>Aliasing Demo &mdash; Interactive Sampling Rate Visualizer</title>
 <meta name="description" content="Interactive demonstration of the Nyquist theorem and aliasing: drag sliders, zoom time windows, and observe how sampling rates fold high-frequency signals."/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script>
+  MathJax = {
+    tex: {
+      inlineMath: [['$', '$'], ['\\(', '\\)']],
+      displayMath: [['$$', '$$'], ['\\[', '\\]']]
+    },
+    svg: { fontCache: 'global' }
+  };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
 <style>
 :root {
   --bg-deep: #05091a;
@@ -395,13 +405,13 @@ code {
       The <strong style="color:#fff;">Nyquist&ndash;Shannon Theorem</strong> proves that an analog signal $x(t)$ with maximum frequency $f_{\text{max}}$ can be perfectly reconstructed without loss if sampled at:
     </p>
     <div style="text-align:center;padding:12px;background:rgba(10,12,40,0.9);border-radius:10px;margin:12px 0;border:1px solid rgba(165,180,252,0.15);">
-      <code style="font-size:1.05rem;color:#A5B4FC;">f_s > 2 &times; f_max &nbsp;&nbsp;&rArr;&nbsp;&nbsp; f_Nyquist = f_s / 2</code>
+      <div style="font-size:1.15rem;color:#A5B4FC;">$$f_s > 2 \cdot f_{\text{max}} \quad \implies \quad f_{\text{Nyquist}} = \frac{f_s}{2}$$</div>
     </div>
     <p style="color:var(--text-muted);font-size:.9rem;margin-top:12px;">
       When $f > f_{\text{Nyquist}}$, the frequency component folds back into the passband $[0, f_s/2]$ according to:
     </p>
     <div style="text-align:center;padding:12px;background:rgba(10,12,40,0.9);border-radius:10px;margin:12px 0;border:1px solid rgba(165,180,252,0.15);">
-      <code style="font-size:1.05rem;color:#FB7185;">f_alias = | f &minus; round(f / f_s) &times; f_s |</code>
+      <div style="font-size:1.15rem;color:#FB7185;">$$f_{\text{alias}} = \left| f - \text{round}\left(\frac{f}{f_s}\right) \cdot f_s \right|$$</div>
     </div>
   </div>
 </div>

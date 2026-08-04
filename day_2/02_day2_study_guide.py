@@ -18,7 +18,7 @@ Turning arrays of raw numbers into a visual story
 import numpy as np
 import pickle, os
 import matplotlib
-matplotlib.use("Agg")               # non-interactive: saves files, no pop-up windows
+# Interactive backend enabled by default so pop-up figure windows display for students to observe figure size and tight layouts
 import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
 import scipy.stats as stats
@@ -38,28 +38,9 @@ EHINGER_COLORS = [
 ]
 cmap_becp = LinearSegmentedColormap.from_list("becp", EHINGER_COLORS, N=256)
 
-# Load data directly from day_1 shared data directory or local fallback
-script_dir = os.path.dirname(os.path.abspath(__file__))
-workspace_dir = os.path.dirname(script_dir)
-
-data_candidates = [
-    os.path.join(workspace_dir, "day_1", "data", "neural_data.npy"),
-    os.path.join(script_dir, "..", "day_1", "data", "neural_data.npy"),
-    "day_1/data/neural_data.npy",
-    "neural_data.npy",
-]
-meta_candidates = [
-    os.path.join(workspace_dir, "day_1", "data", "metadata.pkl"),
-    os.path.join(script_dir, "..", "day_1", "data", "metadata.pkl"),
-    "day_1/data/metadata.pkl",
-    "metadata.pkl",
-]
-
-data_path = next((p for p in data_candidates if os.path.exists(p)), "day_1/data/neural_data.npy")
-meta_path = next((p for p in meta_candidates if os.path.exists(p)), "day_1/data/metadata.pkl")
-
-data = np.load(data_path)
-with open(meta_path, "rb") as fh:
+# Load neural dataset and metadata directly using relative path
+data = np.load("day_1/data/neural_data.npy")
+with open("day_1/data/metadata.pkl", "rb") as fh:
     meta = pickle.load(fh)
 
 G, T, S, C, F = data.shape
@@ -129,6 +110,7 @@ ax.legend()
 ax.grid(True, alpha=0.3)
 fig.tight_layout()
 fig.savefig("plots/s01_single_timeseries.png", dpi=120)
+plt.show()
 plt.close(fig)
 
 # ── MULTI-GROUP TIME-SERIES OVERLAY ───────────────────────────────────────────
@@ -146,6 +128,7 @@ ax.set_title("Alpha Power Over Time — All Groups", fontsize=12)
 ax.legend(); ax.grid(True, alpha=0.3)
 fig.tight_layout()
 fig.savefig("plots/s02_multigroup_timeseries.png", dpi=120)
+plt.show()
 plt.close(fig)
 
 # ── CONFIDENCE BANDS (fill_between ±SEM) ─────────────────────────────────────
@@ -171,6 +154,7 @@ ax.legend(loc="upper center",
 ax.grid(True, alpha=0.3)
 fig.tight_layout()
 fig.savefig("plots/s03_confidence_bands.png", dpi=120, bbox_inches="tight")
+plt.show()
 plt.close(fig)
 
 # ── SUBPLOTS GRID ─────────────────────────────────────────────────────────────
@@ -201,6 +185,7 @@ for row, g in enumerate([0, 1]):
 fig.suptitle("Feature Comparison: Control vs Patient", fontsize=13, fontweight="bold")
 fig.tight_layout()
 fig.savefig("plots/s04_subplots_2x3.png", dpi=120, bbox_inches="tight")
+plt.show()
 plt.close(fig)
 
 # ── MNE SCALP TOPOGRAPHY ─────────────────────────────────────────────────────
@@ -225,6 +210,7 @@ for g in range(G):
 fig.suptitle("MNE Scalp Topography: Alpha Power Across Cohorts", fontsize=13, fontweight="bold")
 fig.tight_layout()
 fig.savefig("plots/s05_mne_topoplot.png", dpi=120, bbox_inches="tight")
+plt.show()
 plt.close(fig)
 
 # ── RAINCLOUD PLOTS ───────────────────────────────────────────────────────────
@@ -270,6 +256,7 @@ fig.suptitle("Raincloud Plots: Subject Distributions Across Frequency Bands",
              fontsize=13, fontweight="bold")
 fig.tight_layout()
 fig.savefig("plots/s06_raincloud_plots.png", dpi=120, bbox_inches="tight")
+plt.show()
 plt.close(fig)
 
 # ── ANNOTATED CORRELATION MATRIX ─────────────────────────────────────────────
@@ -295,6 +282,7 @@ fig.suptitle("Feature Correlation Matrices — All Groups",
              fontsize=12, fontweight="bold")
 fig.tight_layout()
 fig.savefig("plots/s07_correlation_matrix.png", dpi=120, bbox_inches="tight")
+plt.show()
 plt.close(fig)
 
 # ── JOURNAL-READY FIGURE WITH MNE DELTA TOPOMAP ───────────────────────────────
@@ -330,5 +318,6 @@ fig.colorbar(im, ax=ax2, shrink=0.75, pad=0.04, label="Δ Alpha Power")
 fig.suptitle("Neural Biomarkers: Patient vs Control Analysis", y=0.98)
 fig.tight_layout()
 fig.savefig("plots/s08_publication_figure.png", dpi=150, bbox_inches="tight")
+plt.show()
 plt.close(fig)
 plt.rcParams.update(plt.rcParamsDefault)

@@ -7,37 +7,22 @@ import os
 import pickle
 import numpy as np
 import matplotlib
-matplotlib.use("Agg")
+# Interactive backend enabled by default so pop-up figure windows display for students
 import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
 import mne
 
-# Dynamic file path loading
-script_dir = os.path.dirname(os.path.abspath(__file__))
-day2_dir = os.path.dirname(script_dir)
-workspace_dir = os.path.dirname(day2_dir)
-
-data_candidates = [
-    os.path.join(workspace_dir, "day_1", "data", "neural_data.npy"),
-    os.path.join(day2_dir, "..", "day_1", "data", "neural_data.npy"),
-    "day_1/data/neural_data.npy",
-]
-meta_candidates = [
-    os.path.join(workspace_dir, "day_1", "data", "metadata.pkl"),
-    os.path.join(day2_dir, "..", "day_1", "data", "metadata.pkl"),
-    "day_1/data/metadata.pkl",
-]
-
-data_path = next((p for p in data_candidates if os.path.exists(p)), "day_1/data/neural_data.npy")
-meta_path = next((p for p in meta_candidates if os.path.exists(p)), "day_1/data/metadata.pkl")
-
-data = np.load(data_path)
-with open(meta_path, "rb") as fh:
+# Load neural dataset and metadata directly using relative path
+data = np.load("day_1/data/neural_data.npy")
+with open("day_1/data/metadata.pkl", "rb") as fh:
     meta = pickle.load(fh)
 
 G, T, S, C, F = data.shape
 gnames = meta["group_names"]
 chnames = meta["channel_names"]
+
+# Ensure output directory exists
+os.makedirs("day_2/hw/plots", exist_ok=True)
 
 # Benedikt Ehinger's EEG Topographic Colormap (becp)
 EHINGER_COLORS = [
@@ -50,10 +35,6 @@ EHINGER_COLORS = [
     (0.8431, 0.1882, 0.1529)
 ]
 cmap_becp = LinearSegmentedColormap.from_list("becp", EHINGER_COLORS, N=256)
-
-# Ensure hw/plots directory exists inside the hw folder
-output_dir = os.path.join(script_dir, "plots")
-os.makedirs(output_dir, exist_ok=True)
 
 # MNE Info structure
 info = mne.create_info(ch_names=chnames, sfreq=125, ch_types="eeg")
@@ -86,8 +67,9 @@ fig.suptitle(
 )
 fig.tight_layout()
 
-save_path = os.path.join(output_dir, "hw_fig5_shared_clim.png")
+save_path = "day_2/hw/plots/hw_fig5_shared_clim.png"
 fig.savefig(save_path, dpi=150, bbox_inches="tight")
+plt.show()
 plt.close(fig)
 
 print(f"[HW 3 Solution] Figure saved successfully to: {save_path}")

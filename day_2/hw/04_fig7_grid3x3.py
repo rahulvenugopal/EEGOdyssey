@@ -7,30 +7,12 @@ import os
 import pickle
 import numpy as np
 import matplotlib
-matplotlib.use("Agg")
+# Interactive backend enabled by default so pop-up figure windows display for students
 import matplotlib.pyplot as plt
 
-# Dynamic file path loading
-script_dir = os.path.dirname(os.path.abspath(__file__))
-day2_dir = os.path.dirname(script_dir)
-workspace_dir = os.path.dirname(day2_dir)
-
-data_candidates = [
-    os.path.join(workspace_dir, "day_1", "data", "neural_data.npy"),
-    os.path.join(day2_dir, "..", "day_1", "data", "neural_data.npy"),
-    "day_1/data/neural_data.npy",
-]
-meta_candidates = [
-    os.path.join(workspace_dir, "day_1", "data", "metadata.pkl"),
-    os.path.join(day2_dir, "..", "day_1", "data", "metadata.pkl"),
-    "day_1/data/metadata.pkl",
-]
-
-data_path = next((p for p in data_candidates if os.path.exists(p)), "day_1/data/neural_data.npy")
-meta_path = next((p for p in meta_candidates if os.path.exists(p)), "day_1/data/metadata.pkl")
-
-data = np.load(data_path)
-with open(meta_path, "rb") as fh:
+# Load neural dataset and metadata directly using relative path
+data = np.load("day_1/data/neural_data.npy")
+with open("day_1/data/metadata.pkl", "rb") as fh:
     meta = pickle.load(fh)
 
 G, T, S, C, F = data.shape
@@ -38,9 +20,8 @@ gnames = meta["group_names"]
 fnames = meta["feature_names"]
 t_names = ["Baseline", "Task", "Rest"]
 
-# Ensure hw/plots directory exists inside the hw folder
-output_dir = os.path.join(script_dir, "plots")
-os.makedirs(output_dir, exist_ok=True)
+# Ensure output directory exists
+os.makedirs("day_2/hw/plots", exist_ok=True)
 
 # 3x3 Grid: Rows = Timepoints, Columns = Groups
 fig, axes = plt.subplots(3, 3, figsize=(14, 12))
@@ -82,8 +63,9 @@ for row_t, t_label in enumerate(t_names):
 fig.suptitle("Dynamic Feature Correlation Grid (3×3: Timepoint × Cohort)", fontsize=14, fontweight="bold", y=0.99)
 fig.tight_layout()
 
-save_path = os.path.join(output_dir, "hw_fig7_3x3_correlations.png")
+save_path = "day_2/hw/plots/hw_fig7_3x3_correlations.png"
 fig.savefig(save_path, dpi=150, bbox_inches="tight")
+plt.show()
 plt.close(fig)
 
 print(f"[HW 4 Solution] Figure saved successfully to: {save_path}")
