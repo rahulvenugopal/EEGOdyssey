@@ -1356,7 +1356,7 @@ raw.interpolate_bads(reset_bads=<span class="c-keyword">True</span>)</pre>
               <option value="4">Ch 5</option>
               <option value="5">Ch 6</option>
               <option value="6">Ch 7</option>
-              <option value="7" selected>Ch 8 (Target)</option>
+              <option value="7" selected>Ch 8</option>
               <option value="8">Ch 9</option>
               <option value="9">Ch 10</option>
               <option value="10">Ch 11</option>
@@ -1446,8 +1446,14 @@ raw.interpolate_bads(reset_bads=<span class="c-keyword">True</span>)</pre>
         <div style="font-size:.85rem;color:var(--text-muted);margin-bottom:12px;">Spherical spline interpolation &mdash;
           reconstructing a missing electrode from the surrounding field</div>
         <canvas id="interp-canvas" height="320"></canvas>
-        <div class="canvas-label">Colour gradient = interpolated potential field on the scalp surface. Gray ring =
-          bad/missing channel (Fp2). Teal rings = good electrodes driving the spherical spline interpolation.</div>
+        <div class="canvas-label" style="line-height:1.65;font-size:0.88rem;text-align:left;background:rgba(10,14,35,0.6);padding:12px 16px;border-radius:8px;border:1px solid rgba(165,180,252,0.2);margin-top:12px;">
+          <div style="font-weight:600;color:#F0F4FF;margin-bottom:6px;">&#127912; Topographic Legend &amp; Color Gradient Details:</div>
+          <ul style="margin:0;padding-left:1.2rem;color:var(--text-muted);display:flex;flex-direction:column;gap:5px;">
+            <li><strong>Colour gradient</strong> = interpolated potential field on the scalp surface. Warm colors (red/coral) represent positive electric potential (+&mu;V), cool colors (blue/teal) represent negative potential (-&mu;V), and dark navy represents the zero/isoelectric baseline. Spherical spline functions model continuous field flow across the 3D scalp surface.</li>
+            <li><strong style="color:#CBD5E1;">Gray ring</strong> = bad/missing channel (Fp2), reconstructed entirely via spherical spline spatial interpolation.</li>
+            <li><strong style="color:#2DD4BF;">Teal rings</strong> = good electrodes driving the spherical spline radial basis functions.</li>
+          </ul>
+        </div>
       </div>
       <div class="two-col">
         <div class="insight-box" style="margin:0;">
@@ -1518,6 +1524,60 @@ raw.interpolate_bads(reset_bads=<span class="c-keyword">True</span>)</pre>
       </div>
     </div>
   </article>
+
+  <!-- ── Further Reading Section ── -->
+  <section style="max-width:860px;margin:0 auto;padding:0 5% 100px;position:relative;z-index:2;">
+    <div style="display:flex;align-items:center;gap:16px;margin-bottom:32px;">
+      <div style="width:48px;height:48px;border-radius:50%;flex-shrink:0;
+        background:linear-gradient(135deg,#0f172a,#1e293b);
+        border:2px solid rgba(94,234,212,0.5);
+        box-shadow:0 0 20px rgba(20,184,166,0.4);
+        display:flex;align-items:center;justify-content:center;font-size:1.3rem;">
+        &#x1F4DA;
+      </div>
+      <h2 style="font-size:clamp(1.3rem,2.8vw,1.75rem);color:#fff;
+        text-shadow:0 0 20px rgba(94,234,212,0.3);
+        border:none;padding:0;margin:0;display:block;
+        font-family:'Playfair Display',serif;font-weight:400;">
+        Further reading
+      </h2>
+    </div>
+    <ol style="color:rgba(165,180,252,0.8);font-family:'Inter',sans-serif;line-height:1.6;padding-left:1.5rem;display:flex;flex-direction:column;gap:20px;">
+      <!-- Ref 1 -->
+      <li style="padding-left:8px;color:#A5B4FC;font-family:'JetBrains Mono',monospace;font-weight:700;">
+        <div style="font-family:'Inter',sans-serif;">
+          <a href="https://mne.tools/stable/auto_tutorials/preprocessing/30_filtering_resampling.html" target="_blank" rel="noopener"
+            style="color:#fff;text-decoration:underline;text-decoration-color:rgba(165,180,252,0.4);font-weight:600;font-size:0.95rem;transition:color 0.2s;"
+            onmouseover="this.style.color='#A5B4FC'" onmouseout="this.style.color='#fff'">MNE-Python Official Guide: Background on Filtering &amp; Resampling EEG Data</a>
+          <span style="font-size:0.9rem;margin-left:6px;" title="Documentation">&#x1F4D6;</span><br>
+          <span style="color:var(--text-muted);font-size:0.85rem;font-weight:400;">In-depth tutorial on digital filter design in MNE, cutoff selection, transition bandwidths, zero-phase filtering (<code>filtfilt</code>), and avoiding phase distortion.</span>
+        </div>
+      </li>
+
+      <!-- Ref 2 -->
+      <li style="padding-left:8px;color:#C4B5FD;font-family:'JetBrains Mono',monospace;font-weight:700;">
+        <div style="font-family:'Inter',sans-serif;">
+          <a href="https://www.frontiersin.org/articles/10.3389/fpsyg.2012.00233/full" target="_blank" rel="noopener"
+            style="color:#fff;text-decoration:underline;text-decoration-color:rgba(196,181,253,0.4);font-weight:600;font-size:0.95rem;transition:color 0.2s;"
+            onmouseover="this.style.color='#C4B5FD'" onmouseout="this.style.color='#fff'">Digital Filter Design for Electrophysiological Data (Widmann et al., 2015)</a>
+          <span style="font-size:0.9rem;margin-left:6px;" title="Paper">&#x1F4D1;</span><br>
+          <span style="color:var(--text-muted);font-size:0.85rem;font-weight:400;">Landmark paper detailing impulse response, causal vs. acausal filtering, passband ripple, roll-off, and preventing filter-induced ERP latency shifts and phase distortion.</span>
+        </div>
+      </li>
+
+      <!-- Ref 3 -->
+      <li style="padding-left:8px;color:#5EEAD4;font-family:'JetBrains Mono',monospace;font-weight:700;">
+        <div style="font-family:'Inter',sans-serif;">
+          <a href="https://github.com/rahulvenugopal/Phases-fading-away" target="_blank" rel="noopener"
+            style="color:#fff;text-decoration:underline;text-decoration-color:rgba(94,234,212,0.4);font-weight:600;font-size:0.95rem;transition:color 0.2s;"
+            onmouseover="this.style.color='#5EEAD4'" onmouseout="this.style.color='#fff'">Phases fading away by Rahul Venugopal</a>
+          <span style="font-size:0.9rem;margin-left:6px;" title="Repository">&#x1F4D6;</span><br>
+          <span style="color:var(--text-muted);font-size:0.85rem;font-weight:400;">Rahul Venugopal's repository exploring phase dynamics, phase distortion, zero-phase filtering, and signal degradation mitigation techniques in EEG processing.</span>
+        </div>
+      </li>
+    </ol>
+  </section>
+
   <footer>
     <p>Day 4 &mdash; Filtering, Nyquist, Aliasing, Bad Channel Detection &amp; RANSAC &mdash; EEG Analysis Odyssey</p>
     <p style="margin-top:6px;"><a href="aliasing_demo.html">&#127925; Open Interactive Aliasing Demo</a></p>
@@ -2041,73 +2101,140 @@ raw.interpolate_bads(reset_bads=<span class="c-keyword">True</span>)</pre>
     // INTERPOLATION CANVAS
     const inC = document.getElementById("interp-canvas");
     function drawInterp() {
-      const { w, h, ctx: inX } = cSize(inC, 320);
+      const { w: cssW, h: cssH, ctx: inX } = cSize(inC, 320);
+      const dpr = window.devicePixelRatio || 1;
+
+      // Clear logical canvas background
       inX.fillStyle = "#05081c";
-      inX.fillRect(0, 0, w, h);
+      inX.fillRect(0, 0, cssW, cssH);
 
-      const cx = w / 2, cy = h / 2 + 8, R = Math.min(w, h) * .38;
-      inX.beginPath(); inX.arc(cx, cy, R, 0, Math.PI * 2);
-      inX.strokeStyle = "rgba(165,180,252,.3)"; inX.lineWidth = 1.5; inX.stroke();
+      // Logical geometry (for scaled vector strokes)
+      const cx_log = cssW / 2, cy_log = cssH / 2 + 10, R_log = Math.min(cssW, cssH) * 0.36;
 
-      const img = inX.createImageData(w, h);
-      for (let py = 0; py < h; py++) {
-        for (let px = 0; px < w; px++) {
-          const dx = px - cx, dy = py - cy;
-          if (dx * dx + dy * dy < R * R) {
-            const ang = Math.atan2(dy, dx);
-            const v = .5 * Math.cos(ang * 2) + .3 * Math.sin(ang * 3) + .15 * Math.cos(ang);
-            const rv = (v + 1) / 2;
-            const idx = (py * w + px) * 4;
-            img.data[idx] = Math.round(rv * 160 + 70);
-            img.data[idx + 1] = Math.round(60 + (1 - Math.abs(v)) * 80);
-            img.data[idx + 2] = Math.round((1 - rv) * 160 + 70);
-            img.data[idx + 3] = 75;
+      // Physical pixel geometry (for raw ImageData & putImageData on High-DPI screens)
+      const pw = inC.width, ph = inC.height;
+      const cx_phys = pw / 2, cy_phys = ph / 2 + 10 * dpr, R_phys = R_log * dpr;
+
+      const electrodes = [
+        { a: 0, r: .0, n: "Cz", v: 0.15 },
+        { a: 240, r: .75, n: "Fp1", v: 0.85 },
+        { a: 300, r: .75, n: "Fp2", bad: true, v: 0.80 },
+        { a: 225, r: .45, n: "F3", v: 0.55 },
+        { a: 315, r: .45, n: "F4", v: 0.65 },
+        { a: 180, r: .35, n: "C3", v: -0.10 },
+        { a: 0, r: .35, n: "C4", v: 0.20 },
+        { a: 180, r: .75, n: "T7", v: -0.65 },
+        { a: 0, r: .75, n: "T8", v: 0.35 },
+        { a: 135, r: .45, n: "P3", v: -0.75 },
+        { a: 45, r: .45, n: "P4", v: -0.55 },
+        { a: 90, r: .75, n: "Oz", v: -0.95 }
+      ];
+
+      // Physical positions of good electrodes for IDW gradient interpolation
+      const goodElectrodesPhys = electrodes.filter(e => !e.bad).map(e => {
+        const rad = e.a * Math.PI / 180;
+        return {
+          x: cx_phys + Math.cos(rad) * R_phys * e.r,
+          y: cy_phys + Math.sin(rad) * R_phys * e.r,
+          v: e.v
+        };
+      });
+
+      // 1. RENDER COLOR GRADIENT FIRST via ImageData (scaled to physical canvas resolution pw x ph)
+      const img = inX.createImageData(pw, ph);
+      const pwr = 2.2, eps = Math.pow(15 * dpr, 2);
+
+      for (let py = 0; py < ph; py++) {
+        for (let px = 0; px < pw; px++) {
+          const dx = px - cx_phys, dy = py - cy_phys;
+          const distSq = dx * dx + dy * dy;
+          if (distSq <= R_phys * R_phys) {
+            let sumW = 0, sumV = 0;
+            for (let i = 0; i < goodElectrodesPhys.length; i++) {
+              const edx = px - goodElectrodesPhys[i].x;
+              const edy = py - goodElectrodesPhys[i].y;
+              const d2 = edx * edx + edy * edy;
+              const w_i = 1 / Math.pow(d2 + eps, pwr / 2);
+              sumW += w_i;
+              sumV += w_i * goodElectrodesPhys[i].v;
+            }
+            const val = Math.max(-1, Math.min(1, sumV / (sumW || 1)));
+
+            // High-contrast EEG Diverging Colormap (Blue -> Dark Navy -> Coral/Red)
+            let r, g, b;
+            if (val < 0) {
+              const t = -val;
+              r = Math.round(15 * (1 - t) + 20 * t);
+              g = Math.round(23 * (1 - t) + 160 * t);
+              b = Math.round(42 * (1 - t) + 245 * t);
+            } else {
+              const t = val;
+              r = Math.round(15 * (1 - t) + 250 * t);
+              g = Math.round(23 * (1 - t) + 100 * t);
+              b = Math.round(42 * (1 - t) + 60 * t);
+            }
+
+            const idx = (py * pw + px) * 4;
+            img.data[idx] = r;
+            img.data[idx + 1] = g;
+            img.data[idx + 2] = b;
+            img.data[idx + 3] = 230;
           }
         }
       }
       inX.putImageData(img, 0, 0);
 
-      const electrodes = [
-        { a: 0, r: .0, n: "Cz" }, { a: 90, r: .5, n: "Fp1" }, { a: 270, r: .5, n: "Oz" },
-        { a: 0, r: .5, n: "T8" }, { a: 180, r: .5, n: "T7" }, { a: 45, r: .7, n: "F4" },
-        { a: 135, r: .7, n: "F3" }, { a: 315, r: .7, n: "P4" }, { a: 225, r: .7, n: "P3" },
-        { a: 30, r: .85, n: "Fp2", bad: true }, { a: 0, r: .3, n: "C4" }, { a: 180, r: .3, n: "C3" }
-      ];
+      // 2. VECTOR DRAWINGS ON TOP (using scaled logical CSS coordinates)
 
+      // Head Circle Outline
+      inX.beginPath();
+      inX.arc(cx_log, cy_log, R_log, 0, Math.PI * 2);
+      inX.strokeStyle = "rgba(165,180,252,.85)";
+      inX.lineWidth = 2.2;
+      inX.stroke();
+
+      // Nose Indicator (pointing UP / Anterior)
+      inX.beginPath();
+      inX.moveTo(cx_log - 10, cy_log - R_log + 2);
+      inX.lineTo(cx_log, cy_log - R_log - 12);
+      inX.lineTo(cx_log + 10, cy_log - R_log + 2);
+      inX.strokeStyle = "rgba(165,180,252,.9)";
+      inX.lineWidth = 2.2;
+      inX.stroke();
+
+      // Left & Right Ears
+      inX.beginPath();
+      inX.arc(cx_log - R_log - 3, cy_log, 9, Math.PI * 0.5, Math.PI * 1.5);
+      inX.strokeStyle = "rgba(165,180,252,.75)";
+      inX.lineWidth = 1.8;
+      inX.stroke();
+
+      inX.beginPath();
+      inX.arc(cx_log + R_log + 3, cy_log, 9, Math.PI * 1.5, Math.PI * 0.5);
+      inX.strokeStyle = "rgba(165,180,252,.75)";
+      inX.lineWidth = 1.8;
+      inX.stroke();
+
+      // 3. DRAW ELECTRODES & LABELS (No background boxes under text)
       electrodes.forEach(e => {
-        const rad = e.a * Math.PI / 180, ex = cx + Math.cos(rad) * R * e.r, ey = cy + Math.sin(rad) * R * e.r;
+        const rad = e.a * Math.PI / 180, ex = cx_log + Math.cos(rad) * R_log * e.r, ey = cy_log + Math.sin(rad) * R_log * e.r;
         if (e.bad) {
           inX.beginPath(); inX.arc(ex, ey, 11, 0, Math.PI * 2);
-          inX.fillStyle = "rgba(251,113,133,.2)"; inX.fill();
-          inX.strokeStyle = "#FB7185"; inX.lineWidth = 2;
-          inX.setLineDash([3, 2]); inX.stroke(); inX.setLineDash([]);
+          inX.fillStyle = "rgba(148,163,184,.35)"; inX.fill();
+          inX.strokeStyle = "#94A3B8"; inX.lineWidth = 2.2;
+          inX.setLineDash([4, 3]); inX.stroke(); inX.setLineDash([]);
 
-          // Label pill
-          inX.fillStyle = "rgba(5, 8, 28, 0.85)";
-          inX.fillRect(ex - 16, ey + 12, 32, 14);
-          inX.fillStyle = "#FB7185"; inX.font = "bold 9px Inter";
+          inX.fillStyle = "#CBD5E1"; inX.font = "bold 10px Inter";
           inX.textAlign = "center"; inX.fillText(e.n, ex, ey + 23);
         } else {
           inX.beginPath(); inX.arc(ex, ey, 7, 0, Math.PI * 2);
-          inX.fillStyle = "rgba(94,234,212,.25)"; inX.fill();
-          inX.strokeStyle = "rgba(94,234,212,.95)"; inX.lineWidth = 1.8; inX.stroke();
+          inX.fillStyle = "rgba(94,234,212,.35)"; inX.fill();
+          inX.strokeStyle = "#2DD4BF"; inX.lineWidth = 2; inX.stroke();
 
-          // Label pill
-          inX.fillStyle = "rgba(5, 8, 28, 0.85)";
-          inX.fillRect(ex - 14, ey + 10, 28, 14);
-          inX.fillStyle = "rgba(240,244,255,.9)"; inX.font = "500 9px Inter";
-          inX.textAlign = "center"; inX.fillText(e.n, ex, ey + 21);
+          inX.fillStyle = "#FFFFFF"; inX.font = "600 10px Inter";
+          inX.textAlign = "center"; inX.fillText(e.n, ex, ey + 20);
         }
       });
-
-      // Top Legend Panel
-      inX.fillStyle = "rgba(5,9,26,0.88)";
-      inX.fillRect(10, 10, 310, 36);
-      inX.fillStyle = "rgba(94,234,212,.9)";
-      inX.font = "500 10px Inter"; inX.textAlign = "left";
-      inX.fillText("Good electrodes (drive spherical spline)", 16, 24);
-      inX.fillStyle = "rgba(251,113,133,.9)";
-      inX.fillText("Bad electrode Fp2 (reconstructed via splines)", 16, 38);
     }
     setTimeout(drawInterp, 100);
     window.addEventListener("resize", () => setTimeout(() => { drawFilt(); drawRing(); drawPhase(); drawBC(); drawRansac(); drawInterp(); }, 100));
