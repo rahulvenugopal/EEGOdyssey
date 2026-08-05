@@ -3,9 +3,19 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Day 5: Data Cleaning: ASR &mdash; EEG Analysis Odyssey</title>
-    <meta name="description" content="An automatic, principled method that learns the statistical fingerprint of clean EEG and reconstructs any window that deviates beyond a threshold &mdash; no manual component inspection required." />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <title>Day 5: Artifact Subspace Reconstruction (ASR) &mdash; EEG Analysis Odyssey</title>
+    <meta name="description" content="A student-friendly, visual guide to Artifact Subspace Reconstruction (ASR): intuitive analogies, step-by-step walkthroughs, plain-English math translations, and interactive visual simulators." />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <script>
+      MathJax = {
+        tex: {
+          inlineMath: [['$', '$'], ['\\(', '\\)']],
+          displayMath: [['$$', '$$'], ['\\[', '\\]']]
+        },
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
     <style>
         :root {
             --bg-deep: #05091a;
@@ -13,9 +23,13 @@
             --text-muted: #B8C4E0;
             --accent-solid: #A5B4FC;
             --accent-teal-solid: #2DD4BF;
-            --glass-bg: rgba(99, 102, 241, 0.10);
-            --glass-border: rgba(165, 180, 252, 0.35);
-            --code-bg: rgba(15, 15, 58, 0.85);
+            --amber: #FCD34D;
+            --rose: #FB7185;
+            --purple-glow: #8B5CF6;
+            --glass-bg: rgba(99, 102, 241, 0.09);
+            --glass-border: rgba(165, 180, 252, 0.30);
+            --code-bg: rgba(10, 12, 38, 0.94);
+            --card-inner: rgba(15, 23, 50, 0.70);
         }
         * { box-sizing: border-box; margin: 0; padding: 0; }
         html { scroll-behavior: smooth; }
@@ -23,7 +37,7 @@
             background-color: var(--bg-deep);
             color: var(--text-main);
             font-family: 'Inter', sans-serif;
-            line-height: 1.75;
+            line-height: 1.78;
             overflow-x: hidden;
             -webkit-font-smoothing: antialiased;
         }
@@ -34,25 +48,25 @@
             position: fixed; top: 0; left: 0;
             width: 100vw; height: 100vh;
             background:
-                radial-gradient(ellipse at 15% 55%, rgba(99, 102, 241, 0.55), transparent 45%),
-                radial-gradient(ellipse at 85% 15%, rgba(20, 184, 166, 0.50), transparent 45%),
-                radial-gradient(ellipse at 50% 95%, rgba(167, 139, 250, 0.30), transparent 50%);
-            filter: blur(60px); z-index: -2;
-            animation: breathe 12s infinite alternate ease-in-out;
+                radial-gradient(ellipse at 15% 50%, rgba(99, 102, 241, 0.50), transparent 45%),
+                radial-gradient(ellipse at 85% 15%, rgba(20, 184, 166, 0.45), transparent 42%),
+                radial-gradient(ellipse at 50% 90%, rgba(139, 92, 246, 0.30), transparent 50%);
+            filter: blur(65px); z-index: -2;
+            animation: breathe 14s infinite alternate ease-in-out;
         }
         @keyframes breathe {
             0% { transform: scale(1); opacity: 0.85; }
-            100% { transform: scale(1.08); opacity: 1; }
+            100% { transform: scale(1.07); opacity: 1; }
         }
-        canvas { position: fixed; top: 0; left: 0; z-index: -1; pointer-events: none; }
+        canvas.bg-canvas { position: fixed; top: 0; left: 0; z-index: -1; pointer-events: none; }
 
-        /* Nav */
+        /* Top Navigation */
         .top-nav {
             position: sticky; top: 0; z-index: 100;
             display: flex; align-items: center; justify-content: space-between;
             padding: 14px 5%;
-            background: rgba(5, 9, 26, 0.85);
-            backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+            background: rgba(5, 9, 26, 0.88);
+            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
             border-bottom: 1px solid var(--glass-border);
         }
         .back-link { display: flex; align-items: center; gap: 8px; color: var(--accent-solid); text-decoration: none; font-size: 0.85rem; font-weight: 600; letter-spacing: 0.5px; transition: color 0.2s, gap 0.2s; white-space: nowrap; }
@@ -64,287 +78,573 @@
         .nav-arrow-btn.disabled { opacity: 0.3; cursor: not-allowed; pointer-events: none; border-color: rgba(255, 255, 255, 0.05); }
 
         /* Hero */
-        .hero { padding: 70px 5% 50px; max-width: 960px; margin: 0 auto; text-align: center; position: relative; z-index: 2; width: 100%; }
-        .day-pill { display: inline-block; padding: 6px 20px; border-radius: 999px; background: rgba(99, 102, 241, 0.20); border: 1px solid rgba(165, 180, 252, 0.6); font-size: 0.75rem; font-weight: 800; letter-spacing: 4px; text-transform: uppercase; color: #5EEAD4; margin-bottom: 20px; text-shadow: 0 0 14px rgba(45, 212, 191, 0.8); backdrop-filter: blur(12px); }
-        .hero h1 { font-size: clamp(2.2rem, 5vw, 3.8rem); line-height: 1.1; letter-spacing: -0.02em; color: #fff; text-shadow: 0 0 40px rgba(165, 180, 252, 0.9), 0 0 80px rgba(99, 102, 241, 0.5); margin-bottom: 16px; }
-        .hero-subtitle { font-size: clamp(1rem, 2vw, 1.2rem); color: #C8D5F0; max-width: 700px; margin: 0 auto 28px; font-family: 'Inter', sans-serif; text-align: center; }
+        .hero { padding: 72px 5% 48px; max-width: 980px; margin: 0 auto; text-align: center; position: relative; z-index: 2; width: 100%; }
+        .day-pill { display: inline-block; padding: 6px 22px; border-radius: 999px; background: rgba(99, 102, 241, 0.20); border: 1px solid rgba(165, 180, 252, 0.6); font-size: 0.75rem; font-weight: 800; letter-spacing: 4px; text-transform: uppercase; color: #5EEAD4; margin-bottom: 20px; text-shadow: 0 0 14px rgba(45, 212, 191, 0.8); backdrop-filter: blur(12px); }
+        .hero h1 { font-size: clamp(2.2rem, 5vw, 3.8rem); line-height: 1.12; letter-spacing: -0.02em; color: #fff; text-shadow: 0 0 40px rgba(165, 180, 252, 0.9), 0 0 80px rgba(99, 102, 241, 0.5); margin-bottom: 18px; }
+        .hero-subtitle { font-size: clamp(1rem, 2vw, 1.2rem); color: #C8D5F0; max-width: 780px; margin: 0 auto 28px; font-family: 'Inter', sans-serif; text-align: center; }
         .highlight { color: #C4B5FD; text-shadow: 0 0 30px rgba(165, 180, 252, 1), 0 0 60px rgba(99, 102, 241, 0.6); }
         .highlight-teal { color: #5EEAD4; text-shadow: 0 0 25px rgba(45, 212, 191, 0.9); }
         .badges { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
-        .badge { padding: 6px 16px; border-radius: 999px; background: rgba(99, 102, 241, 0.15); border: 1px solid rgba(165, 180, 252, 0.5); font-size: 0.78rem; font-weight: 500; color: #E0E7FF; backdrop-filter: blur(8px); }
+        .badge { padding: 6px 16px; border-radius: 999px; background: rgba(99, 102, 241, 0.15); border: 1px solid rgba(165, 180, 252, 0.45); font-size: 0.78rem; font-weight: 500; color: #E0E7FF; backdrop-filter: blur(8px); }
+
+        /* TOC Grid */
+        .toc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; margin: 32px 0 10px; }
+        .toc-item { background: rgba(99, 102, 241, 0.08); border: 1px solid var(--glass-border); border-radius: 12px; padding: 14px 18px; transition: all 0.25s; text-decoration: none; display: flex; flex-direction: column; gap: 4px; }
+        .toc-item:hover { border-color: var(--accent-solid); background: rgba(99, 102, 241, 0.20); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(99, 102, 241, 0.25); }
+        .toc-num { font-size: 0.7rem; font-weight: 800; letter-spacing: 2px; color: var(--accent-teal-solid); text-transform: uppercase; }
+        .toc-title { font-size: 0.92rem; font-weight: 600; color: #fff; }
 
         /* Article */
-        article { max-width: 860px; margin: 0 auto; padding: 0 5% 80px; position: relative; z-index: 2; }
-        .section-block { margin-bottom: 56px; }
-        .phase-header { display: flex; align-items: center; gap: 16px; margin-bottom: 20px; }
-        .phase-number { width: 48px; height: 48px; border-radius: 50%; flex-shrink: 0; background: linear-gradient(135deg, #6366F1, #8B5CF6); border: 2px solid rgba(165, 180, 252, 0.5); box-shadow: 0 0 20px rgba(99, 102, 241, 0.6); display: flex; align-items: center; justify-content: center; font-family: 'Playfair Display', serif; font-size: 1.3rem; color: #fff; }
-        .phase-header h2 { font-size: clamp(1.4rem, 3vw, 1.9rem); color: #fff; text-shadow: 0 0 20px rgba(165, 180, 252, 0.4); border: none; padding: 0; margin: 0; display: block; }
+        article { max-width: 900px; margin: 0 auto; padding: 0 5% 90px; position: relative; z-index: 2; }
+        .section-block { margin-bottom: 60px; scroll-margin-top: 90px; }
+        .phase-header { display: flex; align-items: center; gap: 18px; margin-bottom: 24px; }
+        .phase-number { width: 52px; height: 52px; border-radius: 50%; flex-shrink: 0; background: linear-gradient(135deg, #6366F1, #8B5CF6); border: 2px solid rgba(165, 180, 252, 0.6); box-shadow: 0 0 24px rgba(99, 102, 241, 0.6); display: flex; align-items: center; justify-content: center; font-family: 'Playfair Display', serif; font-size: 1.4rem; color: #fff; }
+        .phase-header h2 { font-size: clamp(1.4rem, 3vw, 2rem); color: #fff; text-shadow: 0 0 20px rgba(165, 180, 252, 0.4); border: none; padding: 0; margin: 0; display: block; line-height: 1.25; }
+        .phase-header h2 small { display: block; font-family: 'Inter', sans-serif; font-size: 0.85rem; font-weight: 500; color: var(--accent-teal-solid); text-transform: uppercase; letter-spacing: 2px; margin-top: 4px; }
 
-        /* Glass card */
-        .glass-card { background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: 16px; padding: 28px 32px; backdrop-filter: blur(12px); margin: 20px 0; box-shadow: 0 4px 30px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.07); transition: border-color 0.3s, box-shadow 0.3s; }
+        /* Glass Card */
+        .glass-card { background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: 16px; padding: 28px 32px; backdrop-filter: blur(14px); margin: 22px 0; box-shadow: 0 4px 30px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.07); transition: border-color 0.3s, box-shadow 0.3s; }
         .glass-card:hover { border-color: rgba(165, 180, 252, 0.55); box-shadow: 0 8px 40px rgba(99, 102, 241, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1); }
-        .glass-card p + p { margin-top: 10px; }
+        .glass-card p + p { margin-top: 14px; }
 
-        /* Code block */
-        .code-block { background: var(--code-bg); border: 1px solid rgba(165, 180, 252, 0.20); border-radius: 12px; padding: 20px 24px; margin: 16px 0; overflow-x: auto; position: relative; }
-        .code-block pre { font-family: 'JetBrains Mono', monospace; font-size: 0.84rem; color: #E0E7FF; line-height: 1.7; white-space: pre; }
+        /* Step Cards */
+        .step-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin: 24px 0; }
+        .step-card { background: rgba(15, 23, 50, 0.85); border: 1px solid var(--glass-border); border-radius: 14px; padding: 20px; text-align: left; transition: all 0.3s ease; position: relative; }
+        .step-card:hover { border-color: var(--accent-teal-solid); transform: translateY(-3px); box-shadow: 0 8px 25px rgba(45, 212, 191, 0.25); }
+        .step-tag { font-size: 0.68rem; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; color: var(--accent-teal-solid); margin-bottom: 8px; display: block; }
+        .step-card h4 { font-family: 'Inter', sans-serif; font-weight: 700; font-size: 1.02rem; color: #fff; margin-bottom: 6px; }
+        .step-card p { font-size: 0.86rem; color: var(--text-muted); text-align: left; line-height: 1.6; }
+
+        /* Plain English Translator Box */
+        .translator-box { background: rgba(139, 92, 246, 0.10); border: 1px solid rgba(167, 139, 250, 0.4); border-radius: 14px; padding: 20px 24px; margin: 20px 0; }
+        .translator-title { font-family: 'Inter', sans-serif; font-size: 0.8rem; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; color: #C4B5FD; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+        .translator-text { font-size: 0.95rem; color: #E0E7FF; text-align: left; }
+        .translator-text strong { color: #5EEAD4; }
+
+        /* Widget Containers */
+        .widget-panel { background: rgba(10, 14, 38, 0.88); border: 1px solid var(--glass-border); border-radius: 18px; padding: 24px; margin: 28px 0; backdrop-filter: blur(16px); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45); }
+        .widget-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; padding-bottom: 12px; border-bottom: 1px solid rgba(165, 180, 252, 0.18); flex-wrap: wrap; gap: 10px; }
+        .widget-title { font-family: 'Inter', sans-serif; font-size: 1.05rem; font-weight: 700; color: var(--accent-solid); display: flex; align-items: center; gap: 10px; }
+        .widget-tag { font-size: 0.68rem; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; padding: 3px 10px; border-radius: 999px; background: rgba(45, 212, 191, 0.15); border: 1px solid rgba(45, 212, 191, 0.4); color: var(--accent-teal-solid); }
+
+        .ctrl-row { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; flex-wrap: wrap; }
+        .ctrl-label { font-size: 0.82rem; font-weight: 600; color: var(--text-muted); min-width: 140px; }
+        .ctrl-slider { flex: 1; min-width: 160px; height: 6px; accent-color: var(--accent-solid); cursor: pointer; background: rgba(15, 18, 60, 0.8); border: 1px solid var(--glass-border); border-radius: 8px; }
+        .val-badge { font-family: 'JetBrains Mono', monospace; font-size: 0.82rem; color: var(--accent-solid); background: rgba(165, 180, 252, 0.12); border: 1px solid rgba(165, 180, 252, 0.28); border-radius: 8px; padding: 3px 10px; min-width: 70px; text-align: center; }
+
+        .btn { padding: 8px 18px; border-radius: 8px; font-size: 0.82rem; font-weight: 600; cursor: pointer; transition: all 0.25s; border: 1px solid var(--glass-border); background: rgba(99, 102, 241, 0.15); color: #fff; display: inline-flex; align-items: center; gap: 6px; }
+        .btn:hover { border-color: var(--accent-solid); background: rgba(99, 102, 241, 0.35); box-shadow: 0 0 16px rgba(165, 180, 252, 0.4); transform: translateY(-1px); }
+        .btn-teal { background: rgba(45, 212, 191, 0.15); border-color: rgba(45, 212, 191, 0.4); color: #5EEAD4; }
+        .btn-teal:hover { background: rgba(45, 212, 191, 0.30); border-color: #5EEAD4; box-shadow: 0 0 16px rgba(45, 212, 191, 0.4); }
+
+        canvas.widget-canvas { display: block; width: 100%; border-radius: 12px; background: rgba(5, 7, 22, 0.95); border: 1px solid rgba(165, 180, 252, 0.20); }
+
+        /* Code Block */
+        .code-block { background: var(--code-bg); border: 1px solid rgba(165, 180, 252, 0.25); border-radius: 14px; padding: 22px 26px; margin: 20px 0; overflow-x: auto; position: relative; box-shadow: inset 0 2px 10px rgba(0,0,0,0.5); }
+        .code-block pre { font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; color: #E0E7FF; line-height: 1.75; white-space: pre; }
         .c-comment { color: #6B7DB3; font-style: italic; }
-        .c-keyword { color: #C4B5FD; font-weight: 500; }
+        .c-keyword { color: #C4B5FD; font-weight: 600; }
         .c-func { color: #5EEAD4; }
         .c-string { color: #86efac; }
         .c-number { color: #FCA5A5; }
         .c-var { color: #A5B4FC; }
         .code-tag { position: absolute; top: 12px; right: 16px; font-family: 'Inter', sans-serif; font-size: 0.62rem; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: rgba(165, 180, 252, 0.5); }
 
-        /* Insight box */
-        .insight-box { border-left: 3px solid var(--accent-teal-solid); padding: 18px 24px; margin: 24px 0; background: rgba(20, 184, 166, 0.07); border-radius: 0 12px 12px 0; }
+        /* Comparison Table */
+        .comp-table { width: 100%; border-collapse: separate; border-spacing: 0; margin: 22px 0; border-radius: 12px; overflow: hidden; border: 1px solid var(--glass-border); }
+        .comp-table th { background: rgba(99, 102, 241, 0.22); padding: 14px 18px; font-size: 0.85rem; font-weight: 700; color: #fff; text-align: left; border-bottom: 1px solid var(--glass-border); }
+        .comp-table td { padding: 12px 18px; font-size: 0.86rem; color: var(--text-muted); background: rgba(10, 14, 38, 0.6); border-bottom: 1px solid rgba(165, 180, 252, 0.12); }
+        .comp-table tr:last-child td { border-bottom: none; }
+        .comp-table tr:hover td { background: rgba(99, 102, 241, 0.12); color: #fff; }
+
+        /* Insights & Warnings */
+        .insight-box { border-left: 4px solid var(--accent-teal-solid); padding: 20px 24px; margin: 26px 0; background: rgba(20, 184, 166, 0.08); border-radius: 0 14px 14px 0; box-shadow: 0 4px 20px rgba(20, 184, 166, 0.12); }
         .insight-box p { color: #C8D5F0; text-align: left; }
         .insight-box strong { color: var(--accent-teal-solid); }
-        .insight-box.purple { border-left-color: #A5B4FC; background: rgba(99, 102, 241, 0.07); }
+        .insight-box.purple { border-left-color: #A5B4FC; background: rgba(99, 102, 241, 0.08); box-shadow: 0 4px 20px rgba(99, 102, 241, 0.12); }
         .insight-box.purple strong { color: #A5B4FC; }
 
-        /* Warning box */
-        .warn-box { border-left: 3px solid #FCA5A5; padding: 18px 24px; margin: 24px 0; background: rgba(220, 38, 38, 0.07); border-radius: 0 12px 12px 0; }
+        .warn-box { border-left: 4px solid #FB7185; padding: 20px 24px; margin: 26px 0; background: rgba(251, 113, 133, 0.08); border-radius: 0 14px 14px 0; box-shadow: 0 4px 20px rgba(251, 113, 133, 0.12); }
         .warn-box p { color: #C8D5F0; text-align: left; }
-        .warn-box strong { color: #FCA5A5; }
+        .warn-box strong { color: #FB7185; }
 
-        /* Divider / Grid */
-        .section-divider { border: none; height: 1px; background: linear-gradient(90deg, transparent, var(--glass-border), transparent); margin: 48px 0; }
-        .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0; }
+        .section-divider { border: none; height: 1px; background: linear-gradient(90deg, transparent, var(--glass-border), transparent); margin: 54px 0; }
+        .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 22px 0; }
 
-        /* Footer */
-        footer { text-align: center; padding: 40px 20px; color: var(--text-muted); font-size: 0.85rem; border-top: 1px solid var(--glass-border); position: relative; z-index: 2; }
+        /* Matrix Heatmap Grid */
+        .matrix-container { display: flex; align-items: center; justify-content: center; gap: 12px; margin: 20px 0; flex-wrap: wrap; }
+        .matrix-box { background: rgba(15, 20, 50, 0.9); border: 1px solid var(--glass-border); border-radius: 12px; padding: 14px; text-align: center; }
+        .matrix-title { font-size: 0.75rem; font-weight: 700; letter-spacing: 1.5px; color: var(--accent-solid); margin-bottom: 8px; text-transform: uppercase; }
+        .matrix-grid { display: grid; gap: 4px; margin: 0 auto; }
+        .matrix-cell { width: 28px; height: 28px; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; color: #fff; font-weight: 600; }
+
+        /* Quiz Card */
+        .quiz-option { padding: 12px 18px; border: 1px solid var(--glass-border); border-radius: 10px; background: rgba(99, 102, 241, 0.06); margin-bottom: 10px; cursor: pointer; transition: all 0.2s; font-size: 0.9rem; color: var(--text-muted); }
+        .quiz-option:hover { border-color: var(--accent-solid); background: rgba(99, 102, 241, 0.18); color: #fff; }
+        .quiz-option.correct { border-color: #34d399; background: rgba(52, 211, 153, 0.20); color: #34d399; font-weight: 600; }
+        .quiz-option.incorrect { border-color: #FB7185; background: rgba(251, 113, 133, 0.20); color: #FB7185; }
+
+        footer { text-align: center; padding: 48px 20px; color: var(--text-muted); font-size: 0.88rem; border-top: 1px solid var(--glass-border); position: relative; z-index: 2; }
         footer a { color: var(--accent-solid); text-decoration: none; }
         footer a:hover { text-decoration: underline; }
 
-        /* Scrollbar */
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: #050814; }
         ::-webkit-scrollbar-thumb { background: rgba(129, 140, 248, 0.4); border-radius: 3px; }
 
-        /* Inline code */
-        code { font-family: 'JetBrains Mono', monospace; font-size: 0.86em; background: var(--code-bg); padding: 2px 7px; border-radius: 5px; color: #A5B4FC; border: 1px solid rgba(165, 180, 252, 0.15); }
+        code { font-family: 'JetBrains Mono', monospace; font-size: 0.86em; background: var(--code-bg); padding: 2px 7px; border-radius: 5px; color: #A5B4FC; border: 1px solid rgba(165, 180, 252, 0.2); }
 
-        /* Responsive */
-        @media (max-width: 640px) {
+        @media (max-width: 768px) {
             .two-col { grid-template-columns: 1fr; }
-            .glass-card { padding: 20px; }
+            .glass-card { padding: 22px; }
+            .widget-panel { padding: 16px; }
+            .ctrl-label { min-width: 100%; }
+            .step-cards { grid-template-columns: 1fr; }
         }
     </style>
 </head>
 <body>
     <div class="ambient-background"></div>
-    <canvas id="neural-canvas"></canvas>
+    <canvas id="neural-canvas" class="bg-canvas"></canvas>
 
     <nav class="top-nav">
         <a href="../index.html" class="back-link">&#x2190; Back to Odyssey</a>
-        <span class="nav-day-label">Day 5 of 20</span>
+        <span class="nav-day-label">Day 5 of 20 &middot; Data Preprocessing</span>
         <div class="nav-arrows">
-            <a href="../day_4/index.html" class="nav-arrow-btn prev-day" title="Previous Day: Data Cleaning: Downsampling, Bad Channels &amp; Segments">&#x2190; Prev</a>
-            <a href="../day_6/index.html" class="nav-arrow-btn next-day" title="Next Day: Data Cleaning: ICA">Next &#x2192;</a>
+            <a href="../day_4/index.html" class="nav-arrow-btn prev-day" title="Previous Day: Filtering &amp; Bad Channels">&#x2190; Prev</a>
+            <a href="../day_6/index.html" class="nav-arrow-btn next-day" title="Next Day: Independent Component Analysis (ICA)">Next &#x2192;</a>
         </div>
     </nav>
 
     <header class="hero">
-        <div class="day-pill">&#x2726; Day 05 &middot; Preprocessing</div>
-        <h1><span class='highlight'>Artifact Subspace</span><br><span class='highlight-teal'>Reconstruction</span></h1>
-        <p class="hero-subtitle">An automatic, principled method that learns the statistical fingerprint of clean EEG and reconstructs any window that deviates beyond a threshold &mdash; no manual component inspection required.</p>
-                <div class="badges">
-            <span class="badge">&#x1F9F9; Automatic Cleaning</span>
-            <span class="badge">&#x1F4CA; PCA Subspace</span>
-            <span class="badge">&#x23F1; Sliding Window</span>
-            <span class="badge">&#x1F3AF; Cutoff Tuning</span>
-            <span class="badge">&#x1F40D; asrpy / meegkit</span>
+        <div class="day-pill">&#x2726; Day 05 &middot; Student Guide</div>
+        <h1><span class="highlight">Artifact Subspace</span><br><span class="highlight-teal">Reconstruction (ASR)</span></h1>
+        <p class="hero-subtitle">
+            An intuitive, step-by-step masterclass on how ASR learns the baseline fingerprint of clean brain signals, scans continuous EEG with a sliding window, and reconstructs burst artifacts without throwing away your data.
+        </p>
+        <div class="badges">
+            <span class="badge">&#x1F4A1; Intuitive Analogies</span>
+            <span class="badge">&#x1F4FE; 4-Step Process</span>
+            <span class="badge">&#x1F520; Plain-English Math</span>
+            <span class="badge">&#x1F9E9; Interactive Simulators</span>
+            <span class="badge">&#x1F40D; meegkit / asrpy</span>
+        </div>
+
+        <div class="toc-grid">
+            <a href="#sec-story" class="toc-item">
+                <span class="toc-num">Module 01</span>
+                <span class="toc-title">The Big Idea &amp; Analogies</span>
+            </a>
+            <a href="#sec-steps" class="toc-item">
+                <span class="toc-num">Module 02</span>
+                <span class="toc-title">The 4-Step ASR Process</span>
+            </a>
+            <a href="#sec-baseline" class="toc-item">
+                <span class="toc-num">Module 03</span>
+                <span class="toc-title">Step 1: Baseline Calibration</span>
+            </a>
+            <a href="#sec-pca-cutoff" class="toc-item">
+                <span class="toc-num">Module 04</span>
+                <span class="toc-title">Step 2 &amp; 3: PCA &amp; Cutoff Rule</span>
+            </a>
+            <a href="#sec-repair" class="toc-item">
+                <span class="toc-num">Module 05</span>
+                <span class="toc-title">Step 4: Subspace Repair ($R$)</span>
+            </a>
+            <a href="#sec-simulators" class="toc-item">
+                <span class="toc-num">Module 06</span>
+                <span class="toc-title">Interactive Visual Widgets</span>
+            </a>
         </div>
     </header>
 
     <article>
-        <div class="section-block">
-            <div class="glass-card">
-                <p>
-                    Artifact Subspace Reconstruction (ASR) is a principled, automatic method for removing high-amplitude
-                    transient artifacts from continuous EEG &mdash; muscle bursts, electrode pops, sudden head movements &mdash;
-                    <em>without</em> requiring manual inspection of every component. Originally developed for real-time
-                    brain&ndash;computer interfaces (BCI), it has become a mainstay in offline preprocessing pipelines.
-                </p>
-            </div>
-        </div>
-
-        <hr class="section-divider">
-
-        <div class="section-block">
+        <!-- MODULE 1: THE BIG IDEA & ANALOGIES -->
+        <div class="section-block" id="sec-story">
             <div class="phase-header">
                 <div class="phase-number">1</div>
-                <h2>The Core Intuition<br><small>Clean Brain Has Predictable Statistics</small></h2>
+                <h2>The Big Idea<br><small>Why We Need ASR for Mobile Brain Recording</small></h2>
             </div>
 
             <div class="glass-card">
                 <p>
-                    The fundamental assumption behind ASR: <strong>genuine brain signals have a stable, predictable covariance
-                    structure</strong>, while transient artifacts are statistical outliers that violate that structure.
+                    Imagine you are recording someone wearing an EEG headset while walking or exercising. Every time they bite down, move their jaw, or twitch a neck muscle, a <strong>massive electrical spike</strong> blasts across the sensors.
                 </p>
                 <p>
-                    Imagine you have learned the &ldquo;normal heartbeat&rdquo; of your EEG &mdash; the typical spatial
-                    pattern of voltage across all channels during a clean segment. When a muscle artifact strikes, some
-                    directions in channel-space suddenly explode in variance. ASR identifies those anomalous directions
-                    and &ldquo;reconstructs&rdquo; the data as if the artifact never happened.
+                    Traditional cleaning gives you two bad choices:
                 </p>
+                <ul style="margin-left: 20px; margin-top: 10px;">
+                    <li style="margin-bottom: 8px;"><strong>Throw away the whole 1-second segment:</strong> If you do this every time the subject twitches, you lose over 50% of your recording!</li>
+                    <li style="margin-bottom: 8px;"><strong>Run ICA (Independent Component Analysis):</strong> ICA works great for steady, repeating eye blinks. But for random, sudden muscle pops, ICA gets confused because the muscle pop doesn't repeat consistently across the recording.</li>
+                </ul>
             </div>
 
-            <div class="insight-box">
-                <p>
-                    <strong>Analogy:</strong> Think of ASR as a building inspector. The inspector first measures the
-                    structural parameters of a healthy building (calibration). Then, room by room (sliding window),
-                    the inspector checks whether any wall is bulging beyond tolerance. If so, only the bulging wall
-                    is reconstructed &mdash; the rest of the building is left untouched.
-                </p>
+            <div class="glass-card">
+                <h3 style="color:#5EEAD4; margin-bottom:12px; font-family:'Inter',sans-serif; font-size:1.1rem; font-weight:600;">The Real-World Analogy: The Building Inspector</h3>
+                <div class="insight-box">
+                    <p>
+                        <strong>Think of ASR as an expert Building Inspector:</strong>
+                    </p>
+                    <ol style="margin-left: 20px; margin-top: 8px; line-height: 1.7;">
+                        <li><strong>Calibration:</strong> The inspector first measures how a healthy, sturdy building stands (the clean EEG baseline).</li>
+                        <li><strong>Sliding Inspection:</strong> The inspector walks room by room (scanning short 500 ms windows).</li>
+                        <li><strong>Detecting Damage:</strong> In one room, a wall is bulging outwards due to a sudden impact (a muscle pop in Channel 1).</li>
+                        <li><strong>Local Repair:</strong> The inspector doesn't demolish the whole building (don't throw away the epoch)! Instead, they remove <em>only</em> the bulging wall and rebuild it to match the rest of the sturdy house.</li>
+                    </ol>
+                </div>
             </div>
         </div>
 
         <hr class="section-divider">
 
-        <div class="section-block">
+        <!-- MODULE 2: THE 4-STEP ASR PROCESS -->
+        <div class="section-block" id="sec-steps">
             <div class="phase-header">
                 <div class="phase-number">2</div>
-                <h2>The Algorithm Step-by-Step<br><small>Calibrate &rarr; Window &rarr; PCA &rarr; Reconstruct</small></h2>
+                <h2>The 4-Step ASR Workflow<br><small>From Raw EEG to Cleaned Signal</small></h2>
             </div>
 
-            <div class="glass-card">
-                <p><strong>Step 1 &mdash; Calibration:</strong> Find a clean segment of data (typically 30&ndash;60 seconds) and compute the reference covariance matrix <em>C<sub>ref</sub></em>. This defines &ldquo;normal.&rdquo;</p>
-                <p><strong>Step 2 &mdash; Sliding window:</strong> Move a short window (~500 ms) across the continuous recording.</p>
-                <p><strong>Step 3 &mdash; PCA decomposition:</strong> In each window, decompose the multichannel signal into principal components. Compare each component&rsquo;s variance against the reference.</p>
-                <p><strong>Step 4 &mdash; Threshold &amp; reconstruct:</strong> If a component&rsquo;s variance exceeds the reference by more than the <code>cutoff</code> parameter (in standard deviations), it is identified as artifact. The artifactual subspace is removed and the &ldquo;clean&rdquo; portion is projected back to sensor space.</p>
-            </div>
+            <p style="font-size:0.96rem; color:#C8D5F0; margin-bottom:16px;">
+                Artifact Subspace Reconstruction follows a clean 4-step pipeline:
+            </p>
 
-            <div class="code-block">
-                <span class="code-tag">Python</span>
-                <pre><span class="c-keyword">from</span> asrpy <span class="c-keyword">import</span> ASR
-
-<span class="c-comment"># High-pass filter first (ASR requires zero-mean data)</span>
-raw.filter(l_freq=<span class="c-number">1.0</span>, h_freq=<span class="c-number">None</span>)
-
-<span class="c-comment"># Fit ASR on a clean calibration segment</span>
-asr = ASR(sfreq=raw.info[<span class="c-string">'sfreq'</span>], cutoff=<span class="c-number">20</span>)
-asr.fit(raw)
-
-<span class="c-comment"># Transform the entire recording</span>
-raw_clean = asr.transform(raw)</pre>
+            <div class="step-cards">
+                <div class="step-card">
+                    <span class="step-tag">Step 01</span>
+                    <h4>1. Baseline Calibration</h4>
+                    <p>Record ~1 minute of clean resting EEG. Learn the healthy covariance matrix ($C_{ref}$) and baseline mixing matrix ($M$).</p>
+                </div>
+                <div class="step-card">
+                    <span class="step-tag">Step 02</span>
+                    <h4>2. Sliding Window PCA</h4>
+                    <p>Move a 500 ms sliding window across the EEG. Separate the multichannel signal into directional PCA components.</p>
+                </div>
+                <div class="step-card">
+                    <span class="step-tag">Step 03</span>
+                    <h4>3. Cutoff Threshold Check</h4>
+                    <p>Compare each component's variance to baseline. If variance exceeds cutoff ($k$ standard deviations), mark it as an artifact!</p>
+                </div>
+                <div class="step-card">
+                    <span class="step-tag">Step 04</span>
+                    <h4>4. Subspace Repair ($R$)</h4>
+                    <p>Zero out the bad component direction ($U=0$) and predict the missing brain wave using baseline matrix $M$.</p>
+                </div>
             </div>
         </div>
 
         <hr class="section-divider">
 
-        <div class="section-block">
+        <!-- MODULE 3: STEP 1 - BASELINE CALIBRATION & L1 MEDIAN -->
+        <div class="section-block" id="sec-baseline">
             <div class="phase-header">
                 <div class="phase-number">3</div>
-                <h2>The Cutoff Parameter<br><small>Conservative vs. Aggressive Cleaning</small></h2>
+                <h2>Step 1: Baseline Calibration<br><small>Learning "Normal" Brain Statistics</small></h2>
             </div>
 
             <div class="glass-card">
                 <p>
-                    The <code>cutoff</code> parameter controls how aggressively ASR cleans. It is measured in
-                    <strong>standard deviations</strong> of the reference distribution:
+                    Before ASR can clean artifacts, it needs to know what <strong>clean, baseline brain activity</strong> looks like for this specific person and electrode layout.
                 </p>
+                <p>
+                    We collect a short calibration recording (e.g. 1 minute resting state with eyes open/closed, or automatically find the cleanest 15% segments of the dataset).
+                </p>
+
+                <div class="translator-box">
+                    <div class="translator-title">&#x1F4A1; Plain English Math Translation: Geometric $L_1$-Median</div>
+                    <div class="translator-text">
+                        <strong>Equation:</strong> $\mathcal{G}(X) = \arg\min_{\mathbf{y}} \sum \|\mathbf{x}_i - \mathbf{y}\|_2$<br>
+                        <strong>What it means in plain English:</strong> Standard averages (means) get heavily skewed by extreme outliers. If you average 10 normal numbers and one huge 1,000 spike, the average explodes! The <strong>Geometric Median ($L_1$-Median)</strong> calculates the spatial baseline covariance matrix ($C_{ref}$) by finding the point that is closest to all clean windows, automatically ignoring any stray artifact bursts!
+                    </div>
+                </div>
+            </div>
+
+            <!-- INTERACTIVE WIDGET 1: GEOMETRIC MEDIAN EXPLORER -->
+            <div class="widget-panel">
+                <div class="widget-header">
+                    <span class="widget-title">&#x1F4CA; Interactive Widget 1: $L_1$ Geometric Median vs Mean Baseline</span>
+                    <span class="widget-tag">Step 1 Demo</span>
+                </div>
+                <p style="font-size:0.86rem; color:var(--text-muted); margin-bottom:14px;">
+                    Drag the red <strong>Artifact Outlier Burst</strong> slider below. Notice how the standard Mean Baseline (cyan dashed ellipse) gets pulled away by the spike, while the Geometric $L_1$-Median (solid magenta ellipse) stays anchored to healthy EEG!
+                </p>
+                <div class="ctrl-row">
+                    <span class="ctrl-label">Outlier Magnitude:</span>
+                    <input type="range" id="w1-slider-outlier" class="ctrl-slider" min="1" max="10" step="0.5" value="5">
+                    <span id="w1-badge-outlier" class="val-badge">5.0 x</span>
+                    <button id="w1-btn-reset" class="btn btn-teal">&#x21BB; Reset Points</button>
+                </div>
+                <canvas id="w1-canvas" class="widget-canvas" height="340"></canvas>
+            </div>
+        </div>
+
+        <hr class="section-divider">
+
+        <!-- MODULE 4: STEP 2 & 3 - PCA & CUTOFF RULE -->
+        <div class="section-block" id="sec-pca-cutoff">
+            <div class="phase-header">
+                <div class="phase-number">4</div>
+                <h2>Steps 2 &amp; 3: Sliding Window PCA &amp; The Cutoff Rule<br><small>Finding Abnormal Noise Directions</small></h2>
+            </div>
+
+            <div class="glass-card">
+                <p>
+                    <strong>Step 2 &mdash; The 500 ms Sliding Spotlight:</strong> As the continuous EEG recording streams, ASR slides a short 500 ms window across the data sample by sample. Inside this window, Principal Component Analysis (PCA) decomposes the multi-channel signal into independent directional axes ($v_1, v_2, \dots, v_Q$).
+                </p>
+                <p>
+                    <strong>Step 3 &mdash; The Cutoff Rule ($k$ Standard Deviations):</strong> For each component direction, ASR asks: <em>"Is the variance in this direction abnormally huge compared to baseline?"</em>
+                </p>
+                $$\text{Threshold Threshold } z_i = \mu_i + k \cdot s_i$$
+
+                <div class="translator-box">
+                    <div class="translator-title">&#x1F4A1; Plain English Math Translation: The Cutoff Parameter $k$</div>
+                    <div class="translator-text">
+                        The <code>cutoff</code> parameter $k$ is like a volume limit set in standard deviations. If a component's energy is within $k$ standard deviations of clean baseline, it passes through untouched ($U=1$). If it spikes beyond $k$, ASR flags it as an artifact ($U=0$)!
+                    </div>
+                </div>
             </div>
 
             <div class="two-col">
                 <div class="glass-card" style="margin:0;">
-                    <p style="font-family:'Inter',sans-serif;font-size:0.68rem;font-weight:800;letter-spacing:3px;text-transform:uppercase;color:#FCA5A5;margin-bottom:10px;">Aggressive (cutoff = 5&ndash;10)</p>
-                    <p style="font-size:0.9rem;">Removes more artifact but risks removing genuine brain activity. Good for heavily contaminated data or BCI applications.</p>
+                    <p style="font-family:'Inter',sans-serif;font-size:0.75rem;font-weight:800;letter-spacing:3px;text-transform:uppercase;color:#FB7185;margin-bottom:8px;">Aggressive Cutoff ($k = 5 \text{ to } 7$)</p>
+                    <p style="font-size:0.88rem;">
+                        Cleans heavily contaminated BCI data fast, but can occasionally trim natural high-voltage brain waves (like ERP peaks).
+                    </p>
                 </div>
                 <div class="glass-card" style="margin:0;">
-                    <p style="font-family:'Inter',sans-serif;font-size:0.68rem;font-weight:800;letter-spacing:3px;text-transform:uppercase;color:#2DD4BF;margin-bottom:10px;">Conservative (cutoff = 20&ndash;30)</p>
-                    <p style="font-size:0.9rem;">Only removes the most extreme artifacts. Preserves more brain signal. <strong>Recommended starting point</strong> for research pipelines.</p>
+                    <p style="font-family:'Inter',sans-serif;font-size:0.75rem;font-weight:800;letter-spacing:3px;text-transform:uppercase;color:#2DD4BF;margin-bottom:8px;">Conservative Cutoff ($k = 15 \text{ to } 30$)</p>
+                    <p style="font-size:0.88rem;">
+                        <strong>Recommended for research!</strong> Removes severe muscle bursts and electrode pops while leaving genuine 10 Hz alpha rhythms intact.
+                    </p>
                 </div>
-            </div>
-
-            <div class="warn-box">
-                <p>
-                    <strong>Prerequisites:</strong> ASR needs the data to be high-pass filtered (&ge;0.5 Hz) and
-                    <em>not</em> common-average re-referenced beforehand (this reduces rank and confuses the PCA step).
-                </p>
             </div>
         </div>
 
         <hr class="section-divider">
 
-        <div class="section-block">
+        <!-- MODULE 5: STEP 4 - SUBSPACE REPAIR (OPERATOR R) -->
+        <div class="section-block" id="sec-repair">
             <div class="phase-header">
-                <div class="phase-number">4</div>
-                <h2>ASR vs. ICA<br><small>When to Use Each</small></h2>
+                <div class="phase-number">5</div>
+                <h2>Step 4: Subspace Repair ($R$ Operator)<br><small>Rebuilding Missing Brain Signals</small></h2>
             </div>
 
             <div class="glass-card">
                 <p>
-                    ASR and ICA are <em>complementary</em>, not competing. ASR excels at removing <strong>transient,
-                    non-stereotypical</strong> artifacts (bumps, pops, isolated muscle bursts) that ICA struggles with
-                    because they don&rsquo;t have a consistent spatial pattern across the recording. ICA excels at
-                    removing <strong>stereotypical, recurring</strong> artifacts (eye blinks, heartbeats) that have
-                    a stable spatial signature.
+                    Here comes the magical step of ASR: <strong>How do we repair the corrupted signal without dropping the data window?</strong>
                 </p>
                 <p>
-                    Many modern pipelines run <strong>ASR first, then ICA</strong> &mdash; ASR handles the outliers
-                    so ICA can focus on the systematic components.
+                    When component 1 is flagged as an artifact, ASR zeroes out component 1 in diagonal matrix $U$ ($U_{11}=0$). Then, it uses the <strong>Reference Mixing Matrix $M$</strong> (which knows how healthy brain channels normally talk to each other) to predict what brain wave <em>should</em> have been there!
                 </p>
+
+                <div class="translator-box">
+                    <div class="translator-title">&#x1F4A1; Plain English Math Translation: The Reconstruction Operator $R$</div>
+                    <div class="translator-text">
+                        <strong>Equation:</strong> $R = M \left( U V^T M \right)^+ V^T$<br>
+                        <strong>In plain English:</strong> Take the remaining clean channel components ($U V^T$), pass them back through the healthy baseline mixing structure ($M$), and solve for the best matching uncorrupted brain signal!
+                    </div>
+                </div>
             </div>
 
-            <div class="insight-box purple">
-                <p>
-                    <strong>References:</strong> Mullen et al. (2015) &mdash; original ASR paper.
-                    Chang et al. (2020) &mdash; comprehensive ASR parameter evaluation.
-                    <code>asrpy</code> and <code>meegkit.asr</code> for Python implementations.
+            <!-- INTERACTIVE WIDGET 2: MATRIX HEATMAP & RECONSTRUCTION SANDBOX -->
+            <div class="widget-panel">
+                <div class="widget-header">
+                    <span class="widget-title">&#x1F9E9; Interactive Widget 2: Reconstruction Matrix $R$ &amp; Cutoff Sandbox</span>
+                    <span class="widget-tag">Step 4 Demo</span>
+                </div>
+                <p style="font-size:0.86rem; color:var(--text-muted); margin-bottom:14px;">
+                    Move the <code>Cutoff (k)</code> slider below. Watch the diagonal rejection matrix $U$ zero out bad components (red cells), and see the green reconstructed wave cleanly restore the true 10 Hz brain wave from the corrupted red wave!
                 </p>
+                <div class="ctrl-row">
+                    <span class="ctrl-label">Cutoff Parameter ($k$):</span>
+                    <input type="range" id="w2-slider-k" class="ctrl-slider" min="3" max="35" step="1" value="15">
+                    <span id="w2-badge-k" class="val-badge">k = 15</span>
+                    <span id="w2-status-tag" class="widget-tag" style="background:rgba(99,102,241,0.2); color:#A5B4FC;">Optimal Research</span>
+                </div>
+
+                <div class="matrix-container">
+                    <div class="matrix-box">
+                        <div class="matrix-title">Ref Mixing $M$</div>
+                        <div id="w2-mat-M" class="matrix-grid" style="grid-template-columns: repeat(4, 1fr);"></div>
+                    </div>
+                    <div style="font-size:1.4rem; color:var(--accent-solid); font-weight:bold;">&times;</div>
+                    <div class="matrix-box">
+                        <div class="matrix-title">Rejection $U$</div>
+                        <div id="w2-mat-U" class="matrix-grid" style="grid-template-columns: repeat(4, 1fr);"></div>
+                    </div>
+                    <div style="font-size:1.4rem; color:var(--accent-solid); font-weight:bold;">&times;</div>
+                    <div class="matrix-box">
+                        <div class="matrix-title">PCA Basis $V^T$</div>
+                        <div id="w2-mat-V" class="matrix-grid" style="grid-template-columns: repeat(4, 1fr);"></div>
+                    </div>
+                    <div style="font-size:1.4rem; color:var(--accent-solid); font-weight:bold;">=</div>
+                    <div class="matrix-box" style="border-color:#5EEAD4;">
+                        <div class="matrix-title" style="color:#5EEAD4;">Operator $R$</div>
+                        <div id="w2-mat-R" class="matrix-grid" style="grid-template-columns: repeat(4, 1fr);"></div>
+                    </div>
+                </div>
+
+                <canvas id="w2-canvas" class="widget-canvas" height="220"></canvas>
+            </div>
+        </div>
+
+        <hr class="section-divider">
+
+        <!-- MODULE 6: INTERACTIVE VISUAL SIMULATORS -->
+        <div class="section-block" id="sec-simulators">
+            <div class="phase-header">
+                <div class="phase-number">6</div>
+                <h2>Interactive Visual Simulators<br><small>Visualizing Vector Projection &amp; Live EEG Engine</small></h2>
+            </div>
+
+            <!-- INTERACTIVE WIDGET 3: 2D SUBSPACE GEOMETRY -->
+            <div class="widget-panel">
+                <div class="widget-header">
+                    <span class="widget-title">&#x1F4D0; Interactive Widget 3: 2D Subspace Vector Projection</span>
+                    <span class="widget-tag">2D Vector View</span>
+                </div>
+                <p style="font-size:0.86rem; color:var(--text-muted); margin-bottom:14px;">
+                    This diagram shows 2-channel space (Fp1 vs Fz). The green ellipse is clean baseline EEG. Click <strong>Inject Muscle Burst</strong> to watch the vector shoot out past the threshold boundary. Then click <strong>Reconstruct Subspace</strong> to watch ASR pull the point back onto the baseline ellipse!
+                </p>
+                <div class="ctrl-row">
+                    <button id="w3-btn-burst" class="btn">&#x26A1; Inject Muscle Burst</button>
+                    <button id="w3-btn-proj" class="btn btn-teal">&#x2728; Reconstruct Subspace ($Rx$)</button>
+                    <button id="w3-btn-reset" class="btn">&#x21BB; Reset</button>
+                </div>
+                <canvas id="w3-canvas" class="widget-canvas" height="320"></canvas>
+            </div>
+
+            <!-- INTERACTIVE WIDGET 4: LIVE 4-CHANNEL EEG SIMULATOR -->
+            <div class="widget-panel">
+                <div class="widget-header">
+                    <span class="widget-title">&#x1F3AC; Interactive Widget 4: Live 4-Channel ASR Sliding Window Engine</span>
+                    <span class="widget-tag">Real-Time Engine</span>
+                </div>
+                <p style="font-size:0.86rem; color:var(--text-muted); margin-bottom:14px;">
+                    Watch ASR process continuous multi-channel EEG in real time with a 500 ms sliding window spotlight! Red = Raw corrupted signal, Green/Teal = ASR Reconstructed Output.
+                </p>
+
+                <div class="ctrl-row">
+                    <button id="w4-btn-play" class="btn btn-teal">&#x25B6; Play / Pause</button>
+                    <span class="ctrl-label" style="min-width:auto; margin-left:12px;">Cutoff ($k$):</span>
+                    <input type="range" id="w4-slider-k" class="ctrl-slider" min="5" max="30" step="1" value="15" style="max-width:130px;">
+                    <span id="w4-badge-k" class="val-badge">k = 15</span>
+                </div>
+                <div class="ctrl-row">
+                    <span class="ctrl-label" style="min-width:100px;">Scrub Timeline:</span>
+                    <input type="range" id="w4-slider-scrub" class="ctrl-slider" min="0" max="100" step="0.5" value="0">
+                </div>
+
+                <canvas id="w4-canvas" class="widget-canvas" height="360"></canvas>
+            </div>
+
+            <!-- CODE BLOCK & BEST PRACTICES -->
+            <div class="glass-card">
+                <h3 style="color:#A5B4FC; margin-bottom:14px; font-family:'Inter',sans-serif; font-size:1.1rem; font-weight:600;">Golden Rules for Running ASR in Python</h3>
+                <div class="warn-box">
+                    <p><strong>1. Always High-Pass Filter First ($\ge 0.5 \text{ Hz}$):</strong> ASR requires zero-mean signals. Low frequency drifts ruin PCA variance estimates.</p>
+                    <p><strong>2. NEVER Common-Average Reference (CAR) Before ASR:</strong> CAR subtracts the channel mean, reducing matrix rank by 1. That causes matrix inversion errors in $M^+$! Apply CAR <em>after</em> ASR.</p>
+                </div>
+
+                <div class="code-block">
+                    <span class="code-tag">Python 3.11</span>
+                    <pre><span class="c-keyword">import</span> mne
+<span class="c-keyword">from</span> meegkit.asr <span class="c-keyword">import</span> ASR
+
+<span class="c-comment"># 1. Load Raw EEG Data</span>
+raw = mne.io.read_raw_fif(<span class="c-string">"sample_raw.fif"</span>, preload=<span class="c-number">True</span>)
+
+<span class="c-comment"># 2. Filter data (Mandatory: high-pass filter)</span>
+raw.filter(l_freq=<span class="c-number">1.0</span>, h_freq=<span class="c-number">40.0</span>)
+
+<span class="c-comment"># 3. Fit ASR on 60s clean baseline</span>
+raw_eeg = raw.copy().pick(<span class="c-string">'eeg'</span>)
+data = raw_eeg.get_data()
+asr = ASR(sfreq=raw.info[<span class="c-string">'sfreq'</span>], cutoff=<span class="c-number">15</span>)
+asr.fit(data[:, :int(<span class="c-number">60</span> * raw.info[<span class="c-string">'sfreq'</span>])])
+
+<span class="c-comment"># 4. Transform continuous data</span>
+clean_data, _ = asr.transform(data)
+raw_eeg._data = clean_data
+
+<span class="c-comment"># 5. NOW apply CAR reference and proceed to ICA</span>
+raw_eeg.set_eeg_reference(<span class="c-string">'average'</span>)
+print(<span class="c-string">"ASR Cleaning Complete!"</span>)</pre>
+                </div>
+            </div>
+
+            <!-- KNOWLEDGE QUIZ -->
+            <div class="glass-card">
+                <h3 style="color:#5EEAD4; margin-bottom:16px; font-family:'Inter',sans-serif; font-size:1.15rem; font-weight:600;">Student Self-Check Quiz</h3>
+
+                <div style="margin-bottom:20px;">
+                    <p style="font-weight:600; color:#fff; margin-bottom:8px;">Q1: What does ASR do when it detects a component spiking beyond the cutoff threshold $k$?</p>
+                    <div class="quiz-option" onclick="checkQuiz(this, false)">A) It deletes the entire 1-second data recording window.</div>
+                    <div class="quiz-option" onclick="checkQuiz(this, true)">B) It zeroes out only the corrupted component direction ($U=0$) and reconstructs the brain signal using baseline covariance $M$.</div>
+                    <div class="quiz-option" onclick="checkQuiz(this, false)">C) It mutes all EEG channels completely.</div>
+                </div>
+
+                <div>
+                    <p style="font-weight:600; color:#fff; margin-bottom:8px;">Q2: Why must Common Average Referencing (CAR) be performed AFTER ASR, not before?</p>
+                    <div class="quiz-option" onclick="checkQuiz(this, false)">A) CAR makes muscle noise louder.</div>
+                    <div class="quiz-option" onclick="checkQuiz(this, true)">B) CAR reduces spatial matrix rank by 1, destroying pseudoinverse calculation in ASR.</div>
+                    <div class="quiz-option" onclick="checkQuiz(this, false)">C) CAR changes the sampling rate.</div>
+                </div>
             </div>
         </div>
     </article>
 
     <footer>
-        <p>Day 5 &mdash; Data Cleaning: ASR</p>
+        <p>Day 5 &mdash; Artifact Subspace Reconstruction (ASR) &middot; <a href="../index.html">EEG Analysis Odyssey</a></p>
     </footer>
 
+    <!-- INTERACTIVE CANVAS ENGINES & SCRIPT LOGIC -->
     <script>
-        const canvas = document.getElementById('neural-canvas');
-        const ctx = canvas.getContext('2d');
+        // ----------------------------------------------------
+        // BACKGROUND NEURAL CANVAS
+        // ----------------------------------------------------
+        const bgCanvas = document.getElementById('neural-canvas');
+        const bgCtx = bgCanvas.getContext('2d');
         let W, H, particles;
-        function resize() { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
+        function resizeBg() { W = bgCanvas.width = window.innerWidth; H = bgCanvas.height = window.innerHeight; }
         function initParticles() {
-            particles = Array.from({ length: 100 }, () => ({
+            particles = Array.from({ length: 80 }, () => ({
                 x: Math.random() * W, y: Math.random() * H,
-                vx: (Math.random() - 0.5) * 0.4, vy: (Math.random() - 0.5) * 0.4,
+                vx: (Math.random() - 0.5) * 0.35, vy: (Math.random() - 0.5) * 0.35,
                 r: Math.random() * 2 + 0.8
             }));
         }
-        function draw() {
-            ctx.clearRect(0, 0, W, H);
+        function drawBg() {
+            bgCtx.clearRect(0, 0, W, H);
             for (let i = 0; i < particles.length; i++) {
                 for (let j = i + 1; j < particles.length; j++) {
                     const dx = particles[i].x - particles[j].x;
                     const dy = particles[i].y - particles[j].y;
                     const dist = Math.sqrt(dx * dx + dy * dy);
                     if (dist < 130) {
-                        ctx.beginPath();
-                        ctx.strokeStyle = 'rgba(165,180,252,' + (0.25 * (1 - dist / 130)) + ')';
-                        ctx.lineWidth = 0.8;
-                        ctx.moveTo(particles[i].x, particles[i].y);
-                        ctx.lineTo(particles[j].x, particles[j].y);
-                        ctx.stroke();
+                        bgCtx.beginPath();
+                        bgCtx.strokeStyle = 'rgba(165,180,252,' + (0.22 * (1 - dist / 130)) + ')';
+                        bgCtx.lineWidth = 0.8;
+                        bgCtx.moveTo(particles[i].x, particles[i].y);
+                        bgCtx.lineTo(particles[j].x, particles[j].y);
+                        bgCtx.stroke();
                     }
                 }
             }
             particles.forEach(p => {
-                ctx.beginPath();
-                ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-                ctx.fillStyle = 'rgba(165,180,252,0.7)';
-                ctx.fill();
+                bgCtx.beginPath();
+                bgCtx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+                bgCtx.fillStyle = 'rgba(165,180,252,0.65)';
+                bgCtx.fill();
                 p.x += p.vx; p.y += p.vy;
                 if (p.x < 0 || p.x > W) p.vx *= -1;
                 if (p.y < 0 || p.y > H) p.vy *= -1;
             });
-            requestAnimationFrame(draw);
+            requestAnimationFrame(drawBg);
         }
-        window.addEventListener('resize', () => { resize(); initParticles(); });
-        resize(); initParticles(); draw();
+        window.addEventListener('resize', () => { resizeBg(); initParticles(); });
+        resizeBg(); initParticles(); drawBg();
 
+        // Keyboard Navigation
         document.addEventListener('keydown', (e) => {
             if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
             if (e.key === 'ArrowLeft') {
@@ -355,6 +655,540 @@ raw_clean = asr.transform(raw)</pre>
                 if (nextBtn) nextBtn.click();
             }
         });
+
+        // Quiz Logic
+        function checkQuiz(opt, isCorrect) {
+            const parent = opt.parentElement;
+            const options = parent.querySelectorAll('.quiz-option');
+            options.forEach(o => o.classList.remove('correct', 'incorrect'));
+            if (isCorrect) {
+                opt.classList.add('correct');
+            } else {
+                opt.classList.add('incorrect');
+            }
+        }
+
+        // ----------------------------------------------------
+        // WIDGET 1: GEOMETRIC MEDIAN VS MEAN COVARIANCE
+        // ----------------------------------------------------
+        (function() {
+            const canvas = document.getElementById('w1-canvas');
+            const ctx = canvas.getContext('2d');
+            const sliderOutlier = document.getElementById('w1-slider-outlier');
+            const badgeOutlier = document.getElementById('w1-badge-outlier');
+            const btnReset = document.getElementById('w1-btn-reset');
+
+            let outlierMult = 5.0;
+            let cleanPoints = [];
+            let outlierPoint = { x: 0, y: 0 };
+
+            function generatePoints() {
+                cleanPoints = [];
+                const cx = canvas.width / 2 - 40;
+                const cy = canvas.height / 2 + 20;
+                for (let i = 0; i < 45; i++) {
+                    const u1 = Math.random(), u2 = Math.random();
+                    const z1 = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+                    const z2 = Math.sqrt(-2 * Math.log(u1)) * Math.sin(2 * Math.PI * u2);
+                    const px = cx + z1 * 35 + z2 * 15;
+                    const py = cy + z1 * 12 + z2 * 28;
+                    cleanPoints.push({ x: px, y: py });
+                }
+                updateOutlierPos();
+            }
+
+            function updateOutlierPos() {
+                const cx = canvas.width / 2 - 40;
+                const cy = canvas.height / 2 + 20;
+                outlierPoint = {
+                    x: cx + 45 * outlierMult,
+                    y: cy - 35 * outlierMult
+                };
+            }
+
+            sliderOutlier.addEventListener('input', (e) => {
+                outlierMult = parseFloat(e.target.value);
+                badgeOutlier.textContent = outlierMult.toFixed(1) + ' x';
+                updateOutlierPos();
+                draw();
+            });
+
+            btnReset.addEventListener('click', () => {
+                sliderOutlier.value = 5.0;
+                outlierMult = 5.0;
+                badgeOutlier.textContent = '5.0 x';
+                generatePoints();
+                draw();
+            });
+
+            function calcMean(pts) {
+                let sx = 0, sy = 0;
+                pts.forEach(p => { sx += p.x; sy += p.y; });
+                return { x: sx / pts.length, y: sy / pts.length };
+            }
+
+            function calcGeometricMedian(pts) {
+                let y = calcMean(pts);
+                for (let iter = 0; iter < 40; iter++) {
+                    let numX = 0, numY = 0, den = 0;
+                    for (let i = 0; i < pts.length; i++) {
+                        const dist = Math.hypot(pts[i].x - y.x, pts[i].y - y.y) || 1e-5;
+                        numX += pts[i].x / dist;
+                        numY += pts[i].y / dist;
+                        den += 1 / dist;
+                    }
+                    y = { x: numX / den, y: numY / den };
+                }
+                return y;
+            }
+
+            function drawEllipse(center, rx, ry, angle, color, isDashed) {
+                ctx.save();
+                ctx.beginPath();
+                ctx.translate(center.x, center.y);
+                ctx.rotate(angle);
+                ctx.ellipse(0, 0, rx, ry, 0, 0, 2 * Math.PI);
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 2.2;
+                if (isDashed) ctx.setLineDash([6, 4]);
+                ctx.stroke();
+                ctx.restore();
+            }
+
+            function draw() {
+                canvas.width = canvas.clientWidth || 700;
+                canvas.height = 340;
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                const allPts = [...cleanPoints, outlierPoint];
+
+                // 1. Draw Clean Points
+                cleanPoints.forEach(p => {
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, 4, 0, 2 * Math.PI);
+                    ctx.fillStyle = 'rgba(45, 212, 191, 0.7)';
+                    ctx.fill();
+                });
+
+                // 2. Draw Outlier Burst Point
+                ctx.beginPath();
+                ctx.arc(outlierPoint.x, outlierPoint.y, 8, 0, 2 * Math.PI);
+                ctx.fillStyle = '#FB7185';
+                ctx.shadowColor = '#FB7185';
+                ctx.shadowBlur = 12;
+                ctx.fill();
+                ctx.shadowBlur = 0;
+
+                ctx.fillStyle = '#FB7185';
+                ctx.font = '600 12px Inter';
+                ctx.fillText('Artifact Outlier Burst', outlierPoint.x + 12, outlierPoint.y + 4);
+
+                // 3. Compute Mean & Geometric Median
+                const meanCov = calcMean(allPts);
+                const gMedian = calcGeometricMedian(allPts);
+
+                // Draw Standard Sample Mean Ellipse (Dashed Cyan)
+                drawEllipse(meanCov, 80 * (outlierMult / 3), 45, -0.6, '#38BDF8', true);
+                ctx.beginPath();
+                ctx.arc(meanCov.x, meanCov.y, 5, 0, 2 * Math.PI);
+                ctx.fillStyle = '#38BDF8';
+                ctx.fill();
+                ctx.fillText('Standard Sample Mean', meanCov.x + 10, meanCov.y - 8);
+
+                // Draw L1 Geometric Median Ellipse (Solid Magenta)
+                drawEllipse(gMedian, 55, 30, -0.3, '#F472B6', false);
+                ctx.beginPath();
+                ctx.arc(gMedian.x, gMedian.y, 5, 0, 2 * Math.PI);
+                ctx.fillStyle = '#F472B6';
+                ctx.fill();
+                ctx.fillText('L1 Geometric Median (ASR Baseline)', gMedian.x + 10, gMedian.y + 16);
+
+                // Legend
+                ctx.fillStyle = 'rgba(15, 23, 50, 0.85)';
+                ctx.fillRect(16, 16, 280, 56);
+                ctx.strokeStyle = 'rgba(165,180,252,0.3)';
+                ctx.strokeRect(16, 16, 280, 56);
+
+                ctx.fillStyle = '#38BDF8';
+                ctx.font = '600 11px Inter';
+                ctx.fillText('-- Standard Mean (Skewed by Outlier)', 26, 36);
+                ctx.fillStyle = '#F472B6';
+                ctx.fillText('— Robust Geometric Median (Clean Baseline)', 26, 56);
+            }
+
+            generatePoints();
+            setTimeout(draw, 100);
+        })();
+
+        // ----------------------------------------------------
+        // WIDGET 2: RECONSTRUCTION MATRIX & CUTOFF SANDBOX
+        // ----------------------------------------------------
+        (function() {
+            const sliderK = document.getElementById('w2-slider-k');
+            const badgeK = document.getElementById('w2-badge-k');
+            const statusTag = document.getElementById('w2-status-tag');
+            const canvas = document.getElementById('w2-canvas');
+            const ctx = canvas.getContext('2d');
+
+            const divM = document.getElementById('w2-mat-M');
+            const divU = document.getElementById('w2-mat-U');
+            const divV = document.getElementById('w2-mat-V');
+            const divR = document.getElementById('w2-mat-R');
+
+            function renderMatrixCells(container, matrix) {
+                container.innerHTML = '';
+                for (let r = 0; r < 4; r++) {
+                    for (let c = 0; c < 4; c++) {
+                        const cell = document.createElement('div');
+                        cell.className = 'matrix-cell';
+                        const val = matrix[r][c];
+                        cell.textContent = typeof val === 'number' ? val.toFixed(1) : val;
+
+                        let bg = 'rgba(99, 102, 241, 0.15)';
+                        if (val === 0) bg = 'rgba(251, 113, 133, 0.35)';
+                        else if (val === 1) bg = 'rgba(52, 211, 153, 0.35)';
+                        else if (r === c) bg = 'rgba(165, 180, 252, 0.30)';
+
+                        cell.style.background = bg;
+                        container.appendChild(cell);
+                    }
+                }
+            }
+
+            function update() {
+                const k = parseInt(sliderK.value);
+                badgeK.textContent = 'k = ' + k;
+
+                if (k < 8) {
+                    statusTag.textContent = 'Aggressive (BCI Mode)';
+                    statusTag.style.background = 'rgba(251, 113, 133, 0.2)';
+                    statusTag.style.color = '#FB7185';
+                } else if (k <= 25) {
+                    statusTag.textContent = 'Optimal Research Cleaning';
+                    statusTag.style.background = 'rgba(45, 212, 191, 0.2)';
+                    statusTag.style.color = '#5EEAD4';
+                } else {
+                    statusTag.textContent = 'Conservative / Mild';
+                    statusTag.style.background = 'rgba(253, 224, 71, 0.2)';
+                    statusTag.style.color = '#FCD34D';
+                }
+
+                const M = [
+                    [1.0, 0.3, 0.1, 0.0],
+                    [0.3, 1.2, 0.4, 0.1],
+                    [0.1, 0.4, 0.9, 0.2],
+                    [0.0, 0.1, 0.2, 1.1]
+                ];
+                const isComp1Rejected = k < 18;
+                const isComp2Rejected = k < 10;
+
+                const U = [
+                    [isComp1Rejected ? 0 : 1, 0, 0, 0],
+                    [0, isComp2Rejected ? 0 : 1, 0, 0],
+                    [0, 0, 1, 0],
+                    [0, 0, 0, 1]
+                ];
+
+                const V = [
+                    [0.7, 0.5, 0.3, 0.1],
+                    [-0.5, 0.6, 0.4, 0.2],
+                    [0.3, -0.4, 0.8, 0.1],
+                    [0.1, 0.2, -0.2, 0.9]
+                ];
+
+                const R = [
+                    [isComp1Rejected ? 0.2 : 1.0, 0.1, 0.0, 0.0],
+                    [0.1, isComp2Rejected ? 0.3 : 1.1, 0.2, 0.0],
+                    [0.0, 0.2, 0.9, 0.1],
+                    [0.0, 0.0, 0.1, 1.0]
+                ];
+
+                renderMatrixCells(divM, M);
+                renderMatrixCells(divU, U);
+                renderMatrixCells(divV, V);
+                renderMatrixCells(divR, R);
+
+                drawWaveforms(isComp1Rejected, isComp2Rejected, k);
+            }
+
+            function drawWaveforms(rej1, rej2, k) {
+                canvas.width = canvas.clientWidth || 700;
+                canvas.height = 220;
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                const W = canvas.width, H = canvas.height;
+                const midY = H / 2;
+
+                ctx.beginPath();
+                ctx.strokeStyle = 'rgba(165,180,252,0.15)';
+                ctx.moveTo(0, midY); ctx.lineTo(W, midY);
+                ctx.stroke();
+
+                // Raw Waveform (Red)
+                ctx.beginPath();
+                ctx.strokeStyle = '#FB7185';
+                ctx.lineWidth = 1.8;
+                for (let x = 0; x < W; x++) {
+                    const t = x / W * 4 * Math.PI;
+                    const alpha = Math.sin(t * 5) * 25;
+                    const muscle = (x > W * 0.35 && x < W * 0.65) ? (Math.random() - 0.5) * 110 : 0;
+                    const y = midY + alpha + muscle;
+                    if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+                }
+                ctx.stroke();
+
+                // Reconstructed Waveform (Green/Teal)
+                ctx.beginPath();
+                ctx.strokeStyle = '#34d399';
+                ctx.lineWidth = 2.4;
+                for (let x = 0; x < W; x++) {
+                    const t = x / W * 4 * Math.PI;
+                    const alpha = Math.sin(t * 5) * 25;
+                    let muscle = (x > W * 0.35 && x < W * 0.65) ? (Math.random() - 0.5) * 110 : 0;
+                    if (rej1) muscle *= 0.12;
+                    if (k > 28) muscle *= 0.85;
+                    const y = midY + alpha + muscle;
+                    if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+                }
+                ctx.stroke();
+
+                // Labels
+                ctx.fillStyle = '#FB7185';
+                ctx.font = '600 12px Inter';
+                ctx.fillText('Raw Signal (with Muscle Burst)', 16, 26);
+                ctx.fillStyle = '#34d399';
+                ctx.fillText('ASR Reconstructed Output (Rx)', 16, 46);
+            }
+
+            sliderK.addEventListener('input', update);
+            setTimeout(update, 100);
+        })();
+
+        // ----------------------------------------------------
+        // WIDGET 3: 2D SUBSPACE GEOMETRY & VECTOR PROJECTION
+        // ----------------------------------------------------
+        (function() {
+            const canvas = document.getElementById('w3-canvas');
+            const ctx = canvas.getContext('2d');
+            const btnBurst = document.getElementById('w3-btn-burst');
+            const btnProj = document.getElementById('w3-btn-proj');
+            const btnReset = document.getElementById('w3-btn-reset');
+
+            let isBurst = false;
+            let isProjected = false;
+
+            btnBurst.addEventListener('click', () => { isBurst = true; isProjected = false; draw(); });
+            btnProj.addEventListener('click', () => { if (isBurst) { isProjected = true; draw(); } });
+            btnReset.addEventListener('click', () => { isBurst = false; isProjected = false; draw(); });
+
+            function draw() {
+                canvas.width = canvas.clientWidth || 700;
+                canvas.height = 320;
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                const cx = canvas.width / 2;
+                const cy = canvas.height / 2;
+
+                // 1. Draw Channel Axes
+                ctx.strokeStyle = 'rgba(165,180,252,0.25)';
+                ctx.lineWidth = 1;
+                ctx.beginPath(); ctx.moveTo(50, cy); ctx.lineTo(canvas.width - 50, cy); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(cx, 30); ctx.lineTo(cx, canvas.height - 30); ctx.stroke();
+
+                ctx.fillStyle = 'rgba(165,180,252,0.7)';
+                ctx.font = '600 12px Inter';
+                ctx.fillText('Channel 1 (Fp1)', canvas.width - 130, cy - 10);
+                ctx.fillText('Channel 2 (Fz)', cx + 10, 45);
+
+                // 2. Clean Reference Covariance Ellipse (Green)
+                ctx.save();
+                ctx.translate(cx, cy);
+                ctx.rotate(-Math.PI / 6);
+                ctx.beginPath();
+                ctx.ellipse(0, 0, 75, 35, 0, 0, 2 * Math.PI);
+                ctx.strokeStyle = 'rgba(52, 211, 153, 0.6)';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                ctx.fillStyle = 'rgba(52, 211, 153, 0.08)';
+                ctx.fill();
+                ctx.restore();
+
+                // 3. Threshold Boundary Circle (Dashed Amber)
+                ctx.beginPath();
+                ctx.arc(cx, cy, 110, 0, 2 * Math.PI);
+                ctx.strokeStyle = 'rgba(252, 211, 77, 0.5)';
+                ctx.setLineDash([5, 5]);
+                ctx.stroke();
+                ctx.setLineDash([]);
+                ctx.fillStyle = 'rgba(252, 211, 77, 0.8)';
+                ctx.fillText('ASR Threshold th(v)', cx + 75, cy - 80);
+
+                // 4. Signal Vector Point
+                let targetX = cx + 45;
+                let targetY = cy - 20;
+
+                if (isBurst && !isProjected) {
+                    targetX = cx + 165;
+                    targetY = cy - 85;
+                } else if (isBurst && isProjected) {
+                    targetX = cx + 62;
+                    targetY = cy - 32;
+                }
+
+                ctx.beginPath();
+                ctx.moveTo(cx, cy);
+                ctx.lineTo(targetX, targetY);
+                ctx.strokeStyle = isBurst && !isProjected ? '#FB7185' : '#34d399';
+                ctx.lineWidth = 2.5;
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.arc(targetX, targetY, 7, 0, 2 * Math.PI);
+                ctx.fillStyle = isBurst && !isProjected ? '#FB7185' : '#34d399';
+                ctx.shadowColor = ctx.fillStyle;
+                ctx.shadowBlur = 12;
+                ctx.fill();
+                ctx.shadowBlur = 0;
+
+                // Status Banner
+                ctx.fillStyle = 'rgba(15, 23, 50, 0.88)';
+                ctx.fillRect(16, 16, 310, 42);
+                ctx.strokeStyle = 'rgba(165,180,252,0.35)';
+                ctx.strokeRect(16, 16, 310, 42);
+
+                ctx.font = '600 12px Inter';
+                if (!isBurst) {
+                    ctx.fillStyle = '#5EEAD4';
+                    ctx.fillText('Status: Baseline EEG (Inside Baseline)', 28, 41);
+                } else if (isBurst && !isProjected) {
+                    ctx.fillStyle = '#FB7185';
+                    ctx.fillText('Status: Artifact Exceeds Threshold!', 28, 41);
+                } else {
+                    ctx.fillStyle = '#34d399';
+                    ctx.fillText('Status: Subspace Reconstructed via Rx', 28, 41);
+                }
+            }
+
+            setTimeout(draw, 100);
+        })();
+
+        // ----------------------------------------------------
+        // WIDGET 4: LIVE 4-CHANNEL EEG SLIDING WINDOW ENGINE
+        // ----------------------------------------------------
+        (function() {
+            const canvas = document.getElementById('w4-canvas');
+            const ctx = canvas.getContext('2d');
+            const btnPlay = document.getElementById('w4-btn-play');
+            const sliderK = document.getElementById('w4-slider-k');
+            const badgeK = document.getElementById('w4-badge-k');
+            const sliderScrub = document.getElementById('w4-slider-scrub');
+
+            let isPlaying = true;
+            let timePos = 0;
+
+            btnPlay.addEventListener('click', () => {
+                isPlaying = !isPlaying;
+                btnPlay.textContent = isPlaying ? '❚❚ Pause' : '▶ Play';
+            });
+
+            sliderK.addEventListener('input', (e) => {
+                badgeK.textContent = 'k = ' + e.target.value;
+            });
+
+            sliderScrub.addEventListener('input', (e) => {
+                timePos = parseFloat(e.target.value);
+                draw();
+            });
+
+            function loop() {
+                if (isPlaying) {
+                    timePos = (timePos + 0.3) % 100;
+                    sliderScrub.value = timePos;
+                    draw();
+                }
+                requestAnimationFrame(loop);
+            }
+
+            function draw() {
+                canvas.width = canvas.clientWidth || 700;
+                canvas.height = 360;
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                const W = canvas.width, H = canvas.height;
+                const chNames = ['Fp1', 'Fz', 'C3', 'O1'];
+                const chCount = 4;
+                const rowH = H / chCount;
+                const cutoffK = parseFloat(sliderK.value);
+
+                for (let i = 0; i < chCount; i++) {
+                    const y = i * rowH;
+                    ctx.strokeStyle = 'rgba(165,180,252,0.12)';
+                    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+
+                    ctx.fillStyle = '#A5B4FC';
+                    ctx.font = '600 12px Inter';
+                    ctx.fillText(chNames[i], 16, y + rowH / 2 + 4);
+                }
+
+                for (let i = 0; i < chCount; i++) {
+                    const midY = i * rowH + rowH / 2;
+
+                    // Raw Waveform (Red)
+                    ctx.beginPath();
+                    ctx.strokeStyle = 'rgba(251, 113, 133, 0.85)';
+                    ctx.lineWidth = 1.4;
+                    for (let x = 0; x < W; x++) {
+                        const t = (x / W * 10) + (timePos / 10);
+                        const alpha = Math.sin(t * 6 + i) * 12;
+
+                        let artifact = 0;
+                        if (x > W * 0.15 && x < W * 0.25 && i === 0) artifact = Math.sin((x - W * 0.15) * 0.1) * 45;
+                        if (x > W * 0.50 && x < W * 0.65) artifact = (Math.random() - 0.5) * 55;
+                        if (x > W * 0.80 && x < W * 0.88 && i === 3) artifact = Math.sin((x - W * 0.8) * 0.2) * 60;
+
+                        const y = midY + alpha + artifact;
+                        if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+                    }
+                    ctx.stroke();
+
+                    // Reconstructed Waveform (Teal/Green)
+                    ctx.beginPath();
+                    ctx.strokeStyle = '#34d399';
+                    ctx.lineWidth = 1.8;
+                    for (let x = 0; x < W; x++) {
+                        const t = (x / W * 10) + (timePos / 10);
+                        const alpha = Math.sin(t * 6 + i) * 12;
+
+                        let artifact = 0;
+                        if (x > W * 0.15 && x < W * 0.25 && i === 0) artifact = Math.sin((x - W * 0.15) * 0.1) * 45;
+                        if (x > W * 0.50 && x < W * 0.65) artifact = (Math.random() - 0.5) * 55;
+                        if (x > W * 0.80 && x < W * 0.88 && i === 3) artifact = Math.sin((x - W * 0.8) * 0.2) * 60;
+
+                        if (cutoffK < 22) {
+                            artifact *= (cutoffK / 30) * 0.3;
+                        }
+
+                        const y = midY + alpha + artifact;
+                        if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+                    }
+                    ctx.stroke();
+                }
+
+                // 500ms Sliding Window Box
+                const winX = (timePos / 100) * (W - 120);
+                ctx.fillStyle = 'rgba(99, 102, 241, 0.15)';
+                ctx.fillRect(winX, 0, 110, H);
+                ctx.strokeStyle = '#5EEAD4';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(winX, 0, 110, H);
+
+                ctx.fillStyle = '#5EEAD4';
+                ctx.font = '700 11px Inter';
+                ctx.fillText('500ms Window', winX + 12, 18);
+            }
+
+            loop();
+        })();
     </script>
 </body>
 </html>
