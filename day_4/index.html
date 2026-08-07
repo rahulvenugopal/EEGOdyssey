@@ -232,9 +232,9 @@
 
     .toc-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
       gap: 12px;
-      margin: 24px 0;
+      margin: 32px 0 10px;
     }
 
     .toc-item {
@@ -244,29 +244,31 @@
       padding: 14px 18px;
       transition: all .25s;
       text-decoration: none;
-      display: block;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
     }
 
     .toc-item:hover {
-      background: rgba(99, 102, 241, .18);
       border-color: var(--accent-solid);
+      background: rgba(99, 102, 241, .20);
       transform: translateY(-2px);
-      box-shadow: 0 6px 24px rgba(99, 102, 241, .25);
+      box-shadow: 0 6px 20px rgba(99, 102, 241, .25);
     }
 
     .toc-num {
-      font-family: "JetBrains Mono", monospace;
       font-size: .7rem;
+      font-weight: 800;
+      letter-spacing: 2px;
       color: var(--accent-teal-solid);
-      font-weight: 600;
-      margin-bottom: 4px;
-      letter-spacing: 1px;
+      text-transform: uppercase;
     }
 
+    .toc-title,
     .toc-label {
-      font-size: .88rem;
-      color: var(--text-main);
-      font-weight: 500;
+      font-size: .92rem;
+      color: #fff;
+      font-weight: 600;
     }
 
     article {
@@ -798,6 +800,37 @@
       <span class="badge">&#127919; RANSAC Intuition</span>
       <span class="badge">&#127760; Spherical Splines</span>
     </div>
+
+    <div class="toc-grid">
+      <a href="#filtering" class="toc-item">
+        <span class="toc-num">Module 01</span>
+        <span class="toc-title">The Mathematics of Filtering</span>
+      </a>
+      <a href="#nyquist" class="toc-item">
+        <span class="toc-num">Module 02</span>
+        <span class="toc-title">Nyquist &amp; Aliasing</span>
+      </a>
+      <a href="#order" class="toc-item">
+        <span class="toc-num">Module 03</span>
+        <span class="toc-title">Filter Order &amp; Artefacts</span>
+      </a>
+      <a href="#causal" class="toc-item">
+        <span class="toc-num">Module 04</span>
+        <span class="toc-title">Causal vs. Acausal Filters</span>
+      </a>
+      <a href="#badchan" class="toc-item">
+        <span class="toc-num">Module 05</span>
+        <span class="toc-title">Bad Channel Detection (ASR)</span>
+      </a>
+      <a href="#ransac" class="toc-item">
+        <span class="toc-num">Module 06</span>
+        <span class="toc-title">RANSAC Intuition</span>
+      </a>
+      <a href="#interp" class="toc-item">
+        <span class="toc-num">Module 07</span>
+        <span class="toc-title">Interpolation</span>
+      </a>
+    </div>
   </header>
   <article>
     <div class="section-block">
@@ -807,36 +840,6 @@
           intuition for what a filter <em>does</em> to a signal in both time and frequency domains, understand why naive
           downsampling is catastrophic, and dissect the automated bad-channel detection machinery that modern EEG
           pipelines rely on.</p>
-      </div>
-      <div class="toc-grid" style="margin-top:24px;">
-        <a class="toc-item" href="#filtering">
-          <div class="toc-num">01 &mdash;</div>
-          <div class="toc-label">The Mathematics of Filtering</div>
-        </a>
-        <a class="toc-item" href="#nyquist">
-          <div class="toc-num">02 &mdash;</div>
-          <div class="toc-label">Nyquist &amp; Aliasing</div>
-        </a>
-        <a class="toc-item" href="#order">
-          <div class="toc-num">03 &mdash;</div>
-          <div class="toc-label">Filter Order &amp; Artefacts</div>
-        </a>
-        <a class="toc-item" href="#causal">
-          <div class="toc-num">04 &mdash;</div>
-          <div class="toc-label">Causal vs. Acausal Filters</div>
-        </a>
-        <a class="toc-item" href="#badchan">
-          <div class="toc-num">05 &mdash;</div>
-          <div class="toc-label">Bad Channel Detection (ASR)</div>
-        </a>
-        <a class="toc-item" href="#ransac">
-          <div class="toc-num">06 &mdash;</div>
-          <div class="toc-label">RANSAC Intuition</div>
-        </a>
-        <a class="toc-item" href="#interp">
-          <div class="toc-num">07 &mdash;</div>
-          <div class="toc-label">Interpolation</div>
-        </a>
       </div>
     </div>
     <hr class="section-divider">

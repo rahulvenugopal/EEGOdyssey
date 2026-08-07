@@ -255,6 +255,10 @@
                 <span class="toc-num">Module 06</span>
                 <span class="toc-title">Interactive Visual Widgets</span>
             </a>
+            <a href="#sec-further-reading" class="toc-item">
+                <span class="toc-num">Module 07</span>
+                <span class="toc-title">Further Reading &amp; Video</span>
+            </a>
         </div>
     </header>
 
@@ -393,7 +397,7 @@
                 <p>
                     <strong>Step 3 &mdash; The Cutoff Rule ($k$ Standard Deviations):</strong> For each component direction, ASR asks: <em>"Is the variance in this direction abnormally huge compared to baseline?"</em>
                 </p>
-                $$\text{Threshold Threshold } z_i = \mu_i + k \cdot s_i$$
+                $$\text{Threshold } z_i = \mu_i + k \cdot s_i$$
 
                 <div class="translator-box">
                     <div class="translator-title">&#x1F4A1; Plain English Math Translation: The Cutoff Parameter $k$</div>
@@ -590,6 +594,65 @@ print(<span class="c-string">"ASR Cleaning Complete!"</span>)</pre>
                     <div class="quiz-option" onclick="checkQuiz(this, false)">C) CAR changes the sampling rate.</div>
                 </div>
             </div>
+        </div>
+
+        <hr class="section-divider">
+
+        <!-- FURTHER READING SECTION -->
+        <div class="section-block" id="sec-further-reading">
+            <div class="phase-header">
+                <div class="phase-number" style="background:linear-gradient(135deg,#0f172a,#1e293b); border-color:rgba(94,234,212,0.5); box-shadow:0 0 20px rgba(20,184,166,0.4);">
+                    &#x1F4DA;
+                </div>
+                <h2>Further Reading &amp; Resources<br><small>Key Papers, Video Walkthroughs &amp; Documentation</small></h2>
+            </div>
+
+            <ol style="color:rgba(165,180,252,0.8); font-family:'Inter',sans-serif; line-height:1.6; padding-left:1.5rem; display:flex; flex-direction:column; gap:20px;">
+                <!-- Ref 1: Video Resource -->
+                <li style="padding-left:8px; color:#C4B5FD; font-family:'JetBrains Mono',monospace; font-weight:700;">
+                    <div style="font-family:'Inter',sans-serif;">
+                        <a href="https://www.youtube.com/watch?v=83x5XjQdndY" target="_blank" rel="noopener"
+                            style="color:#fff; text-decoration:underline; text-decoration-color:rgba(196,181,253,0.4); font-weight:600; font-size:0.95rem; transition:color 0.2s;"
+                            onmouseover="this.style.color='#C4B5FD'" onmouseout="this.style.color='#fff'">
+                            Artifact Subspace Reconstruction (ASR) Lecture &amp; Demonstration
+                        </a>
+                        <span style="font-size:0.9rem; margin-left:6px;" title="Video">&#x1F3A5;</span><br>
+                        <span style="color:var(--text-muted); font-size:0.85rem; font-weight:400;">
+                            Official SCCN / EEGLAB workshop lecture by Christian Kothe &amp; Tim Mullen detailing the mathematical principles, sliding-window calibration, and real-time subspace reconstruction algorithm.
+                        </span>
+                    </div>
+                </li>
+
+                <!-- Ref 2: Research Paper -->
+                <li style="padding-left:8px; color:#5EEAD4; font-family:'JetBrains Mono',monospace; font-weight:700;">
+                    <div style="font-family:'Inter',sans-serif;">
+                        <a href="https://ieeexplore.ieee.org/document/7334822" target="_blank" rel="noopener"
+                            style="color:#fff; text-decoration:underline; text-decoration-color:rgba(94,234,212,0.4); font-weight:600; font-size:0.95rem; transition:color 0.2s;"
+                            onmouseover="this.style.color='#5EEAD4'" onmouseout="this.style.color='#fff'">
+                            Real-Time Neuroimaging &amp; Cognitive Monitoring Using Wearable EEG (Mullen et al., 2015)
+                        </a>
+                        <span style="font-size:0.9rem; margin-left:6px;" title="Paper">&#x1F4D1;</span><br>
+                        <span style="color:var(--text-muted); font-size:0.85rem; font-weight:400;">
+                            Landmark IEEE Transactions on Biomedical Engineering paper introducing ASR, $L_1$ geometric median covariance estimation, and mobile artifact rejection performance.
+                        </span>
+                    </div>
+                </li>
+
+                <!-- Ref 3: Python Package Docs -->
+                <li style="padding-left:8px; color:#A5B4FC; font-family:'JetBrains Mono',monospace; font-weight:700;">
+                    <div style="font-family:'Inter',sans-serif;">
+                        <a href="https://meegkit.github.io/meegkit/asr.html" target="_blank" rel="noopener"
+                            style="color:#fff; text-decoration:underline; text-decoration-color:rgba(165,180,252,0.4); font-weight:600; font-size:0.95rem; transition:color 0.2s;"
+                            onmouseover="this.style.color='#A5B4FC'" onmouseout="this.style.color='#fff'">
+                            meegkit Python Package: Artifact Subspace Reconstruction Documentation
+                        </a>
+                        <span style="font-size:0.9rem; margin-left:6px;" title="Documentation">&#x1F4D6;</span><br>
+                        <span style="color:var(--text-muted); font-size:0.85rem; font-weight:400;">
+                            Python library reference and code guide for running ASR cleaning pipeline on MNE-Python data (`meegkit.asr.ASR`).
+                        </span>
+                    </div>
+                </li>
+            </ol>
         </div>
     </article>
 
@@ -804,16 +867,31 @@ print(<span class="c-string">"ASR Cleaning Complete!"</span>)</pre>
                 ctx.fillText('L1 Geometric Median (ASR Baseline)', gMedian.x + 10, gMedian.y + 16);
 
                 // Legend
-                ctx.fillStyle = 'rgba(15, 23, 50, 0.85)';
-                ctx.fillRect(16, 16, 280, 56);
-                ctx.strokeStyle = 'rgba(165,180,252,0.3)';
-                ctx.strokeRect(16, 16, 280, 56);
+                ctx.fillStyle = 'rgba(15, 23, 50, 0.90)';
+                ctx.fillRect(16, 16, 290, 56);
+                ctx.strokeStyle = 'rgba(165,180,252,0.35)';
+                ctx.strokeRect(16, 16, 290, 56);
 
+                // Standard Mean Legend Line (Dashed Cyan)
+                ctx.beginPath();
+                ctx.moveTo(26, 33); ctx.lineTo(48, 33);
+                ctx.strokeStyle = '#38BDF8';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([4, 3]);
+                ctx.stroke();
+                ctx.setLineDash([]);
                 ctx.fillStyle = '#38BDF8';
                 ctx.font = '600 11px Inter';
-                ctx.fillText('-- Standard Mean (Skewed by Outlier)', 26, 36);
+                ctx.fillText('Standard Mean (Skewed by Outlier)', 56, 36);
+
+                // L1 Median Legend Line (Solid Magenta)
+                ctx.beginPath();
+                ctx.moveTo(26, 51); ctx.lineTo(48, 51);
+                ctx.strokeStyle = '#F472B6';
+                ctx.lineWidth = 2;
+                ctx.stroke();
                 ctx.fillStyle = '#F472B6';
-                ctx.fillText('— Robust Geometric Median (Clean Baseline)', 26, 56);
+                ctx.fillText('Robust Geometric Median (Baseline)', 56, 54);
             }
 
             generatePoints();
@@ -1035,6 +1113,22 @@ print(<span class="c-string">"ASR Cleaning Complete!"</span>)</pre>
                     targetY = cy - 32;
                 }
 
+                if (isBurst && isProjected) {
+                    // Draw projection trajectory line from burst point to repaired point
+                    ctx.beginPath();
+                    ctx.moveTo(cx + 165, cy - 85);
+                    ctx.lineTo(cx + 62, cy - 32);
+                    ctx.strokeStyle = 'rgba(252, 211, 77, 0.7)';
+                    ctx.lineWidth = 1.8;
+                    ctx.setLineDash([4, 4]);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+
+                    ctx.fillStyle = '#FCD34D';
+                    ctx.font = '600 11px Inter';
+                    ctx.fillText('Rx Subspace Repair Projection', cx + 110, cy - 65);
+                }
+
                 ctx.beginPath();
                 ctx.moveTo(cx, cy);
                 ctx.lineTo(targetX, targetY);
@@ -1093,6 +1187,7 @@ print(<span class="c-string">"ASR Cleaning Complete!"</span>)</pre>
 
             sliderK.addEventListener('input', (e) => {
                 badgeK.textContent = 'k = ' + e.target.value;
+                draw();
             });
 
             sliderScrub.addEventListener('input', (e) => {
@@ -1130,6 +1225,8 @@ print(<span class="c-string">"ASR Cleaning Complete!"</span>)</pre>
                     ctx.fillText(chNames[i], 16, y + rowH / 2 + 4);
                 }
 
+                const thresholdLimit = (cutoffK / 30) * 58;
+
                 for (let i = 0; i < chCount; i++) {
                     const midY = i * rowH + rowH / 2;
 
@@ -1142,9 +1239,9 @@ print(<span class="c-string">"ASR Cleaning Complete!"</span>)</pre>
                         const alpha = Math.sin(t * 6 + i) * 12;
 
                         let artifact = 0;
-                        if (x > W * 0.15 && x < W * 0.25 && i === 0) artifact = Math.sin((x - W * 0.15) * 0.1) * 45;
-                        if (x > W * 0.50 && x < W * 0.65) artifact = (Math.random() - 0.5) * 55;
-                        if (x > W * 0.80 && x < W * 0.88 && i === 3) artifact = Math.sin((x - W * 0.8) * 0.2) * 60;
+                        if (x > W * 0.15 && x < W * 0.25 && i === 0) artifact = Math.sin((x - W * 0.15) * 0.1) * 48;
+                        if (x > W * 0.50 && x < W * 0.65) artifact = (Math.sin((x - W * 0.5) * 0.15) * 35) + ((Math.random() - 0.5) * 25);
+                        if (x > W * 0.80 && x < W * 0.88 && i === 3) artifact = Math.sin((x - W * 0.8) * 0.2) * 52;
 
                         const y = midY + alpha + artifact;
                         if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
@@ -1154,21 +1251,24 @@ print(<span class="c-string">"ASR Cleaning Complete!"</span>)</pre>
                     // Reconstructed Waveform (Teal/Green)
                     ctx.beginPath();
                     ctx.strokeStyle = '#34d399';
-                    ctx.lineWidth = 1.8;
+                    ctx.lineWidth = 2.0;
                     for (let x = 0; x < W; x++) {
                         const t = (x / W * 10) + (timePos / 10);
                         const alpha = Math.sin(t * 6 + i) * 12;
 
                         let artifact = 0;
-                        if (x > W * 0.15 && x < W * 0.25 && i === 0) artifact = Math.sin((x - W * 0.15) * 0.1) * 45;
-                        if (x > W * 0.50 && x < W * 0.65) artifact = (Math.random() - 0.5) * 55;
-                        if (x > W * 0.80 && x < W * 0.88 && i === 3) artifact = Math.sin((x - W * 0.8) * 0.2) * 60;
+                        if (x > W * 0.15 && x < W * 0.25 && i === 0) artifact = Math.sin((x - W * 0.15) * 0.1) * 48;
+                        if (x > W * 0.50 && x < W * 0.65) artifact = (Math.sin((x - W * 0.5) * 0.15) * 35) + ((Math.random() - 0.5) * 25);
+                        if (x > W * 0.80 && x < W * 0.88 && i === 3) artifact = Math.sin((x - W * 0.8) * 0.2) * 52;
 
-                        if (cutoffK < 22) {
-                            artifact *= (cutoffK / 30) * 0.3;
+                        let reconstructedArtifact = artifact;
+                        if (Math.abs(artifact) > thresholdLimit) {
+                            const excess = Math.abs(artifact) - thresholdLimit;
+                            const sign = Math.sign(artifact);
+                            reconstructedArtifact = sign * (thresholdLimit * 0.15 + excess * 0.05);
                         }
 
-                        const y = midY + alpha + artifact;
+                        const y = midY + alpha + reconstructedArtifact;
                         if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
                     }
                     ctx.stroke();
@@ -1185,6 +1285,24 @@ print(<span class="c-string">"ASR Cleaning Complete!"</span>)</pre>
                 ctx.fillStyle = '#5EEAD4';
                 ctx.font = '700 11px Inter';
                 ctx.fillText('500ms Window', winX + 12, 18);
+
+                // Live Legend Overlay
+                ctx.fillStyle = 'rgba(10, 14, 38, 0.90)';
+                ctx.fillRect(W - 245, 8, 230, 42);
+                ctx.strokeStyle = 'rgba(165,180,252,0.3)';
+                ctx.strokeRect(W - 245, 8, 230, 42);
+
+                ctx.beginPath();
+                ctx.moveTo(W - 235, 20); ctx.lineTo(W - 215, 20);
+                ctx.strokeStyle = '#FB7185'; ctx.lineWidth = 2; ctx.stroke();
+                ctx.fillStyle = '#FB7185'; ctx.font = '600 11px Inter';
+                ctx.fillText('Raw Signal (Corrupted)', W - 208, 23);
+
+                ctx.beginPath();
+                ctx.moveTo(W - 235, 36); ctx.lineTo(W - 215, 36);
+                ctx.strokeStyle = '#34d399'; ctx.lineWidth = 2; ctx.stroke();
+                ctx.fillStyle = '#34d399'; ctx.font = '600 11px Inter';
+                ctx.fillText('ASR Output (Reconstructed)', W - 208, 39);
             }
 
             loop();
